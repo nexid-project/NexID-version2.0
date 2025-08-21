@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NexID | Aplicación</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts (Carga Optimizada) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <!-- Iconos (Lucide) -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+
+    <!-- SortableJS para Drag and Drop -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- Cropper.js -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
+    
+    <!-- Librería de Compresión de Imágenes -->
+    <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
+
+    <!-- Hoja de Estilos Propia -->
+    <link rel="stylesheet" href="css/style.css">
+
+</head>
+<body class="bg-gray-900 text-white min-h-screen overflow-x-hidden">
+	
+	<div id="global-background"></div>
+
+	<div id="app">
+		<!-- PÁGINA DE CARGA INICIAL -->
+		<div id="loading-page" class="flex flex-col items-center justify-center min-h-screen">
+			<div class="w-12 h-12 border-4 border-t-cyan-400 border-gray-600 rounded-full animate-spin"></div>
+		</div>
+
+		<!-- PÁGINA DE AUTENTICACIÓN -->
+		<div id="auth-page" class="hidden p-4 sm:p-6">
+			<div class="flex flex-col items-center justify-center min-h-[90vh]">
+				<div class="w-full max-w-md p-8 space-y-6 bg-gray-800 rounded-xl shadow-lg">
+					<h1 class="text-3xl font-bold text-center text-cyan-400">Crea tu Página de Enlaces</h1>
+					<p class="text-center text-gray-300">Inicia sesión o regístrate para empezar.</p>
+					<div class="space-y-4">
+						<input id="email-input" type="email" placeholder="Correo electrónico" class="w-full px-4 py-2 text-gray-900 bg-gray-200 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500">
+						<div class="relative w-full">
+							<input id="password-input" type="password" placeholder="Contraseña" class="w-full px-4 pr-10 py-2 text-gray-900 bg-gray-200 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500">
+							<button type="button" id="auth-password-toggle" class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-500">
+								<i data-lucide="eye" class="w-5 h-5"></i>
+							</button>
+						</div>
+						<a href="#" id="forgot-password-link" class="text-sm text-cyan-400 hover:underline text-center block">¿Olvidaste tu contraseña?</a>
+					</div>
+					<div class="flex flex-col sm:flex-row gap-4">
+						<button id="login-btn" class="w-full px-4 py-2 font-bold text-white bg-cyan-600 rounded-md hover:bg-cyan-500 transition-colors">Iniciar Sesión</button>
+						<button id="register-btn" class="w-full px-4 py-2 font-bold text-white bg-indigo-600 rounded-md hover:bg-indigo-500 transition-colors">Registrarse</button>
+					</div>
+					<div class="relative flex items-center py-2">
+						<div class="flex-grow border-t border-gray-600"></div>
+						<span class="flex-shrink mx-4 text-gray-400">o</span>
+						<div class="flex-grow border-t border-gray-600"></div>
+					</div>
+					<button id="google-login-btn" class="w-full flex items-center justify-center gap-3 px-4 py-2 font-bold text-white bg-red-600 rounded-md hover:bg-red-500 transition-colors">
+						<svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039L38.802 9.92C34.553 6.08 29.613 4 24 4C12.955 4 4 12.955 4 24s8.955 20 20 20s20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"/><path fill="#FF3D00" d="M6.306 14.691c-1.336 2.65-2.095 5.623-2.095 8.81s.759 6.16 2.095 8.81l7.107-5.559C12.82 25.65 12 24.85 12 24s.82-1.65 1.413-2.932l-7.107-5.559z"/><path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-4.82c-1.865 1.25-4.252 1.992-6.946 1.992-5.212 0-9.64-3.428-11.284-8.048l-7.107 5.559C8.386 39.043 15.6 44 24 44z"/><path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303c-.792 2.447-2.274 4.488-4.386 5.958l6.19 4.82C41.383 35.398 44 30.168 44 24c0-1.341-.138-2.65-.389-3.917z"/></svg>
+						Continuar con Google
+					</button>
+                        <div class="text-center mt-4">
+                            <a href="index.html" class="text-sm text-cyan-400 hover:underline">Volver al inicio</a>
+                        </div>
+				</div>
+			</div>
+		</div>
+
+		<!-- PÁGINA DE "OLVIDÉ MI CONTRASEÑA" -->
+		<div id="forgot-password-page" class="hidden p-4 sm:p-6">
+			<div class="flex flex-col items-center justify-center min-h-[90vh]">
+				<div class="w-full max-w-md p-8 space-y-6 bg-gray-800 rounded-xl shadow-lg">
+					<h1 class="text-3xl font-bold text-center text-cyan-400">Recuperar Contraseña</h1>
+					<p class="text-center text-gray-300">Introduce tu correo electrónico y te enviaremos un enlace para restablecer tu contraseña.</p>
+					<div class="space-y-4">
+						<input id="recovery-email-input" type="email" placeholder="Correo electrónico" class="w-full px-4 py-2 text-gray-900 bg-gray-200 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500">
+					</div>
+					<button id="send-recovery-btn" class="w-full px-4 py-2 font-bold text-white bg-cyan-600 rounded-md hover:bg-cyan-500 transition-colors">Enviar Enlace</button>
+					<div class="text-center mt-4">
+						<a href="#" id="back-to-login-link" class="text-sm text-cyan-400 hover:underline">Volver a Iniciar Sesión</a>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- PÁGINA PARA ESTABLECER NUEVA CONTRASEÑA -->
+		<div id="update-password-page" class="hidden p-4 sm:p-6">
+			<div class="flex flex-col items-center justify-center min-h-[90vh]">
+				<div class="w-full max-w-md p-8 space-y-6 bg-gray-800 rounded-xl shadow-lg">
+					<h1 class="text-3xl font-bold text-center text-cyan-400">Establecer Nueva Contraseña</h1>
+					<p class="text-center text-gray-300">Introduce tu nueva contraseña. Debe tener al menos 6 caracteres.</p>
+					<div class="space-y-4">
+						<div class="relative w-full">
+							<input id="update-password-input" type="password" placeholder="Nueva Contraseña" class="w-full px-4 pr-10 py-2 text-gray-900 bg-gray-200 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500">
+							<button type="button" id="update-password-toggle" class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-500">
+								<i data-lucide="eye" class="w-5 h-5"></i>
+							</button>
+						</div>
+						<div class="relative w-full">
+							<input id="update-confirm-password-input" type="password" placeholder="Confirmar Nueva Contraseña" class="w-full px-4 pr-10 py-2 text-gray-900 bg-gray-200 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500">
+							<button type="button" id="update-confirm-password-toggle" class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-500">
+								<i data-lucide="eye" class="w-5 h-5"></i>
+							</button>
+						</div>
+					</div>
+					<button id="update-password-btn" class="w-full px-4 py-2 font-bold text-white bg-cyan-600 rounded-md hover:bg-cyan-500 transition-colors">Actualizar Contraseña</button>
+				</div>
+			</div>
+		</div>
+		
+		<!-- PÁGINA DE BIENVENIDA / CONFIGURACIÓN INICIAL -->
+		<div id="welcome-page" class="hidden p-4 sm:p-6">
+			<div class="flex flex-col items-center justify-center min-h-[90vh]">
+				<div class="w-full max-w-md p-8 space-y-6 bg-gray-800 rounded-xl shadow-lg">
+					<h1 class="text-3xl font-bold text-center text-cyan-400">¡Bienvenido!</h1>
+					<p class="text-center text-gray-300">Elige un nombre de usuario único para tu página.</p>
+					<div class="space-y-4">
+						 <input id="welcome-display-name-input" type="text" placeholder="Tu Nombre Completo" class="w-full px-4 py-2 text-gray-900 bg-gray-200 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500">
+						<div class="relative">
+							<div class="flex items-center bg-gray-200 rounded-md focus-within:ring-2 focus-within:ring-cyan-500">
+								<span class="px-3 text-gray-500">@</span>
+								<input id="welcome-username-input" type="text" placeholder="tunombredeusuario" class="w-full p-2 text-gray-900 bg-transparent focus:outline-none">
+							</div>
+							<p id="username-feedback" class="text-sm mt-2 h-5"></p>
+						</div>
+					</div>
+					<button id="complete-setup-btn" class="w-full px-4 py-2 font-bold text-white bg-cyan-600 rounded-md hover:bg-cyan-500 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed" disabled>Completar Perfil</button>
+				</div>
+			</div>
+		</div>
+
+		<!-- PÁGINA DE PERFIL PÚBLICO (Y VISTA DE EDICIÓN) -->
+		<div id="profile-page" class="hidden px-4 sm:px-6">
+			 <div id="panorama-grid"></div> <!-- Cuadrícula para el modo Panorama -->
+			<div class="content-wrapper w-full max-w-md mx-auto flex flex-col relative pt-8 sm:pt-12 pb-8">
+				
+				<!-- Contenedor de Navegación Superior -->
+				<header id="main-header" class="relative flex items-center justify-between h-14 mb-4">
+					<!-- Lado Izquierdo: Volver y Búsqueda -->
+					<div class="flex items-center gap-2 z-40">
+						<a href="/" id="back-to-my-profile-btn" class="hidden p-2 bg-gray-200/80 text-gray-900 rounded-full hover:bg-gray-300 transition-all duration-300" title="Volver a mi perfil">
+							<i data-lucide="home" class="w-5 h-5"></i>
+						</a>
+						<div id="search-container" class="relative flex items-center gap-2">
+							<button id="search-icon-btn" class="p-2 bg-gray-200/80 text-gray-900 rounded-full hover:bg-gray-300 transition-all duration-300">
+								<i data-lucide="search" class="w-5 h-5 icon-search"></i>
+								<i data-lucide="x" class="w-5 h-5 icon-x"></i>
+							</button>
+							<input type="text" id="search-input" placeholder="Buscar perfiles..." class="w-0 p-2 rounded-full bg-gray-200 text-gray-900 placeholder-gray-500 focus:outline-none opacity-0">
+							<div id="search-results" class="hidden absolute top-full mt-2 w-[180px] sm:w-[250px] bg-gray-700/90 backdrop-blur-sm rounded-lg shadow-lg overflow-hidden">
+								<!-- Los resultados de la búsqueda aparecerán aquí -->
+							</div>
+						</div>
+					</div>
+		
+					<!-- Lado Derecho: Acciones -->
+					<div class="z-40">
+						<div id="user-actions" class="flex items-center gap-2">
+							<button id="arrange-btn" class="flex items-center gap-2 px-3 py-1.5 font-semibold text-gray-900 bg-gray-200 rounded-full hover:bg-gray-300 transition-colors text-sm shadow-lg">
+								<i data-lucide="layout-grid" class="w-5 h-5"></i>
+								<span class="hidden sm:inline">Editar Diseño</span>
+							</button>
+							<button id="configure-btn" class="p-2 font-semibold text-gray-900 bg-gray-200 rounded-full hover:bg-gray-300 transition-colors text-sm shadow-lg">
+								<i data-lucide="settings-2" class="w-5 h-5"></i>
+							</button>
+							<button id="logout-btn" class="p-2 font-semibold text-white bg-red-600 rounded-full hover:bg-red-500 transition-colors text-sm shadow-lg">
+								<i data-lucide="log-out" class="w-5 h-5"></i>
+							</button>
+						</div>
+						<div id="layout-actions" class="hidden flex items-center gap-2">
+							 <button id="cancel-layout-btn" class="flex items-center gap-2 px-3 py-1.5 font-semibold text-gray-900 bg-gray-300 rounded-full hover:bg-gray-400 transition-colors text-sm shadow-lg">
+								<i data-lucide="x" class="w-5 h-5"></i>
+								<span>Cancelar</span>
+							</button>
+							 <button id="save-layout-btn" class="flex items-center gap-2 px-3 py-1.5 font-semibold text-gray-900 bg-emerald-400 rounded-full hover:bg-emerald-500 transition-colors text-sm shadow-lg">
+								<i data-lucide="check" class="w-5 h-5"></i>
+								<span>Guardar</span>
+							</button>
+						</div>
+					</div>
+				</header>
+
+				<div id="profile-layout-container" class="flex flex-col">
+					<!-- Los elementos del perfil se añadirán aquí dinámicamente por JS -->
+				</div>
+			</div>
+		</div>
+		
+		<!-- PÁGINA DE REACTIVACIÓN DE CUENTA -->
+		<div id="reactivate-account-page" class="hidden p-4 sm:p-6">
+			<div class="flex flex-col items-center justify-center min-h-[90vh]">
+				<div class="w-full max-w-md p-8 space-y-6 bg-gray-800 rounded-xl shadow-lg text-center">
+					<h1 class="text-3xl font-bold text-yellow-400">Cuenta Programada para Eliminación</h1>
+					<p class="text-gray-300">Tu cuenta y todos tus datos están programados para ser eliminados permanentemente. Puedes cancelar este proceso ahora.</p>
+					<p class="text-gray-400 text-sm">Si no haces nada, tu cuenta será eliminada el <span id="deletion-date"></span>.</p>
+					<div class="flex flex-col sm:flex-row gap-4 pt-4">
+						<button id="reactivate-account-btn" class="w-full px-4 py-2 font-bold text-white bg-cyan-600 rounded-md hover:bg-cyan-500 transition-colors">Cancelar Eliminación y Reactivar</button>
+						<button id="logout-for-deletion-btn" class="w-full px-4 py-2 font-bold text-gray-300 hover:bg-gray-700 transition-colors">Cerrar Sesión</button>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div id="settings-overlay" class="hidden fixed inset-0 bg-transparent z-40"></div>
+
+		<!-- PANEL DE CONFIGURACIÓN LATERAL -->
+		<div id="settings-panel" class="fixed bg-gray-800 shadow-2xl z-50">
+			<div id="panel-dragger-container" class="flex-shrink-0 pt-3 pb-2 sm:hidden cursor-grab active:cursor-grabbing border-b border-gray-700 bg-gray-800">
+				<div id="panel-dragger" class="w-24 h-1.5 bg-gray-600 rounded-full mx-auto"></div>
+			</div>
+			<div id="settings-panel-content" class="h-full overflow-y-auto">
+				<div class="p-6">
+					<div class="flex justify-between items-center mb-4 sm:pt-0">
+						<h2 class="text-2xl font-bold text-cyan-400">Configuración</h2>
+						<button id="close-settings-btn" class="p-2 rounded-full hover:bg-gray-700">
+							<i data-lucide="x" class="w-6 h-6"></i>
+						</button>
+					</div>
+
+					<div id="settings-accordion" class="space-y-2">
+						<!-- Accordion Item: Perfil -->
+						<div class="accordion-item bg-gray-900/50 rounded-xl overflow-hidden">
+							<button class="accordion-header w-full flex justify-between items-center p-4 text-left">
+								<h3 class="text-xl font-bold text-cyan-300">Perfil</h3>
+								<i data-lucide="chevron-down" class="accordion-icon transition-transform"></i>
+							</button>
+							<div class="accordion-content">
+								<div class="p-4 pt-0 space-y-4">
+									<input id="display-name-input" type="text" placeholder="Tu Nombre a Mostrar" class="w-full px-4 py-2 text-gray-900 bg-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500">
+									<div class="flex items-center bg-gray-500 rounded-md">
+										<span class="px-3 text-gray-300">@</span>
+										<input id="username-input" type="text" placeholder="tunombredeusuario" class="w-full p-2 text-gray-200 bg-transparent focus:outline-none" disabled>
+									</div>
+									<div>
+										<textarea id="description-input" placeholder="Tu descripción" rows="3" class="w-full px-4 py-2 text-gray-900 bg-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"></textarea>
+										<button id="open-gemini-btn" class="mt-2 flex items-center justify-center gap-2 w-full sm:w-auto px-3 py-1.5 text-sm font-semibold text-white bg-purple-600 rounded-md hover:bg-purple-500 transition-colors">
+											Generar con IA ✨
+										</button>
+									</div>
+									<input type="file" id="image-upload-input" class="hidden" accept="image/*">
+								</div>
+							</div>
+						</div>
+
+						<!-- Accordion Item: Tarjeta de Contacto -->
+						<div class="accordion-item bg-gray-900/50 rounded-xl overflow-hidden">
+							<button class="accordion-header w-full flex justify-between items-center p-4 text-left">
+								<h3 class="text-xl font-bold text-cyan-300">Tarjeta de Contacto</h3>
+								<i data-lucide="chevron-down" class="accordion-icon transition-transform"></i>
+							</button>
+							<div class="accordion-content">
+								<div class="p-4 pt-0">
+									<p class="text-sm text-gray-400 mb-4">Añade tu información para que los visitantes puedan guardarla fácilmente.</p>
+									<div id="contact-inputs" class="space-y-4">
+										<div class="flex items-center bg-gray-200 rounded-md focus-within:ring-2 focus-within:ring-cyan-500">
+											<span class="pl-3 pr-2 text-gray-500"><i data-lucide="user" class="w-5 h-5"></i></span>
+											<input type="text" data-contact="name" placeholder="Nombre Completo" class="w-full p-2 text-gray-900 bg-transparent focus:outline-none">
+										</div>
+										<div class="flex items-center bg-gray-200 rounded-md focus-within:ring-2 focus-within:ring-cyan-500">
+											<span class="pl-3 pr-2 text-gray-500"><i data-lucide="phone" class="w-5 h-5"></i></span>
+											<input type="text" data-contact="phone" placeholder="Teléfono (ej: +569...)" class="w-full p-2 text-gray-900 bg-transparent focus:outline-none">
+										</div>
+										<div class="flex items-center bg-gray-200 rounded-md focus-within:ring-2 focus-within:ring-cyan-500">
+											<span class="pl-3 pr-2 text-gray-500"><i data-lucide="mail" class="w-5 h-5"></i></span>
+											<input type="email" data-contact="email" placeholder="Correo Electrónico" class="w-full p-2 text-gray-900 bg-transparent focus:outline-none">
+										</div>
+										<div class="flex items-center bg-gray-200 rounded-md focus-within:ring-2 focus-within:ring-cyan-500">
+											<span class="pl-3 pr-2 text-gray-500"><i data-lucide="globe" class="w-5 h-5"></i></span>
+											<input type="text" data-contact="website" placeholder="Sitio Web (ej: misitio.com)" class="w-full p-2 text-gray-900 bg-transparent focus:outline-none">
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<!-- Accordion Item: Apariencia -->
+						<div class="accordion-item bg-gray-900/50 rounded-xl overflow-hidden">
+							<button class="accordion-header w-full flex justify-between items-center p-4 text-left">
+								<h3 class="text-xl font-bold text-cyan-300">Apariencia</h3>
+								<i data-lucide="chevron-down" class="accordion-icon transition-transform"></i>
+							</button>
+							<div class="accordion-content">
+								<div class="p-4 pt-0 space-y-6">
+									<div>
+										<h4 class="text-lg font-semibold mb-3 text-center">Plantillas de Color</h4>
+										<div id="theme-tabs" class="flex border-b border-gray-700">
+											<button class="theme-tab-btn active" data-tab="basico">Básico</button>
+											<button class="theme-tab-btn" data-tab="vibrante">Vibrante</button>
+											<button class="theme-tab-btn" data-tab="moderno">Moderno</button>
+											<button class="theme-tab-btn" data-tab="elegante">Elegante</button>
+										</div>
+										<div id="theme-tab-contents">
+											<div id="tab-basico" class="theme-tab-content active"><div class="flex justify-center flex-wrap gap-4">
+												<div class="theme-option w-10 h-10 rounded-full cursor-pointer border-2 border-gray-400" data-theme="negro" title="Negro" style="background: #111827;"></div>
+												<div class="theme-option w-10 h-10 rounded-full cursor-pointer border-2 border-gray-400" data-theme="blanco" title="Blanco" style="background: #f8fafc;"></div>
+												<div class="theme-option w-10 h-10 rounded-full cursor-pointer border-2 border-gray-400" data-theme="azul" title="Azul" style="background: #1e40af;"></div>
+												<div class="theme-option w-10 h-10 rounded-full cursor-pointer border-2 border-gray-400" data-theme="rojo" title="Rojo" style="background: #991b1b;"></div>
+												<div class="theme-option w-10 h-10 rounded-full cursor-pointer border-2 border-gray-400" data-theme="verde" title="Verde" style="background: #166534;"></div>
+											</div></div>
+											<div id="tab-vibrante" class="theme-tab-content"><div class="flex justify-center flex-wrap gap-4">
+												<div class="theme-option w-10 h-10 rounded-full cursor-pointer border-2 border-gray-400" data-theme="atardecer" title="Atardecer" style="background: #86198f;"></div>
+												<div class="theme-option w-10 h-10 rounded-full cursor-pointer border-2 border-gray-400" data-theme="neon" title="Neón" style="background: #0c0a09;"></div>
+												<div class="theme-option w-10 h-10 rounded-full cursor-pointer border-2 border-gray-400" data-theme="tropical" title="Tropical" style="background: #06b6d4;"></div>
+												<div class="theme-option w-10 h-10 rounded-full cursor-pointer border-2 border-gray-400" data-theme="galaxia" title="Galaxia" style="background: #4c1d95;"></div>
+												<div class="theme-option w-10 h-10 rounded-full cursor-pointer border-2 border-gray-400" data-theme="citrico" title="Cítrico" style="background: #facc15;"></div>
+											</div></div>
+											<div id="tab-moderno" class="theme-tab-content"><div class="flex justify-center flex-wrap gap-4">
+												<div class="theme-option w-10 h-10 rounded-full cursor-pointer border-2 border-gray-400" data-theme="grafito" title="Grafito" style="background: #1a202c;"></div>
+												<div class="theme-option w-10 h-10 rounded-full cursor-pointer border-2 border-gray-400" data-theme="serenidad" title="Serenidad" style="background: #e0e7ff;"></div>
+												<div class="theme-option w-10 h-10 rounded-full cursor-pointer border-2 border-gray-400" data-theme="menta" title="Menta" style="background: #f0fdfa;"></div>
+												<div class="theme-option w-10 h-10 rounded-full cursor-pointer border-2 border-gray-400" data-theme="pizarra" title="Pizarra" style="background: #475569;"></div>
+												<div class="theme-option w-10 h-10 rounded-full cursor-pointer border-2 border-gray-400" data-theme="concreto" title="Concreto" style="background: #e5e7eb;"></div>
+											</div></div>
+											<div id="tab-elegante" class="theme-tab-content"><div class="flex justify-center flex-wrap gap-4">
+												<div class="theme-option w-10 h-10 rounded-full cursor-pointer border-2 border-gray-400" data-theme="terra" title="Terra" style="background: #f5f5f4;"></div>
+												<div class="theme-option w-10 h-10 rounded-full cursor-pointer border-2 border-gray-400" data-theme="amanecer" title="Amanecer" style="background: #fef3c7;"></div>
+												<div class="theme-option w-10 h-10 rounded-full cursor-pointer border-2 border-gray-400" data-theme="oceano" title="Océano" style="background: #0c2f57;"></div>
+												<div class="theme-option w-10 h-10 rounded-full cursor-pointer border-2 border-gray-400" data-theme="marmol" title="Mármol" style="background: #fafafa;"></div>
+												<div class="theme-option w-10 h-10 rounded-full cursor-pointer border-2 border-gray-400" data-theme="vino" title="Vino" style="background: #581c87;"></div>
+											</div></div>
+										</div>
+									</div>
+									<input id="background-image-url-input" type="hidden">
+									<input id="background-image-path-input" type="hidden">
+									<div id="background-controls" class="hidden">
+										<label for="background-opacity-slider" class="block text-center text-sm font-medium text-gray-300">Opacidad del fondo</label>
+										<input id="background-opacity-slider" type="range" min="0" max="1" step="0.1" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+									</div>
+									<div class="flex items-center justify-center gap-4 my-2"><span class="flex-grow border-t border-gray-600"></span><span class="text-gray-400 text-sm">O</span><span class="flex-grow border-t border-gray-600"></span></div>
+									<div class="flex gap-2">
+										<button id="upload-background-btn" class="w-full px-4 py-2 font-semibold text-white bg-gray-700 rounded-md hover:bg-gray-600 flex items-center justify-center gap-2"><i data-lucide="upload-cloud" class="w-5 h-5"></i> Subir Fondo</button>
+										<button id="open-library-btn" class="w-full px-4 py-2 font-semibold text-white bg-gray-700 rounded-md hover:bg-gray-600 flex items-center justify-center gap-2"><i data-lucide="library" class="w-5 h-5"></i> Biblioteca</button>
+									</div>
+									<div class="mt-2 flex justify-center">
+										<button id="remove-background-btn" class="w-full sm:w-auto px-4 py-2 font-semibold text-red-400 bg-transparent border border-red-400 rounded-md hover:bg-red-400 hover:text-gray-900 flex items-center justify-center gap-2">
+											<i data-lucide="trash-2" class="w-5 h-5"></i> Quitar Fondo
+										</button>
+									</div>
+									<input type="file" id="background-upload-input" class="hidden" accept="image/png, image/jpeg, image/webp">
+									<div class="grid grid-cols-2 gap-4">
+										<div>
+											<h4 class="text-lg font-semibold mb-3 text-center">Estilo</h4>
+											<div id="button-style-selector" class="space-y-2">
+												<label class="flex items-center gap-2 p-2 bg-gray-700 rounded-md cursor-pointer"><input type="radio" name="buttonStyle" value="filled" class="form-radio text-cyan-500"> Relleno</label>
+												<label class="flex items-center gap-2 p-2 bg-gray-700 rounded-md cursor-pointer"><input type="radio" name="buttonStyle" value="outline" class="form-radio text-cyan-500"> Contorno</label>
+												<label class="flex items-center gap-2 p-2 bg-gray-700 rounded-md cursor-pointer"><input type="radio" name="buttonStyle" value="shadow" class="form-radio text-cyan-500"> Sombra</label>
+											</div>
+										</div>
+										<div>
+											<h4 class="text-lg font-semibold mb-3 text-center">Forma</h4>
+											<div id="button-shape-selector" class="space-y-2">
+												<label class="flex items-center gap-2 p-2 bg-gray-700 rounded-md cursor-pointer"><input type="radio" name="buttonShape" value="rounded-lg" class="form-radio text-cyan-500"> Suave</label>
+												<label class="flex items-center gap-2 p-2 bg-gray-700 rounded-md cursor-pointer"><input type="radio" name="buttonShape" value="rounded-full" class="form-radio text-cyan-500"> Redondo</label>
+												<label class="flex items-center gap-2 p-2 bg-gray-700 rounded-md cursor-pointer"><input type="radio" name="buttonShape" value="rounded-none" class="form-radio text-cyan-500"> Recto</label>
+											</div>
+										</div>
+									</div>
+									<div>
+										<h4 class="text-lg font-semibold mb-3 text-center">Fuente</h4>
+										<!-- Selector de Fuente Personalizado -->
+										<div id="custom-font-selector" class="relative">
+											<input type="hidden" id="font-family-value" value="font-inter">
+											<button type="button" id="font-selector-btn" class="w-full flex items-center justify-between px-4 py-2 text-gray-900 bg-gray-200 rounded-md text-left">
+												<span id="font-selector-label" class="font-inter">Inter (Sans-serif)</span>
+												<i data-lucide="chevron-down" class="w-5 h-5 text-gray-600"></i>
+											</button>
+											<div id="font-selector-options" class="hidden absolute bottom-full mb-2 w-full bg-gray-700 rounded-md shadow-lg z-10 max-h-60 overflow-y-auto">
+												<!-- Las opciones de fuente se generarán aquí -->
+											</div>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<!-- Accordion Item: Botones Sociales -->
+						<div class="accordion-item bg-gray-900/50 rounded-xl overflow-hidden">
+							<button class="accordion-header w-full flex justify-between items-center p-4 text-left">
+								<h3 class="text-xl font-bold text-cyan-300">Botones Sociales</h3>
+								<i data-lucide="chevron-down" class="accordion-icon transition-transform"></i>
+							</button>
+							<div class="accordion-content">
+								<div class="p-4 pt-0">
+									<div id="social-buttons-list-editor" class="space-y-4 mb-6"></div>
+									<div class="space-y-4 p-4 border-t border-gray-700">
+										<h4 class="text-lg font-semibold">Añadir Botón Social</h4>
+										<input id="social-button-url-input" type="text" placeholder="URL del perfil social" class="w-full px-4 py-2 text-gray-900 bg-gray-200 rounded-md">
+										<button id="add-social-button-btn" class="w-full px-4 py-2 font-bold text-white bg-cyan-600 rounded-md hover:bg-cyan-500">Añadir Botón</button>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<!-- Accordion Item: Enlaces -->
+						<div class="accordion-item bg-gray-900/50 rounded-xl">
+							<button class="accordion-header w-full flex justify-between items-center p-4 text-left">
+								<h3 class="text-xl font-bold text-cyan-300">Enlaces</h3>
+								<i data-lucide="chevron-down" class="accordion-icon transition-transform"></i>
+							</button>
+							<div class="accordion-content">
+								<div class="p-4 pt-0">
+									<div id="links-list-editor" class="space-y-4 mb-6"></div>
+									<div class="space-y-4 p-4 border-t border-gray-700">
+										<h4 id="link-form-title" class="text-lg font-semibold">Añadir Nuevo Enlace</h4>
+										<input id="editing-link-id" type="hidden">
+										<input id="link-title-input" type="text" placeholder="Título del enlace" class="w-full px-4 py-2 text-gray-900 bg-gray-200 rounded-md">
+										<input id="link-url-input" type="text" placeholder="URL completa (ej: misitio.com)" class="w-full px-4 py-2 text-gray-900 bg-gray-200 rounded-md">
+										<div class="mt-4">
+											<input type="hidden" id="link-icon-value">
+											<label class="block text-sm font-medium text-gray-300 mb-2">Icono (opcional)</label>
+											<div id="icon-grid-container" class="grid grid-cols-6 sm:grid-cols-8 gap-2 p-2 bg-gray-900/50 rounded-lg">
+												<!-- Los iconos se añadirán aquí dinámicamente -->
+											</div>
+										</div>
+										<div class="flex gap-4 mt-4">
+											<button id="add-update-link-btn" class="w-full px-4 py-2 font-bold text-white bg-cyan-600 rounded-md hover:bg-cyan-500">Añadir Enlace</button>
+											<button id="cancel-edit-btn" class="hidden w-full px-4 py-2 font-bold text-white bg-gray-600 rounded-md hover:bg-gray-500">Cancelar</button>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+						
+						<!-- Accordion Item: Redes Sociales (Iconos) -->
+						<div class="accordion-item bg-gray-900/50 rounded-xl overflow-hidden">
+							<button class="accordion-header w-full flex justify-between items-center p-4 text-left">
+								<h3 class="text-xl font-bold text-cyan-300">Iconos Sociales (Pie de página)</h3>
+								<i data-lucide="chevron-down" class="accordion-icon transition-transform"></i>
+							</button>
+							<div class="accordion-content">
+								<div class="p-4 pt-0">
+									<div id="socials-inputs-container" class="grid grid-cols-2 gap-3"></div>
+								</div>
+							</div>
+						</div>
+
+						<!-- NUEVO: Accordion Item: Privacidad y Seguridad -->
+						<div class="accordion-item bg-gray-900/50 rounded-xl overflow-hidden">
+							<button class="accordion-header w-full flex justify-between items-center p-4 text-left">
+								<h3 class="text-xl font-bold text-cyan-300">Privacidad y Seguridad</h3>
+								<i data-lucide="chevron-down" class="accordion-icon transition-transform"></i>
+							</button>
+							<div class="accordion-content">
+								<div class="p-4 pt-0 space-y-4">
+									<div class="flex items-center justify-between">
+										<div>
+											<label for="private-profile-toggle" class="font-semibold text-white">Perfil Público</label>
+											<p class="text-sm text-gray-400">Si está desactivado, tu perfil no aparecerá en el buscador.</p>
+										</div>
+										<label for="private-profile-toggle" class="relative inline-flex items-center cursor-pointer">
+											<input type="checkbox" value="" id="private-profile-toggle" class="sr-only peer">
+											<div class="w-11 h-6 bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-cyan-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-600"></div>
+										</label>
+									</div>
+									<div class="border-t border-gray-700/50 pt-4">
+										<button id="change-password-btn" class="w-full px-4 py-2 font-semibold text-white bg-gray-700 rounded-md hover:bg-gray-600 flex items-center justify-center gap-2">
+											<i data-lucide="key-round" class="w-5 h-5"></i>
+											Cambiar Contraseña
+										</button>
+									</div>
+									<div class="border-t border-gray-700/50 pt-4">
+										<button id="delete-account-btn" class="w-full px-4 py-2 font-semibold text-red-400 bg-transparent border border-red-400 rounded-md hover:bg-red-500 hover:text-white flex items-center justify-center gap-2">
+											<i data-lucide="trash-2" class="w-5 h-5"></i>
+											Eliminar Cuenta
+										</button>
+									</div>
+								</div>
+							</div>
+						</div>
+
+					</div>
+
+					<div class="mt-6 flex justify-center">
+						<button id="save-changes-btn" class="px-8 py-2 font-bold text-white bg-cyan-600 rounded-full hover:bg-cyan-500 transition-colors">Guardar Cambios</button>
+					</div>
+				</div>
+			</div>
+		</div>
+		
+		<!-- Modales -->
+		<div id="custom-alert" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[60] p-4">
+			<div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-sm text-center">
+				<p id="custom-alert-message" class="text-white mb-6"></p>
+				<button id="custom-alert-close" class="w-full px-4 py-2 font-bold text-white bg-cyan-600 rounded-md hover:bg-cyan-500">Aceptar</button>
+			</div>
+		</div>
+		<div id="gemini-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+			<div class="gemini-content bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md flex flex-col max-h-[90vh]">
+				<h3 class="text-2xl font-bold text-purple-400 mb-4 text-center">Generador de Biografía con IA ✨</h3>
+				<p class="text-gray-300 mb-4 text-center">Escribe algunas palabras clave sobre ti y la IA creará una descripción.</p>
+				<input id="gemini-keywords-input" type="text" placeholder="Ej: desarrollador web, fotógrafo..." class="w-full px-4 py-2 text-gray-900 bg-gray-200 rounded-md mb-4">
+				<button id="gemini-generate-btn" class="w-full flex items-center justify-center px-4 py-2 font-bold text-white bg-purple-600 rounded-md hover:bg-purple-500 mb-4 disabled:bg-purple-800">Generar Opciones</button>
+				<div id="gemini-loader" class="hidden flex-col items-center justify-center space-y-3 text-white my-4 flex-grow">
+					<div class="w-12 h-12 border-4 border-t-purple-400 border-gray-600 rounded-full animate-spin"></div>
+					<p>Creando magia...</p>
+				</div>
+				<div id="gemini-results-container" class="hidden space-y-3 text-white mb-4 flex-grow overflow-y-auto min-h-0"></div>
+				<div class="flex justify-center gap-4 mt-auto pt-4 border-t border-gray-700/50">
+					 <button id="gemini-close-btn" class="flex items-center justify-center gap-2 px-6 py-2 font-bold text-white bg-gray-600 rounded-md hover:bg-gray-500">
+						 <i data-lucide="x-circle" class="w-5 h-5"></i>Cerrar</button>
+					 <button id="gemini-use-text-btn" class="flex items-center justify-center gap-2 px-6 py-2 font-bold text-white bg-cyan-600 rounded-md hover:bg-cyan-500">
+						  <i data-lucide="check-circle" class="w-5 h-5"></i>Usar este texto</button>
+				</div>
+			</div>
+		</div>
+		<div id="custom-confirm" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[60] p-4">
+			<div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-sm text-center">
+				<p id="custom-confirm-message" class="text-white mb-6"></p>
+				<div class="flex justify-center gap-4">
+					 <button id="custom-confirm-cancel" class="px-6 py-2 font-bold text-white bg-gray-600 rounded-md hover:bg-gray-500">Cancelar</button>
+					 <button id="custom-confirm-ok" class="px-6 py-2 font-bold text-white bg-red-600 rounded-md hover:bg-red-500">Eliminar</button>
+				</div>
+			</div>
+		</div>
+		<div id="unsaved-changes-confirm" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-[60] p-4">
+			<div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-sm text-center">
+				<h3 class="text-xl font-bold text-yellow-400 mb-4">Cambios sin Guardar</h3>
+				<p id="unsaved-changes-message" class="text-white mb-6">Tienes cambios sin guardar. ¿Qué te gustaría hacer?</p>
+				<div class="flex flex-col gap-3">
+					 <button id="unsaved-confirm-save" class="w-full px-6 py-2 font-bold text-white bg-cyan-600 rounded-md hover:bg-cyan-500">Guardar y Salir</button>
+					 <button id="unsaved-confirm-discard" class="w-full px-6 py-2 font-bold text-white bg-gray-600 rounded-md hover:bg-gray-500">Salir sin Guardar</button>
+					 <button id="unsaved-confirm-cancel" class="w-full px-6 py-2 font-bold text-gray-300 hover:bg-gray-700">Cancelar</button>
+				</div>
+			</div>
+		</div>
+		<div id="cropper-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
+			<div id="cropper-modal-content" class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-lg flex flex-col max-h-[90vh]">
+				 <h3 class="text-2xl font-bold text-cyan-400 mb-4 text-center">Recortar Imagen de Perfil</h3>
+				 <div class="mb-4 flex-grow min-h-0">
+					 <img id="cropper-image" src="">
+				 </div>
+				 <div class="flex justify-center gap-4 mt-auto pt-4">
+					 <button id="cropper-cancel-btn" class="px-6 py-2 font-bold text-white bg-gray-600 rounded-md hover:bg-gray-500">Cancelar</button>
+					 <button id="cropper-save-btn" class="flex items-center justify-center gap-2 px-6 py-2 font-bold text-white bg-cyan-600 rounded-md hover:bg-cyan-500 disabled:bg-cyan-800">Guardar Imagen</button>
+				 </div>
+			</div>
+		</div>
+		<div id="library-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
+			<div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-4xl flex flex-col max-h-[90vh]">
+				<div class="flex justify-between items-center mb-4">
+					 <h3 class="text-xl font-bold text-cyan-400">Biblioteca de Fondos</h3>
+					 <button id="library-close-btn" class="p-2 rounded-full hover:bg-gray-700">
+						  <i data-lucide="x" class="w-6 h-6"></i>
+					 </button>
+				</div>
+				<div id="library-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 flex-grow overflow-y-auto"></div>
+			</div>
+		</div>
+		<!-- Modal para Cambiar Contraseña -->
+		<div id="password-change-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+			<div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-sm">
+				<h3 class="text-xl font-bold text-cyan-400 mb-4 text-center">Cambiar Contraseña</h3>
+				<div class="space-y-2">
+					<div>
+						<div class="relative">
+							<input id="current-password-input" type="password" placeholder="Contraseña Actual" class="w-full px-4 pr-10 py-2 text-gray-900 bg-gray-200 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500">
+							<button type="button" id="current-password-toggle" class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-500">
+								<i data-lucide="eye" class="w-5 h-5"></i>
+							</button>
+						</div>
+						<p id="current-password-error" class="text-red-400 text-sm text-left mt-1 h-4"></p>
+					</div>
+					<div>
+						<div class="relative">
+							<input id="new-password-input" type="password" placeholder="Nueva Contraseña" class="w-full px-4 pr-10 py-2 text-gray-900 bg-gray-200 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500">
+							<button type="button" id="new-password-toggle" class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-500">
+								<i data-lucide="eye" class="w-5 h-5"></i>
+							</button>
+						</div>
+						<p id="new-password-error" class="text-red-400 text-sm text-left mt-1 h-4"></p>
+					</div>
+					<div>
+						<div class="relative">
+							<input id="confirm-password-input" type="password" placeholder="Confirmar Nueva Contraseña" class="w-full px-4 pr-10 py-2 text-gray-900 bg-gray-200 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500">
+							<button type="button" id="confirm-password-toggle" class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-500">
+								<i data-lucide="eye" class="w-5 h-5"></i>
+							</button>
+						</div>
+						<p id="confirm-password-error" class="text-red-400 text-sm text-left mt-1 h-4"></p>
+					</div>
+				</div>
+				<div class="flex justify-center gap-4 mt-6">
+					 <button id="password-change-cancel-btn" class="px-6 py-2 font-bold text-white bg-gray-600 rounded-md hover:bg-gray-500">Cancelar</button>
+					 <button id="password-change-save-btn" class="px-6 py-2 font-bold text-white bg-cyan-600 rounded-md hover:bg-cyan-500">Guardar</button>
+				</div>
+			</div>
+		</div>
+		<!-- Modal para Confirmar Eliminación de Cuenta -->
+		<div id="delete-account-confirm-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+			<div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-sm">
+				<h3 class="text-xl font-bold text-red-400 mb-4 text-center">¿Estás seguro?</h3>
+				<p class="text-gray-300 text-sm mb-4">Esta acción desactivará tu cuenta. Tu perfil y enlaces no serán públicos. Tienes 30 días para reactivar tu cuenta iniciando sesión. Después de este período, **todos tus datos serán eliminados permanentemente**.</p>
+				<p class="text-gray-300 text-sm mb-4">Para confirmar, por favor, introduce tu contraseña:</p>
+				<div class="relative">
+					<input id="delete-confirm-password-input" type="password" placeholder="Contraseña" class="w-full px-4 pr-10 py-2 text-gray-900 bg-gray-200 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500">
+					<button type="button" id="delete-confirm-password-toggle" class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-500">
+						<i data-lucide="eye" class="w-5 h-5"></i>
+					</button>
+				</div>
+				<p id="delete-confirm-password-error" class="text-red-400 text-sm text-left mt-1 h-4"></p>
+				<div class="flex justify-center gap-4 mt-6">
+					 <button id="delete-account-cancel-btn" class="px-6 py-2 font-bold text-white bg-gray-600 rounded-md hover:bg-gray-500">Cancelar</button>
+					 <button id="delete-account-confirm-btn" class="px-6 py-2 font-bold text-white bg-red-600 rounded-md hover:bg-red-500">Desactivar Cuenta</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- Lógica de la Aplicación -->
+	<script type="module" src="js/main.js"></script>
+</body>
+</html>
