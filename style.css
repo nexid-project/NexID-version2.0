@@ -10,6 +10,11 @@
 .font-oswald { font-family: 'Oswald', sans-serif; }
 .font-lobster { font-family: 'Lobster', cursive; }
 
+/* === CORRECCIÓN: Forzar fuente de UI en los botones de la cabecera === */
+#main-header button {
+	font-family: 'Inter', sans-serif;
+}
+
 .hidden { display: none; }
 
 /* --- Definiciones de Plantillas (Temas) --- */
@@ -42,7 +47,6 @@
 #profile-page .public-link-button { transition: all 0.3s ease; }
 #profile-page .public-link-button:hover { transform: scale(1.03); color: var(--button-hover-text-color, var(--button-text-color)); }
 
-/* === CAMBIO: Se añaden selectores para .sortable-fallback y sus elementos internos === */
 .sortable-fallback #public-profile-img { border-color: var(--profile-border-color); }
 #profile-page .btn-filled, .sortable-fallback .btn-filled { background-color: var(--button-bg); color: var(--button-text-color); }
 #profile-page .btn-filled:hover { background-color: var(--button-hover-bg); }
@@ -50,7 +54,6 @@
 #profile-page .btn-outline:hover { background-color: var(--button-bg); color: var(--button-text-color); }
 #profile-page .btn-shadow, .sortable-fallback .btn-shadow { background-color: var(--button-bg); color: var(--button-text-color); box-shadow: 4px 4px 0px var(--profile-border-color); }
 #profile-page .btn-shadow:hover { box-shadow: 6px 6px 0px var(--profile-border-color); transform: translate(-2px, -2px);}	
-/* === FIN DEL CAMBIO === */
 
 /* --- Animaciones para el botón de Unirse --- */
 @keyframes pulse {
@@ -187,12 +190,11 @@
 	opacity: 0 !important;	
 	cursor: grabbing;
 }
-/* === CAMBIO: Se añaden estilos para corregir el ancho y color del clon === */
 .sortable-fallback {
 	opacity: 1 !important;
 	background: transparent !important;
-	box-sizing: border-box; /* Asegura que el padding no afecte el ancho total */
-	color: var(--text-color); /* Aplica el color de texto del tema a todo el clon (arregla iconos y texto) */
+	box-sizing: border-box; 
+	color: var(--text-color);
 }
 .drag-handle {
 	cursor: grab;
