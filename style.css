@@ -37,8 +37,8 @@
 #global-background { position: fixed; top: 0; left: 0; right: 0; height: 100lvh; z-index: -1; background-size: cover; background-position: center; opacity: 0; transition: opacity 0.3s ease-in-out; }
 #profile-page { background-color: transparent; color: var(--text-color); min-height: 100lvh; }
 
-/* === CAMBIO: Se añaden selectores para .sortable-fallback === */
-#profile-page h1, #profile-page p, .sortable-fallback h1, .sortable-fallback p { color: var(--text-color); }
+/* === CAMBIO: Se simplifica la regla de color y se mantienen las demás para el fallback === */
+#profile-page h1, #profile-page p { color: var(--text-color); }
 #profile-page #public-profile-img, .sortable-fallback #public-profile-img { border-color: var(--profile-border-color); }
 #profile-page #public-profile-img { cursor: zoom-in; }
 #profile-page .public-link-button, .sortable-fallback.public-link-button { transition: all 0.3s ease; }
@@ -190,6 +190,8 @@
 .sortable-fallback {
 	opacity: 1 !important;
 	background: transparent !important;
+	box-sizing: border-box; /* Asegura que el padding no afecte el ancho total */
+	color: var(--text-color); /* Aplica el color de texto del tema a todo el clon (arregla iconos y texto) */
 }
 .drag-handle {
 	cursor: grab;
