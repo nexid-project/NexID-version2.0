@@ -369,7 +369,6 @@ const profileSectionTemplates = {
 	'socials': () => `<footer id="socials-footer" data-section="socials" class="pt-6 pb-2 flex justify-center items-center gap-4 flex-wrap draggable-item p-2"></footer>`
 };
 
-// === CAMBIO: Se modifica la función para envolver el enlace en un div arrastrable ===
 function renderSingleLink(linkData, profileData) {
 	const buttonStyle = profileData.button_style || 'filled';
 	const buttonShape = profileData.button_shape_style || 'rounded-lg';
@@ -382,7 +381,6 @@ function renderSingleLink(linkData, profileData) {
 		if (socialIconSvg) iconHtml = socialIconSvg;
 	}
 
-	// Se quitan 'draggable-item' y 'my-2' de las clases del enlace
 	let linkClasses = ['public-link-button', 'font-medium', 'py-3', 'px-5', 'w-full', 'flex', 'items-center'];
 	if (buttonShape !== 'underline') linkClasses.push(`btn-${buttonStyle}`);
 	linkClasses.push(buttonShape);
@@ -391,13 +389,10 @@ function renderSingleLink(linkData, profileData) {
 		? `<span class="w-6 h-6">${iconHtml}</span><span class="flex-grow text-center">${linkData.title}</span><span class="w-6 h-6"></span>`
 		: `<span class="flex-grow text-center">${linkData.title}</span>`;
 
-	// Se crea el HTML del enlace
 	const linkHtml = `<a href="#" draggable="false" data-url="${linkData.url}" data-link-id="${linkData.id}" rel="noopener noreferrer" class="${linkClasses.join(' ')}">${linkContent}</a>`;
 
-	// Se envuelve el enlace en un div que será el elemento arrastrable
 	return `<div data-section="link_${linkData.id}" class="draggable-item my-2">${linkHtml}</div>`;
 }
-// === FIN DEL CAMBIO ===
 
 function renderProfile(profileData, isOwner) {
 	if (!profileData) return;
@@ -448,7 +443,6 @@ function renderProfile(profileData, isOwner) {
 		}
 	});
 
-	// CORRECCIÓN 2: Se añade 'inline-flex items-center justify-center' al botón para centrar el texto correctamente.
 	if (!appState.currentUser) {
 		layoutContainer.innerHTML += `
 			<div class="mt-8 text-center">
@@ -1499,7 +1493,11 @@ function enterDesignMode() {
 					if (themeClass) fallbackEl.classList.add(themeClass);
 					if (fontClass) fallbackEl.classList.add(fontClass);
 					
-					fallbackEl.style.width = `${evt.item.getBoundingClientRect().width}px`;
+					// === CAMBIO: Se usa offsetWidth para el ancho y se aplica la transformación de escala ===
+					fallbackEl.style.width = `${evt.item.offsetWidth}px`;
+					fallbackEl.style.transform = 'scale(0.85)';
+					fallbackEl.style.transformOrigin = 'top left'; // Asegura que escale desde la esquina
+					// === FIN DEL CAMBIO ===
 				}
 			}, 0);
 		},
