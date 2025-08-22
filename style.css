@@ -1,0 +1,290 @@
+/* Fuentes base */
+.font-inter { font-family: 'Inter', sans-serif; }
+.font-lora { font-family: 'Lora', serif; }
+.font-roboto-mono { font-family: 'Roboto Mono', monospace; }
+.font-playfair-display { font-family: 'Playfair Display', serif; }
+.font-poppins { font-family: 'Poppins', sans-serif; }
+.font-jetbrains-mono { font-family: 'JetBrains Mono', monospace; }
+.font-lato { font-family: 'Lato', sans-serif; }
+.font-montserrat { font-family: 'Montserrat', sans-serif; }
+.font-oswald { font-family: 'Oswald', sans-serif; }
+.font-lobster { font-family: 'Lobster', cursive; }
+
+.hidden { display: none; }
+
+/* --- Definiciones de Plantillas (Temas) --- */
+.theme-negro { --background: #111827; --text-color: #f9fafb; --button-bg: #4b5563; --button-text-color: #ffffff; --button-hover-bg: #6b7280; --profile-border-color: #9ca3af; --overlay-rgb: 17, 24, 39; }
+.theme-blanco { --background: #f8fafc; --text-color: #1e293b; --button-bg: #334155; --button-text-color: #ffffff; --button-hover-bg: #475569; --profile-border-color: #64748b; --overlay-rgb: 248, 250, 252; }
+.theme-azul { --background: #1e40af; --text-color: #ffffff; --button-bg: #93c5fd; --button-text-color: #1e40af; --button-hover-bg: #dbeafe; --profile-border-color: #bfdbfe; --overlay-rgb: 30, 64, 175; }
+.theme-rojo { --background: #991b1b; --text-color: #ffffff; --button-bg: #fecaca; --button-text-color: #991b1b; --button-hover-bg: #fee2e2; --profile-border-color: #fca5a5; --overlay-rgb: 153, 27, 27; }
+.theme-verde { --background: #166534; --text-color: #ffffff; --button-bg: #bbf7d0; --button-text-color: #166534; --button-hover-bg: #dcfce7; --profile-border-color: #86efac; --overlay-rgb: 22, 101, 52; }
+.theme-atardecer { --background: #86198f; --text-color: #ffffff; --button-bg: #fde047; --button-text-color: #86198f; --button-hover-bg: #fef08a; --profile-border-color: #c026d3; --overlay-rgb: 134, 25, 143; }
+.theme-neon { --background: #0c0a09; --text-color: #f0fdf4; --button-bg: #ec4899; --button-text-color: #ffffff; --button-hover-bg: #f9a8d4; --profile-border-color: #22d3ee; --overlay-rgb: 12, 10, 9; }
+.theme-tropical { --background: #06b6d4; --text-color: #ffffff; --button-bg: #fb923c; --button-text-color: #0e7490; --button-hover-bg: #fed7aa; --profile-border-color: #0e7490; --overlay-rgb: 6, 182, 212; }
+.theme-galaxia { --background: #4c1d95; --text-color: #ede9fe; --button-bg: #facc15; --button-text-color: #4c1d95; --button-hover-bg: #fde047; --profile-border-color: #a78bfa; --overlay-rgb: 76, 29, 149; }
+.theme-citrico { --background: #facc15; --text-color: #44403c; --button-bg: #84cc16; --button-text-color: #1c1917; --button-hover-bg: #a3e635; --profile-border-color: #44403c; --overlay-rgb: 250, 204, 21; }
+.theme-grafito { --background: #1a202c; --text-color: #e2e8f0; --button-bg: #06b6d4; --button-text-color: #ffffff; --button-hover-bg: #22d3ee; --profile-border-color: #0891b2; --overlay-rgb: 26, 32, 44; }
+.theme-serenidad { --background: #e0e7ff; --text-color: #3730a3; --button-bg: #6366f1; --button-text-color: #ffffff; --button-hover-bg: #818cf8; --profile-border-color: #a5b4fc; --overlay-rgb: 224, 231, 255; }
+.theme-menta { --background: #f0fdfa; --text-color: #1f2937; --button-bg: #374151; --button-text-color: #ffffff; --button-hover-bg: #4b5563; --profile-border-color: #9ca3af; --overlay-rgb: 240, 253, 250; }
+.theme-pizarra { --background: #475569; --text-color: #f1f5f9; --button-bg: #f97316; --button-text-color: #ffffff; --button-hover-bg: #fb923c; --profile-border-color: #94a3b8; --overlay-rgb: 71, 85, 105; }
+.theme-concreto { --background: #e5e7eb; --text-color: #111827; --button-bg: #111827; --button-text-color: #ffffff; --button-hover-bg: #1f2937; --profile-border-color: #9ca3af; --overlay-rgb: 229, 231, 235; }
+.theme-terra { --background: #f5f5f4; --text-color: #57534e; --button-bg: #a16207; --button-text-color: #ffffff; --button-hover-bg: #ca8a04; --profile-border-color: #d6d3d1; --overlay-rgb: 245, 245, 244; }
+.theme-amanecer { --background: #fef3c7; --text-color: #92400e; --button-bg: #f97316; --button-text-color: #ffffff; --button-hover-bg: #fb923c; --profile-border-color: #fcd34d; --overlay-rgb: 254, 243, 199; }
+.theme-oceano { --background: #0c2f57; --text-color: #e0f2fe; --button-bg: #ca8a04; --button-text-color: #ffffff; --button-hover-bg: #eab308; --profile-border-color: #7dd3fc; --overlay-rgb: 12, 47, 87; }
+.theme-marmol { --background: #fafafa; --text-color: #262626; --button-bg: #f472b6; --button-text-color: #ffffff; --button-hover-bg: #f9a8d4; --profile-border-color: #e5e5e5; --overlay-rgb: 250, 250, 250; }
+.theme-vino { --background: #581c87; --text-color: #f3e8ff; --button-bg: #fcd34d; --button-text-color: #581c87; --button-hover-bg: #fde047; --profile-border-color: #e9d5ff; --overlay-rgb: 88, 28, 135; }
+
+#global-background { position: fixed; top: 0; left: 0; right: 0; height: 100lvh; z-index: -1; background-size: cover; background-position: center; opacity: 0; transition: opacity 0.3s ease-in-out; }
+#profile-page { background-color: transparent; color: var(--text-color); min-height: 100lvh; }
+#profile-page h1, #profile-page p { color: var(--text-color); }
+#profile-page #public-profile-img { border-color: var(--profile-border-color); cursor: zoom-in; }
+#profile-page .public-link-button { transition: all 0.3s ease; }
+#profile-page .public-link-button:hover { transform: scale(1.03); color: var(--button-hover-text-color, var(--button-text-color)); }
+#profile-page .btn-filled { background-color: var(--button-bg); color: var(--button-text-color); }
+#profile-page .btn-filled:hover { background-color: var(--button-hover-bg); }
+#profile-page .btn-outline { background-color: transparent; color: var(--button-bg); border: 2px solid var(--button-bg); }
+#profile-page .btn-outline:hover { background-color: var(--button-bg); color: var(--button-text-color); }
+#profile-page .btn-shadow { background-color: var(--button-bg); color: var(--button-text-color); box-shadow: 4px 4px 0px var(--profile-border-color); }
+#profile-page .btn-shadow:hover { box-shadow: 6px 6px 0px var(--profile-border-color); transform: translate(-2px, -2px);}	
+
+/* --- Animaciones para el botón de Unirse --- */
+@keyframes pulse {
+	0%, 100% { transform: scale(1); }
+	50% { transform: scale(1.05); }
+}
+@keyframes glow {
+	0%, 100% { box-shadow: 0 0 5px #22d3ee, 0 0 10px #22d3ee, 0 0 15px #22d3ee; }
+	50% { box-shadow: 0 0 10px #2dd4bf, 0 0 20px #2dd4bf, 0 0 30px #2dd4bf; }
+}
+
+/* --- NUEVO: Animación de brillo para modo Panorama --- */
+@keyframes latent-glow {
+	from {
+		box-shadow: 0 0 4px -1px #22d3ee, 0 0 7px -2px #22d3ee;
+	}
+	to {
+		box-shadow: 0 0 8px 0px #2dd4bf, 0 0 14px -1px #2dd4bf;
+	}
+}
+
+/* --- Botón para Unirse a NexID --- */
+.join-nexid-button {
+	background-color: var(--button-text-color);
+	color: var(--background);
+	animation: pulse 2.5s infinite cubic-bezier(0.4, 0, 0.6, 1), glow 3s infinite alternate;
+}
+/* Casos especiales para temas claros donde el texto del botón (blanco) no contrastaría con el fondo claro */
+.theme-blanco .join-nexid-button,
+.theme-serenidad .join-nexid-button,
+.theme-menta .join-nexid-button,
+.theme-concreto .join-nexid-button,
+.theme-terra .join-nexid-button,
+.theme-amanecer .join-nexid-button,
+.theme-marmol .join-nexid-button {
+	 background-color: var(--text-color);
+	 color: var(--background);
+}
+
+/* --- Panel de Configuración Responsivo --- */
+#settings-panel {
+	position: fixed;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	height: 60vh;
+	transform: translateY(100%);
+	transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1), height 0s; /* No animar la altura */
+	border-top-left-radius: 1.5rem;
+	border-top-right-radius: 1.5rem;
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+	z-index: 50;
+}
+#settings-panel.open {
+	transform: translateY(0);
+}
+@media (min-width: 640px) {
+	#settings-panel {
+		top: 0;
+		right: 0;
+		left: auto;
+		bottom: auto;
+		height: 100%;
+		width: 100%;
+		max-width: 28rem;
+		transform: translateX(100%);
+		border-radius: 0;
+		overflow-y: auto;
+		display: block;
+	}
+	#settings-panel.open {
+		transform: translateX(0);
+	}
+}
+
+.theme-option.selected { box-shadow: 0 0 0 3px #34d399; transform: scale(1.1); }
+.edit-link-trigger { cursor: pointer; }
+
+.theme-tab-btn { flex-grow: 1; padding: 0.75rem 0.5rem; font-weight: 600; color: #9ca3af; border-bottom: 2px solid transparent; transition: all 0.2s ease-in-out; text-align: center; }
+.theme-tab-btn:hover { color: #e5e7eb; }
+.theme-tab-btn.active { color: #67e8f9; border-bottom-color: #67e8f9; }
+.theme-tab-content { display: none; padding-top: 1rem; }
+.theme-tab-content.active { display: block; }
+
+#gemini-modal .gemini-content { background: linear-gradient(145deg, #2d3748, #1a202c); }
+#gemini-results-container .gemini-option-label { display: block; padding: 1rem; border-radius: 0.75rem; border: 1px solid #4a5568; cursor: pointer; transition: all 0.2s ease-in-out; background-color: rgba(255, 255, 255, 0.05); }
+#gemini-results-container .gemini-option-label:hover { background-color: rgba(255, 255, 255, 0.1); transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+#gemini-results-container .gemini-option-label.selected { background-color: #3730a3; border-color: #818cf8; box-shadow: 0 0 0 2px #4f46e5; }
+
+/* --- PROYECTO PANORAMA: Estilos Modo Diseño --- */
+#panorama-grid {
+	position: fixed;
+	inset: 0;
+	background-image:	
+		repeating-linear-gradient(to right, rgba(107, 114, 128, 0.2) 0, rgba(107, 114, 128, 0.2) 1px, transparent 1px, transparent 40px),
+		repeating-linear-gradient(to bottom, rgba(107, 114, 128, 0.2) 0, rgba(107, 114, 128, 0.2) 1px, transparent 1px, transparent 40px);
+	z-index: -1;
+	opacity: 0;
+	transition: opacity 0.3s ease-in-out;
+}
+#profile-page.panorama-active #panorama-grid {
+	opacity: 1;
+}
+#profile-page.panorama-active .content-wrapper {
+	transform: scale(0.85);
+	box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
+	border-radius: 1.5rem; /* rounded-3xl */
+	padding-top: 2rem;
+	padding-bottom: 2rem;
+}
+.content-wrapper {
+	transition: box-shadow 0.3s ease, padding-bottom 0s; /* No animar la altura */
+}
+.draggable-item {
+	cursor: grab;
+	border: 2px solid transparent; /* CAMBIO: Borde siempre transparente para evitar saltos */
+	transition: border-color 0.2s ease;
+}
+/* CAMBIO: Se elimina el borde punteado y se añade la animación de brillo */
+.design-mode .draggable-item {
+	 animation: latent-glow 2.5s infinite alternate ease-in-out;
+	 border-radius: 12px; /* Asegura que el brillo sea redondeado */
+}
+/* Bloquea las interacciones con los enlaces y botones cuando el modo diseño está activo */
+.design-mode .social-button,
+.design-mode #socials-footer a,
+.design-mode #public-profile-img,
+.design-mode #image-actions-container button {
+	pointer-events: none;
+}
+/* Oculta los contenedores vacíos solo en modo diseño */
+.design-mode .draggable-item.is-empty {
+	display: none;
+}
+/* --- Estilos de arrastre mejorados --- */
+.sortable-ghost {	
+	opacity: 0.1;
+	background: #4f46e5;	
+	border-radius: 12px;
+}
+/* El elemento original se oculta mientras se arrastra */
+.sortable-chosen {
+	opacity: 0 !important;	
+	cursor: grabbing;
+}
+/* CAMBIO: El clon ahora es una copia idéntica sin efectos adicionales */
+.sortable-fallback {
+	opacity: 1 !important;
+	background: transparent !important;
+}
+.drag-handle {
+	cursor: grab;
+}
+
+#cropper-modal-content img { max-width: 100%; display: block; }
+
+#search-input { transition: width 0.3s ease-in-out, opacity 0.3s ease-in-out, padding 0.3s ease-in-out; }
+#search-container.expanded #search-input { width: 180px; opacity: 1; padding-left: 1rem; padding-right: 1rem; }
+@media (min-width: 640px) { #search-container.expanded #search-input { width: 250px; } }
+#search-container #search-icon-btn .icon-search { display: block; }
+#search-container #search-icon-btn .icon-x { display: none; }
+#search-container.expanded #search-icon-btn .icon-search { display: none; }
+#search-container.expanded #search-icon-btn .icon-x { display: block; }
+
+#search-results {
+	z-index: 40;
+	transform-origin: top left;
+	transition: transform 0.2s ease-out, opacity 0.2s ease-out;
+}
+#search-results.hidden {
+	opacity: 0;
+	transform: scale(0.95);
+}
+
+.accordion-content { max-height: 0; transition: max-height 0.5s ease-in-out; overflow: hidden; }
+.accordion-item.open .accordion-content { max-height: 2000px; }
+.accordion-item.open { overflow: visible; }
+.accordion-item .accordion-icon { transition: transform 0.3s ease; }
+.accordion-item.open .accordion-icon { transform: rotate(180deg); }
+
+/* --- Scrollbar Personalizado --- */
+#settings-panel-content::-webkit-scrollbar, #settings-panel::-webkit-scrollbar { width: 8px; }
+#settings-panel-content::-webkit-scrollbar-track, #settings-panel::-webkit-scrollbar-track { background: transparent; }
+#settings-panel-content::-webkit-scrollbar-thumb, #settings-panel::-webkit-scrollbar-thumb { background-color: #4a5568; border-radius: 20px; border: 3px solid transparent; background-clip: content-box; }
+#settings-panel-content::-webkit-scrollbar-thumb:hover, #settings-panel::-webkit-scrollbar-thumb:hover { background-color: #6b7280; }
+#settings-panel-content, #settings-panel { scrollbar-width: thin; scrollbar-color: #4a5568 transparent; }
+
+/* --- Estilos para el nuevo selector de iconos --- */
+.icon-option-btn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	aspect-ratio: 1 / 1;
+	background-color: #4a5568; /* bg-gray-600 */
+	border-radius: 0.5rem; /* rounded-lg */
+	color: #e5e7eb; /* text-gray-200 */
+	cursor: pointer;
+	transition: all 0.2s ease-in-out;
+	border: 2px solid transparent;
+}
+.icon-option-btn:hover {
+	background-color: #6b7280; /* bg-gray-500 */
+	transform: scale(1.05);
+}
+.icon-option-btn.selected-icon {
+	background-color: #4f46e5; /* bg-indigo-600 */
+	border-color: #818cf8; /* border-indigo-400 */
+	color: white;
+}
+
+/* --- Estilos para el cuadro de texto de la biografía --- */
+#description-input {
+	resize: none; /* Desactiva el redimensionamiento manual */
+	overflow: hidden; /* Oculta la barra de scroll */
+}
+
+/* --- Estilos para el selector de fuente personalizado --- */
+#font-selector-options {
+	transform-origin: top;
+	transition: transform 0.2s ease-out, opacity 0.2s ease-out;
+}
+#font-selector-options.hidden {
+	transform: scaleY(0.95);
+	opacity: 0;
+	pointer-events: none;
+}
+#font-selector-btn .lucide-chevron-down {
+	transition: transform 0.3s ease;
+}
+#custom-font-selector.open #font-selector-btn .lucide-chevron-down {
+	transform: rotate(180deg);
+}
+
+/* Hace que la página de perfil sea el contenedor de scroll en móviles */
+@media (max-width: 639px) {
+	body.overflow-hidden-mobile {
+		overflow: hidden;
+	}
+}
