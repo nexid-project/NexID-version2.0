@@ -69,20 +69,9 @@
 
 /* --- Botón para Unirse a NexID --- */
 .join-nexid-button {
-	background-color: var(--button-text-color);
-	color: var(--background);
+	background-color: var(--text-color); /* CAMBIO: Usamos el color principal de texto del tema */
+	color: var(--background);            /* CAMBIO: Usamos el color principal de fondo del tema */
 	animation: pulse 2.5s infinite cubic-bezier(0.4, 0, 0.6, 1), glow 3s infinite alternate;
-}
-/* Casos especiales para temas claros donde el texto del botón (blanco) no contrastaría con el fondo claro */
-.theme-blanco .join-nexid-button,
-.theme-serenidad .join-nexid-button,
-.theme-menta .join-nexid-button,
-.theme-concreto .join-nexid-button,
-.theme-terra .join-nexid-button,
-.theme-amanecer .join-nexid-button,
-.theme-marmol .join-nexid-button {
-	 background-color: var(--text-color);
-	 color: var(--background);
 }
 
 /* --- Panel de Configuración Responsivo --- */
