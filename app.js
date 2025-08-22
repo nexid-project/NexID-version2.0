@@ -1478,36 +1478,23 @@ function enterDesignMode() {
 		animation: 150,
 		draggable: '.draggable-item',
 		forceFallback: true,
-		fallbackOnBody: true,
+		fallbackOnBody: false, 
 		
-		// === CAMBIO: Se ajusta la lógica de onStart para un posicionamiento y escalado perfectos ===
 		onStart: (evt) => {
-			// 1. Capturar la geometría del elemento original ANTES de cualquier cambio
-			const rect = evt.item.getBoundingClientRect();
-
-			// 2. Aplicar la clase de panorama y estilizar el clon en el siguiente ciclo de renderizado
+			// === CAMBIO: Se retrasa el escalado para permitir un cálculo correcto de las coordenadas ===
 			setTimeout(() => {
 				DOMElements.profilePage.classList.add('panorama-active');
 				const fallbackEl = document.querySelector('.sortable-fallback');
-				
 				if (fallbackEl) {
-					// Aplicar clases de tema y fuente
 					const bodyClasses = document.body.className.split(' ');
 					const profilePageClasses = DOMElements.profilePage.className.split(' ');
 					const themeClass = bodyClasses.find(c => c.startsWith('theme-'));
 					const fontClass = profilePageClasses.find(c => c.startsWith('font-'));
+
 					if (themeClass) fallbackEl.classList.add(themeClass);
 					if (fontClass) fallbackEl.classList.add(fontClass);
 					
-					// 3. Usar la geometría capturada para posicionar y dimensionar el clon
-					fallbackEl.style.width = `${rect.width}px`;
-					fallbackEl.style.height = `${rect.height}px`;
-					fallbackEl.style.top = `${rect.top}px`;
-					fallbackEl.style.left = `${rect.left}px`;
-					
-					// 4. Aplicar la transformación de escala
-					fallbackEl.style.transform = 'scale(0.85)';
-					fallbackEl.style.transformOrigin = 'top left';
+					fallbackEl.style.width = `${evt.item.offsetWidth}px`;
 				}
 			}, 0);
 		},
