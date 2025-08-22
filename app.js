@@ -1465,8 +1465,7 @@ document.getElementById('gemini-generate-btn').addEventListener('click', async (
 
 function enterDesignMode() {
 	appState.isDesignModeActive = true;
-	// Se elimina la clase aquí para controlar el tiempo
-	// DOMElements.profilePage.classList.add('design-mode'); 
+	DOMElements.profilePage.classList.add('design-mode');
 	document.getElementById('user-actions').classList.add('hidden');
 	document.getElementById('layout-actions').classList.remove('hidden');
 
@@ -1479,31 +1478,34 @@ function enterDesignMode() {
 		animation: 150,
 		draggable: '.draggable-item',
 		forceFallback: true,
-		fallbackOnBody: true, // Se mantiene en true para un sistema de coordenadas consistente
+		fallbackOnBody: true,
 		
 		// === CAMBIO: Se ajusta la lógica de onStart para un posicionamiento y escalado perfectos ===
 		onStart: (evt) => {
-			// Se añade la clase de diseño aquí para que los cálculos iniciales sean correctos
-			DOMElements.profilePage.classList.add('design-mode');
-			
-			// Se usa un timeout para asegurar que el clon (fallback) ya exista en el DOM
+			// 1. Capturar la geometría del elemento original ANTES de cualquier cambio
+			const rect = evt.item.getBoundingClientRect();
+
+			// 2. Aplicar la clase de panorama y estilizar el clon en el siguiente ciclo de renderizado
 			setTimeout(() => {
 				DOMElements.profilePage.classList.add('panorama-active');
 				const fallbackEl = document.querySelector('.sortable-fallback');
+				
 				if (fallbackEl) {
+					// Aplicar clases de tema y fuente
 					const bodyClasses = document.body.className.split(' ');
 					const profilePageClasses = DOMElements.profilePage.className.split(' ');
 					const themeClass = bodyClasses.find(c => c.startsWith('theme-'));
 					const fontClass = profilePageClasses.find(c => c.startsWith('font-'));
-
 					if (themeClass) fallbackEl.classList.add(themeClass);
 					if (fontClass) fallbackEl.classList.add(fontClass);
 					
-					const rect = evt.item.getBoundingClientRect();
+					// 3. Usar la geometría capturada para posicionar y dimensionar el clon
 					fallbackEl.style.width = `${rect.width}px`;
 					fallbackEl.style.height = `${rect.height}px`;
 					fallbackEl.style.top = `${rect.top}px`;
 					fallbackEl.style.left = `${rect.left}px`;
+					
+					// 4. Aplicar la transformación de escala
 					fallbackEl.style.transform = 'scale(0.85)';
 					fallbackEl.style.transformOrigin = 'top left';
 				}
