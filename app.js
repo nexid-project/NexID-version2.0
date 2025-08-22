@@ -1477,8 +1477,9 @@ function enterDesignMode() {
 	appState.sortable.layout = new Sortable(layoutContainer, {
 		animation: 150,
 		draggable: '.draggable-item',
-		forceFallback: true, 
-		fallbackOnBody: true,
+		forceFallback: true,
+		// === CAMBIO: Se cambia a false para que el clon herede la escala del contenedor ===
+		fallbackOnBody: false, 
 		onStart: (evt) => {
 			DOMElements.profilePage.classList.add('panorama-active');
 			
@@ -1493,11 +1494,8 @@ function enterDesignMode() {
 					if (themeClass) fallbackEl.classList.add(themeClass);
 					if (fontClass) fallbackEl.classList.add(fontClass);
 					
-					// === CAMBIO: Se usa offsetWidth para el ancho y se aplica la transformación de escala ===
+					// Se mantiene la copia del ancho, pero se elimina la escala manual
 					fallbackEl.style.width = `${evt.item.offsetWidth}px`;
-					fallbackEl.style.transform = 'scale(0.85)';
-					fallbackEl.style.transformOrigin = 'top left'; // Asegura que escale desde la esquina
-					// === FIN DEL CAMBIO ===
 				}
 			}, 0);
 		},
