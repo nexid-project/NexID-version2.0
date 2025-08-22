@@ -369,6 +369,7 @@ const profileSectionTemplates = {
 	'socials': () => `<footer id="socials-footer" data-section="socials" class="pt-6 pb-2 flex justify-center items-center gap-4 flex-wrap draggable-item p-2"></footer>`
 };
 
+// === CAMBIO: Se modifica la función para envolver el enlace en un div arrastrable ===
 function renderSingleLink(linkData, profileData) {
 	const buttonStyle = profileData.button_style || 'filled';
 	const buttonShape = profileData.button_shape_style || 'rounded-lg';
@@ -381,16 +382,22 @@ function renderSingleLink(linkData, profileData) {
 		if (socialIconSvg) iconHtml = socialIconSvg;
 	}
 
-	let classes = ['public-link-button', 'font-medium', 'py-3', 'px-5', 'w-full', 'flex', 'items-center', 'draggable-item', 'my-2'];
-	if (buttonShape !== 'underline') classes.push(`btn-${buttonStyle}`);
-	classes.push(buttonShape);
+	// Se quitan 'draggable-item' y 'my-2' de las clases del enlace
+	let linkClasses = ['public-link-button', 'font-medium', 'py-3', 'px-5', 'w-full', 'flex', 'items-center'];
+	if (buttonShape !== 'underline') linkClasses.push(`btn-${buttonStyle}`);
+	linkClasses.push(buttonShape);
 	
 	const linkContent = iconHtml 
 		? `<span class="w-6 h-6">${iconHtml}</span><span class="flex-grow text-center">${linkData.title}</span><span class="w-6 h-6"></span>`
 		: `<span class="flex-grow text-center">${linkData.title}</span>`;
 
-	return `<a href="#" draggable="false" data-url="${linkData.url}" data-link-id="${linkData.id}" data-section="link_${linkData.id}" rel="noopener noreferrer" class="${classes.join(' ')}">${linkContent}</a>`;
+	// Se crea el HTML del enlace
+	const linkHtml = `<a href="#" draggable="false" data-url="${linkData.url}" data-link-id="${linkData.id}" rel="noopener noreferrer" class="${linkClasses.join(' ')}">${linkContent}</a>`;
+
+	// Se envuelve el enlace en un div que será el elemento arrastrable
+	return `<div data-section="link_${linkData.id}" class="draggable-item my-2">${linkHtml}</div>`;
 }
+// === FIN DEL CAMBIO ===
 
 function renderProfile(profileData, isOwner) {
 	if (!profileData) return;
