@@ -37,17 +37,18 @@
 #global-background { position: fixed; top: 0; left: 0; right: 0; height: 100lvh; z-index: -1; background-size: cover; background-position: center; opacity: 0; transition: opacity 0.3s ease-in-out; }
 #profile-page { background-color: transparent; color: var(--text-color); min-height: 100lvh; }
 
-/* === CAMBIO: Se simplifica la regla de color y se mantienen las demás para el fallback === */
 #profile-page h1, #profile-page p { color: var(--text-color); }
-#profile-page #public-profile-img, .sortable-fallback #public-profile-img { border-color: var(--profile-border-color); }
-#profile-page #public-profile-img { cursor: zoom-in; }
-#profile-page .public-link-button, .sortable-fallback.public-link-button { transition: all 0.3s ease; }
+#profile-page #public-profile-img { border-color: var(--profile-border-color); cursor: zoom-in; }
+#profile-page .public-link-button { transition: all 0.3s ease; }
 #profile-page .public-link-button:hover { transform: scale(1.03); color: var(--button-hover-text-color, var(--button-text-color)); }
-#profile-page .btn-filled, .sortable-fallback.btn-filled { background-color: var(--button-bg); color: var(--button-text-color); }
+
+/* === CAMBIO: Se añaden selectores para .sortable-fallback y sus elementos internos === */
+.sortable-fallback #public-profile-img { border-color: var(--profile-border-color); }
+#profile-page .btn-filled, .sortable-fallback .btn-filled { background-color: var(--button-bg); color: var(--button-text-color); }
 #profile-page .btn-filled:hover { background-color: var(--button-hover-bg); }
-#profile-page .btn-outline, .sortable-fallback.btn-outline { background-color: transparent; color: var(--button-bg); border: 2px solid var(--button-bg); }
+#profile-page .btn-outline, .sortable-fallback .btn-outline { background-color: transparent; color: var(--button-bg); border: 2px solid var(--button-bg); }
 #profile-page .btn-outline:hover { background-color: var(--button-bg); color: var(--button-text-color); }
-#profile-page .btn-shadow, .sortable-fallback.btn-shadow { background-color: var(--button-bg); color: var(--button-text-color); box-shadow: 4px 4px 0px var(--profile-border-color); }
+#profile-page .btn-shadow, .sortable-fallback .btn-shadow { background-color: var(--button-bg); color: var(--button-text-color); box-shadow: 4px 4px 0px var(--profile-border-color); }
 #profile-page .btn-shadow:hover { box-shadow: 6px 6px 0px var(--profile-border-color); transform: translate(-2px, -2px);}	
 /* === FIN DEL CAMBIO === */
 
@@ -186,7 +187,7 @@
 	opacity: 0 !important;	
 	cursor: grabbing;
 }
-/* CAMBIO: El clon ahora es una copia idéntica sin efectos adicionales */
+/* === CAMBIO: Se añaden estilos para corregir el ancho y color del clon === */
 .sortable-fallback {
 	opacity: 1 !important;
 	background: transparent !important;
