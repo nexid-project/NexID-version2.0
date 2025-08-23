@@ -293,7 +293,6 @@
 								<i data-lucide="chevron-down" class="accordion-icon transition-transform"></i>
 							</button>
 							<div class="accordion-content">
-								<!-- === CAMBIO: Se reestructura el contenido de "Apariencia" === -->
 								<div class="p-4 pt-0 space-y-6">
 									
 									<!-- Sección: Plantillas de Color -->
@@ -414,7 +413,6 @@
 										</div>
 									</div>
 								</div>
-								<!-- === FIN DEL CAMBIO === -->
 							</div>
 						</div>
 
@@ -424,16 +422,13 @@
 								<h3 class="text-xl font-bold text-cyan-300">Botones Sociales</h3>
 								<i data-lucide="chevron-down" class="accordion-icon transition-transform"></i>
 							</button>
+							<!-- === CAMBIO: Se reemplaza el contenido para la nueva interfaz === -->
 							<div class="accordion-content">
-								<div class="p-4 pt-0">
-									<div id="social-buttons-list-editor" class="space-y-4 mb-6"></div>
-									<div class="space-y-4 p-4 border-t border-gray-700">
-										<h4 class="text-lg font-semibold">Añadir Botón Social</h4>
-										<input id="social-button-url-input" type="text" placeholder="URL del perfil social" class="w-full px-4 py-2 text-gray-900 bg-gray-200 rounded-md">
-										<button id="add-social-button-btn" class="w-full px-4 py-2 font-bold text-white bg-cyan-600 rounded-md hover:bg-cyan-500">Añadir Botón</button>
-									</div>
+								<div id="social-buttons-inputs-container" class="p-4 pt-0 space-y-3">
+									<!-- Los inputs para los botones sociales se generarán aquí dinámicamente -->
 								</div>
 							</div>
+							<!-- === FIN DEL CAMBIO === -->
 						</div>
 
 						<!-- Accordion Item: Enlaces -->
@@ -544,7 +539,7 @@
 					 <button id="gemini-close-btn" class="flex items-center justify-center gap-2 px-6 py-2 font-bold text-white bg-gray-600 rounded-md hover:bg-gray-500">
 						 <i data-lucide="x-circle" class="w-5 h-5"></i>Cerrar</button>
 					 <button id="gemini-use-text-btn" class="flex items-center justify-center gap-2 px-6 py-2 font-bold text-white bg-cyan-600 rounded-md hover:bg-cyan-500">
-						  <i data-lucide="check-circle" class="w-5 h-5"></i>Usar este texto</button>
+						  <i data-lucide="check-circle" class="w-5 h-5"></i>Usar este texto</button>
 				</div>
 			</div>
 		</div>
@@ -585,7 +580,7 @@
 				<div class="flex justify-between items-center mb-4">
 					 <h3 class="text-xl font-bold text-cyan-400">Biblioteca de Fondos</h3>
 					 <button id="library-close-btn" class="p-2 rounded-full hover:bg-gray-700">
-						  <i data-lucide="x" class="w-6 h-6"></i>
+						  <i data-lucide="x" class="w-6 h-6"></i>
 					 </button>
 				</div>
 				<div id="library-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 flex-grow overflow-y-auto"></div>
