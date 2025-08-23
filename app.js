@@ -154,37 +154,23 @@ function isValidUrl(string) {
 	return urlRegex.test(string);
 }
 
-// === CAMBIO: Se añade la función inteligente para extraer nombres de usuario ===
 function extractUsername(input, socialKey) {
     if (!input) return '';
-
-    let username = input;
-
-    // Caso especial para WhatsApp: limpiar y mantener solo números
+    let username = input.trim();
     if (socialKey === 'whatsapp') {
-        return input.replace(/\D/g, ''); // Elimina todo lo que no sea un dígito
+        return input.replace(/\D/g, '');
     }
-
     try {
-        // Intentar tratarlo como una URL
-        const url = new URL(input.startsWith('http') ? input : `https://${input}`);
-        const pathParts = url.pathname.split('/').filter(part => part !== '');
-        
+        const url = new URL(username.startsWith('http') ? username : `https://${username}`);
+        const pathParts = url.pathname.split('/').filter(part => part && part !== 'in' && part !== 'c');
         if (pathParts.length > 0) {
-            // Tomar el último segmento de la ruta, que suele ser el nombre de usuario
             username = pathParts[pathParts.length - 1];
         }
     } catch (e) {
-        // Si no es una URL válida, asumimos que es un nombre de usuario directo
-        username = input;
+        // No es una URL, es un nombre de usuario
     }
-
-    // Limpiar caracteres comunes como '/', '?' o '@'
-    username = username.split('?')[0].replace(/[/]/g, '').replace('@', '');
-    
-    return username;
+    return username.split('?')[0].replace(/[/]/g, '').replace('@', '');
 }
-// === FIN DEL CAMBIO ===
 
 
 // --- 5. LÓGICA PRINCIPAL DE LA APLICACIÓN ---
@@ -922,6 +908,37 @@ function renderSocialInputs(socials) {
 	lucide.createIcons();
 }
 
+// === CAMBIO: Nueva función para renderizar la interfaz de Botones Sociales ===
+function renderSocialButtonsEditor(buttons) {
+    const container = document.getElementById('social-buttons-inputs-container');
+    container.innerHTML = '';
+
+    SOCIAL_ICON_ORDER.forEach(key => {
+        const info = socialButtonStyles[key];
+        const existingButton = (buttons || []).find(btn => getSocialInfoForUrl(btn.url)?.key === key);
+        const value = existingButton ? existingButton.url : '';
+
+        const item = document.createElement('div');
+        item.className = 'flex items-center gap-3';
+
+        // Previsualización del botón
+        const preview = document.createElement('div');
+        preview.className = `social-button flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-lg ${info.bg} ${info.color}`;
+        preview.innerHTML = info.icon.replace(/width="32"/g, 'width="20"').replace(/height="32"/g, 'height="20"');
+
+        // Input
+        const inputWrapper = document.createElement('div');
+        inputWrapper.className = 'flex-grow flex items-center bg-gray-200 rounded-md focus-within:ring-2 focus-within:ring-cyan-500 w-full';
+        inputWrapper.innerHTML = `
+            <input type="text" data-social-button="${key}" placeholder="${info.name}" class="w-full p-2 text-gray-900 bg-transparent focus:outline-none" value="${value}">
+        `;
+
+        item.appendChild(preview);
+        item.appendChild(inputWrapper);
+        container.appendChild(item);
+    });
+}
+
 function openSettingsPanel() {
 	if (!appState.profile) return;
 	
@@ -965,7 +982,7 @@ function openSettingsPanel() {
 	DOMElements.fontSelectorLabel.className = currentFont;
 
 	renderSocialInputs(profile.socials);
-	renderSocialButtonsEditor(profile.social_buttons);
+	renderSocialButtonsEditor(profile.social_buttons); // Se llama a la nueva función
 
 	const contact = profile.contact_info || {};
 	document.querySelectorAll('#contact-inputs input').forEach(input => {
@@ -1029,7 +1046,6 @@ document.getElementById('save-changes-btn').addEventListener('click', async () =
 	if (!appState.currentUser) return;
 
 	const newSocials = {};
-	// === CAMBIO: Se usa la función inteligente al guardar los cambios ===
 	document.querySelectorAll('#socials-inputs-container input').forEach(input => {
 		const key = input.dataset.social;
 		const value = input.value.trim();
@@ -1044,11 +1060,19 @@ document.getElementById('save-changes-btn').addEventListener('click', async () =
 			currentSocialsOrder.push(key);
 		}
 	});
-
+	
+	// === CAMBIO: Nueva lógica para guardar los botones sociales ===
 	const newSocialButtons = [];
-	document.querySelectorAll('#social-buttons-list-editor .social-button-editor-item').forEach(item => {
-		newSocialButtons.push({ url: item.dataset.url });
+	document.querySelectorAll('#social-buttons-inputs-container input').forEach(input => {
+		const value = input.value.trim();
+		if (value) {
+			const key = input.dataset.socialButton;
+			const username = extractUsername(value, key);
+			const url = `${socialBaseUrls[key]}${username}`;
+			newSocialButtons.push({ url });
+		}
 	});
+	// === FIN DEL CAMBIO ===
 
 	const dataToSave = {
 		display_name: document.getElementById('display-name-input').value,
@@ -1110,10 +1134,18 @@ function updateLivePreview() {
 		opacityControls.classList.add('hidden');
 	}
 	
+	// === CAMBIO: Nueva lógica para la previsualización de botones sociales ===
 	const newSocialButtons = [];
-	document.querySelectorAll('#social-buttons-list-editor .social-button-editor-item').forEach(item => {
-		newSocialButtons.push({ url: item.dataset.url });
+	document.querySelectorAll('#social-buttons-inputs-container input').forEach(input => {
+		const value = input.value.trim();
+		if (value) {
+			const key = input.dataset.socialButton;
+			const username = extractUsername(value, key);
+			const url = `${socialBaseUrls[key]}${username}`;
+			newSocialButtons.push({ url });
+		}
 	});
+	// === FIN DEL CAMBIO ===
 
 	const selectedFont = DOMElements.fontFamilyValue.value;
 	loadFontIfNeeded(selectedFont);
@@ -1768,41 +1800,7 @@ const stopDrag = () => {
 dragger.addEventListener('touchstart', (e) => { e.preventDefault(); document.addEventListener('touchmove', handleDrag); document.addEventListener('touchend', stopDrag); });
 
 // --- 20. LÓGICA DE BOTONES SOCIALES ---
-function renderSocialButtonsEditor(buttons) {
-	const container = document.getElementById('social-buttons-list-editor');
-	container.innerHTML = '';
-	(buttons || []).forEach(button => {
-		const info = getSocialInfoForUrl(button.url);
-		if (!info) return;
-		container.innerHTML += `<div class="social-button-editor-item flex items-center justify-between bg-gray-700 p-3 rounded-md" data-url="${button.url}"><div class="flex items-center gap-3 overflow-hidden"><span class="${info.color}">${socialIcons[info.key]}</span><div class="flex-grow overflow-hidden"><p class="font-semibold truncate">${info.name}</p><p class="text-sm text-gray-400 truncate">${button.url}</p></div></div><button data-url="${button.url}" class="delete-social-button-btn p-2 text-red-500 hover:text-red-400"><i data-lucide="trash-2" class="w-5 h-5"></i></button></div>`;
-	});
-	lucide.createIcons();
-}
-
-document.getElementById('add-social-button-btn').addEventListener('click', () => {
-	const urlInput = document.getElementById('social-button-url-input');
-	const url = urlInput.value.trim();
-	if (!url) return showAlert('Por favor, introduce una URL.');
-	if (!isValidUrl(url)) return showAlert('La URL no parece válida.');
-	if (!getSocialInfoForUrl(url)) return showAlert('No se reconoce esta red social. Asegúrate de que la URL sea correcta.');
-	if ((appState.socialButtons || []).some(btn => btn.url === url)) return showAlert('Este botón social ya ha sido añadido.');
-
-	appState.socialButtons.push({ url });
-	renderSocialButtonsEditor(appState.socialButtons);
-	markSettingsAsDirty();
-	updateLivePreview();
-	urlInput.value = '';
-});
-
-document.getElementById('social-buttons-list-editor').addEventListener('click', (e) => {
-	const deleteButton = e.target.closest('.delete-social-button-btn');
-	if (deleteButton) {
-		appState.socialButtons = appState.socialButtons.filter(btn => btn.url !== deleteButton.dataset.url);
-		renderSocialButtonsEditor(appState.socialButtons);
-		markSettingsAsDirty();
-		updateLivePreview();
-	}
-});
+// Se elimina la lógica anterior de renderizado y eventos de añadir/eliminar
 
 // --- 21. LÓGICA DEL TEXTAREA AUTO-AJUSTABLE ---
 function autoResizeTextarea(element) {
