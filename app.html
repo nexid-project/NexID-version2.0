@@ -143,10 +143,8 @@
 		</div>
 
 		<!-- PÁGINA DE PERFIL PÚBLICO (Y VISTA DE EDICIÓN) -->
-		<!-- CORRECCIÓN 1: Se elimina el padding general (p-4 sm:p-6) y se añade padding horizontal (px-4 sm:px-6) -->
 		<div id="profile-page" class="hidden px-4 sm:px-6">
 			 <div id="panorama-grid"></div> <!-- Cuadrícula para el modo Panorama -->
-			 <!-- CORRECCIÓN 1: Se añade padding vertical (pt-8 sm:pt-12 pb-8) al contenedor principal para un mejor control del espaciado -->
 			<div class="content-wrapper w-full max-w-md mx-auto flex flex-col relative pt-8 sm:pt-12 pb-8">
 				
 				<!-- Contenedor de Navegación Superior -->
@@ -295,9 +293,15 @@
 								<i data-lucide="chevron-down" class="accordion-icon transition-transform"></i>
 							</button>
 							<div class="accordion-content">
+								<!-- === CAMBIO: Se reestructura el contenido de "Apariencia" === -->
 								<div class="p-4 pt-0 space-y-6">
+									
+									<!-- Sección: Plantillas de Color -->
 									<div>
-										<h4 class="text-lg font-semibold mb-3 text-center">Plantillas de Color</h4>
+										<h4 class="text-lg font-semibold mb-3 text-center flex items-center justify-center gap-2">
+											<i data-lucide="palette" class="w-5 h-5"></i>
+											<span>Plantillas de Color</span>
+										</h4>
 										<div id="theme-tabs" class="flex border-b border-gray-700">
 											<button class="theme-tab-btn active" data-tab="basico">Básico</button>
 											<button class="theme-tab-btn" data-tab="vibrante">Vibrante</button>
@@ -335,44 +339,69 @@
 											</div></div>
 										</div>
 									</div>
-									<input id="background-image-url-input" type="hidden">
-									<input id="background-image-path-input" type="hidden">
-									<div id="background-controls" class="hidden">
-										<label for="background-opacity-slider" class="block text-center text-sm font-medium text-gray-300">Opacidad del fondo</label>
-										<input id="background-opacity-slider" type="range" min="0" max="1" step="0.1" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+
+									<div class="border-t border-gray-700/50"></div>
+
+									<!-- Sección: Imagen de Fondo -->
+									<div class="space-y-4 pt-4">
+										<h4 class="text-lg font-semibold mb-2 text-center flex items-center justify-center gap-2">
+											<i data-lucide="image" class="w-5 h-5"></i>
+											<span>Imagen de Fondo</span>
+										</h4>
+										<input id="background-image-url-input" type="hidden">
+										<input id="background-image-path-input" type="hidden">
+										<div id="background-controls" class="hidden">
+											<label for="background-opacity-slider" class="block text-center text-sm font-medium text-gray-300">Opacidad del fondo</label>
+											<input id="background-opacity-slider" type="range" min="0" max="1" step="0.1" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer">
+										</div>
+										<div class="flex gap-2">
+											<button id="upload-background-btn" class="w-full px-4 py-2 font-semibold text-white bg-gray-700 rounded-md hover:bg-gray-600 flex items-center justify-center gap-2"><i data-lucide="upload-cloud" class="w-5 h-5"></i> Subir Fondo</button>
+											<button id="open-library-btn" class="w-full px-4 py-2 font-semibold text-white bg-gray-700 rounded-md hover:bg-gray-600 flex items-center justify-center gap-2"><i data-lucide="library" class="w-5 h-5"></i> Biblioteca</button>
+										</div>
+										<div class="mt-2 flex justify-center">
+											<button id="remove-background-btn" class="w-full sm:w-auto px-4 py-2 font-semibold text-red-400 bg-transparent border border-red-400 rounded-md hover:bg-red-400 hover:text-gray-900 flex items-center justify-center gap-2">
+												<i data-lucide="trash-2" class="w-5 h-5"></i> Quitar Fondo
+											</button>
+										</div>
+										<input type="file" id="background-upload-input" class="hidden" accept="image/png, image/jpeg, image/webp">
 									</div>
-									<div class="flex items-center justify-center gap-4 my-2"><span class="flex-grow border-t border-gray-600"></span><span class="text-gray-400 text-sm">O</span><span class="flex-grow border-t border-gray-600"></span></div>
-									<div class="flex gap-2">
-										<button id="upload-background-btn" class="w-full px-4 py-2 font-semibold text-white bg-gray-700 rounded-md hover:bg-gray-600 flex items-center justify-center gap-2"><i data-lucide="upload-cloud" class="w-5 h-5"></i> Subir Fondo</button>
-										<button id="open-library-btn" class="w-full px-4 py-2 font-semibold text-white bg-gray-700 rounded-md hover:bg-gray-600 flex items-center justify-center gap-2"><i data-lucide="library" class="w-5 h-5"></i> Biblioteca</button>
-									</div>
-									<div class="mt-2 flex justify-center">
-										<button id="remove-background-btn" class="w-full sm:w-auto px-4 py-2 font-semibold text-red-400 bg-transparent border border-red-400 rounded-md hover:bg-red-400 hover:text-gray-900 flex items-center justify-center gap-2">
-											<i data-lucide="trash-2" class="w-5 h-5"></i> Quitar Fondo
-										</button>
-									</div>
-									<input type="file" id="background-upload-input" class="hidden" accept="image/png, image/jpeg, image/webp">
-									<div class="grid grid-cols-2 gap-4">
-										<div>
-											<h4 class="text-lg font-semibold mb-3 text-center">Estilo</h4>
-											<div id="button-style-selector" class="space-y-2">
-												<label class="flex items-center gap-2 p-2 bg-gray-700 rounded-md cursor-pointer"><input type="radio" name="buttonStyle" value="filled" class="form-radio text-cyan-500"> Relleno</label>
-												<label class="flex items-center gap-2 p-2 bg-gray-700 rounded-md cursor-pointer"><input type="radio" name="buttonStyle" value="outline" class="form-radio text-cyan-500"> Contorno</label>
-												<label class="flex items-center gap-2 p-2 bg-gray-700 rounded-md cursor-pointer"><input type="radio" name="buttonStyle" value="shadow" class="form-radio text-cyan-500"> Sombra</label>
+
+									<div class="border-t border-gray-700/50"></div>
+
+									<!-- Sección: Estilo de Enlaces -->
+									<div class="space-y-4 pt-4">
+										<h4 class="text-lg font-semibold mb-2 text-center flex items-center justify-center gap-2">
+											<i data-lucide="sparkles" class="w-5 h-5"></i>
+											<span>Estilo de Enlaces</span>
+										</h4>
+										<div class="grid grid-cols-2 gap-4">
+											<div>
+												<h4 class="text-base font-semibold mb-3 text-center">Estilo</h4>
+												<div id="button-style-selector" class="space-y-2">
+													<label class="flex items-center gap-2 p-2 bg-gray-700 rounded-md cursor-pointer"><input type="radio" name="buttonStyle" value="filled" class="form-radio text-cyan-500"> Relleno</label>
+													<label class="flex items-center gap-2 p-2 bg-gray-700 rounded-md cursor-pointer"><input type="radio" name="buttonStyle" value="outline" class="form-radio text-cyan-500"> Contorno</label>
+													<label class="flex items-center gap-2 p-2 bg-gray-700 rounded-md cursor-pointer"><input type="radio" name="buttonStyle" value="shadow" class="form-radio text-cyan-500"> Sombra</label>
+												</div>
+											</div>
+											<div>
+												<h4 class="text-base font-semibold mb-3 text-center">Forma</h4>
+												<div id="button-shape-selector" class="space-y-2">
+													<label class="flex items-center gap-2 p-2 bg-gray-700 rounded-md cursor-pointer"><input type="radio" name="buttonShape" value="rounded-lg" class="form-radio text-cyan-500"> Suave</label>
+													<label class="flex items-center gap-2 p-2 bg-gray-700 rounded-md cursor-pointer"><input type="radio" name="buttonShape" value="rounded-full" class="form-radio text-cyan-500"> Redondo</label>
+													<label class="flex items-center gap-2 p-2 bg-gray-700 rounded-md cursor-pointer"><input type="radio" name="buttonShape" value="rounded-none" class="form-radio text-cyan-500"> Recto</label>
+												</div>
 											</div>
 										</div>
-										<div>
-											<h4 class="text-lg font-semibold mb-3 text-center">Forma</h4>
-											<div id="button-shape-selector" class="space-y-2">
-												<label class="flex items-center gap-2 p-2 bg-gray-700 rounded-md cursor-pointer"><input type="radio" name="buttonShape" value="rounded-lg" class="form-radio text-cyan-500"> Suave</label>
-												<label class="flex items-center gap-2 p-2 bg-gray-700 rounded-md cursor-pointer"><input type="radio" name="buttonShape" value="rounded-full" class="form-radio text-cyan-500"> Redondo</label>
-												<label class="flex items-center gap-2 p-2 bg-gray-700 rounded-md cursor-pointer"><input type="radio" name="buttonShape" value="rounded-none" class="form-radio text-cyan-500"> Recto</label>
-											</div>
-										</div>
 									</div>
-									<div>
-										<h4 class="text-lg font-semibold mb-3 text-center">Fuente</h4>
-										<!-- Selector de Fuente Personalizado -->
+
+									<div class="border-t border-gray-700/50"></div>
+
+									<!-- Sección: Fuente -->
+									<div class="space-y-4 pt-4">
+										<h4 class="text-lg font-semibold mb-2 text-center flex items-center justify-center gap-2">
+											<i data-lucide="type" class="w-5 h-5"></i>
+											<span>Fuente</span>
+										</h4>
 										<div id="custom-font-selector" class="relative">
 											<input type="hidden" id="font-family-value" value="font-inter">
 											<button type="button" id="font-selector-btn" class="w-full flex items-center justify-between px-4 py-2 text-gray-900 bg-gray-200 rounded-md text-left">
@@ -385,6 +414,7 @@
 										</div>
 									</div>
 								</div>
+								<!-- === FIN DEL CAMBIO === -->
 							</div>
 						</div>
 
