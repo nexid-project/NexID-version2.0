@@ -154,6 +154,39 @@ function isValidUrl(string) {
 	return urlRegex.test(string);
 }
 
+// === CAMBIO: Se añade la función inteligente para extraer nombres de usuario ===
+function extractUsername(input, socialKey) {
+    if (!input) return '';
+
+    let username = input;
+
+    // Caso especial para WhatsApp: limpiar y mantener solo números
+    if (socialKey === 'whatsapp') {
+        return input.replace(/\D/g, ''); // Elimina todo lo que no sea un dígito
+    }
+
+    try {
+        // Intentar tratarlo como una URL
+        const url = new URL(input.startsWith('http') ? input : `https://${input}`);
+        const pathParts = url.pathname.split('/').filter(part => part !== '');
+        
+        if (pathParts.length > 0) {
+            // Tomar el último segmento de la ruta, que suele ser el nombre de usuario
+            username = pathParts[pathParts.length - 1];
+        }
+    } catch (e) {
+        // Si no es una URL válida, asumimos que es un nombre de usuario directo
+        username = input;
+    }
+
+    // Limpiar caracteres comunes como '/', '?' o '@'
+    username = username.split('?')[0].replace(/[/]/g, '').replace('@', '');
+    
+    return username;
+}
+// === FIN DEL CAMBIO ===
+
+
 // --- 5. LÓGICA PRINCIPAL DE LA APLICACIÓN ---
 
 function initializeApp() {
@@ -209,11 +242,9 @@ async function fetchUserProfileWithRetry(userId, retries = 3, delay = 500) {
 async function handleAuthStateChange(session) {
 	if (appState.isRecoveringPassword) return;
 
-	// === CAMBIO: Añadir condición para no recargar si se está editando ===
 	if (appState.isSettingsDirty && DOMElements.settingsPanel.classList.contains('open')) {
-		return; // No hacer nada para no perder la previsualización
+		return;
 	}
-	// === FIN DEL CAMBIO ===
 
 	if (appState.subscriptions.links) appState.subscriptions.links.unsubscribe();
 	
@@ -311,7 +342,6 @@ async function loadPublicProfile(username) {
 	}
 }
 
-// === CAMBIO: Se modifica la función para no recargar el perfil completo ===
 async function refreshLinks() {
 	if (!appState.currentUser) return;
 	const { data: linksData, error: linksError } = await supabaseClient
@@ -327,13 +357,9 @@ async function refreshLinks() {
 	
 	appState.links = linksData || [];
 	
-	// 1. Actualizar la lista de enlaces en el editor del panel
 	renderLinksEditor(appState.links);
-    // 2. Volver a generar la previsualización en tiempo real para reflejar el nuevo enlace
-    //    y mantener los cambios no guardados (como la fuente).
     updateLivePreview();
 }
-// === FIN DEL CAMBIO ===
 
 function listenToUserLinks(userId) {
 	if (appState.subscriptions.links) appState.subscriptions.links.unsubscribe();
@@ -1003,8 +1029,13 @@ document.getElementById('save-changes-btn').addEventListener('click', async () =
 	if (!appState.currentUser) return;
 
 	const newSocials = {};
+	// === CAMBIO: Se usa la función inteligente al guardar los cambios ===
 	document.querySelectorAll('#socials-inputs-container input').forEach(input => {
-		if(input.value.trim() !== '') newSocials[input.dataset.social] = input.value.trim();
+		const key = input.dataset.social;
+		const value = input.value.trim();
+		if (value !== '') {
+			newSocials[key] = extractUsername(value, key);
+		}
 	});
 
 	let currentSocialsOrder = appState.myProfile.socials_order || [];
@@ -1085,7 +1116,7 @@ function updateLivePreview() {
 	});
 
 	const selectedFont = DOMElements.fontFamilyValue.value;
-	loadFontIfNeeded(selectedFont); // Cargar la fuente para la previsualización
+	loadFontIfNeeded(selectedFont);
 
 	const previewData = {
 		...appState.profile,
@@ -1098,7 +1129,7 @@ function updateLivePreview() {
 		button_shape_style: document.querySelector('input[name="buttonShape"]:checked')?.value || 'rounded-lg',
 		font_family: selectedFont,
 		socials: {},
-		social_buttons: newSocialButtons, // NUEVO
+		social_buttons: newSocialButtons,
 		contact_info: {},
 	};
 	document.querySelectorAll('#socials-inputs-container input').forEach(input => {
