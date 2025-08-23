@@ -15,9 +15,6 @@ const backgroundLibraryUrls = [
 	'https://placehold.co/1920x1080/374151/FFFFFF?text=Fondo+8',
 ];
 
-// --- INSTRUCCIONES PARA LA BASE DE DATOS (NO MODIFICAR) ---
-/* ... */
-
 let supabaseClient;
 
 // --- Lógica de carga dinámica de fuentes ---
@@ -33,7 +30,7 @@ const fontMap = {
 	'font-oswald': { name: 'Oswald (Condensed)', query: 'Oswald:wght@400;500;700' },
 	'font-lobster': { name: 'Lobster (Cursive)', query: 'Lobster:wght@400' },
 };
-const loadedFonts = new Set(['font-inter']); // La fuente por defecto ya está cargada
+const loadedFonts = new Set(['font-inter']);
 
 function loadFontIfNeeded(fontClass) {
 	if (!fontClass || loadedFonts.has(fontClass)) return;
@@ -167,11 +164,10 @@ function extractUsername(input, socialKey) {
             username = pathParts[pathParts.length - 1];
         }
     } catch (e) {
-        // No es una URL, es un nombre de usuario
+        // Not a URL, it's a username
     }
     return username.split('?')[0].replace(/[/]/g, '').replace('@', '');
 }
-
 
 // --- 5. LÓGICA PRINCIPAL DE LA APLICACIÓN ---
 
@@ -406,7 +402,7 @@ function renderSingleLink(linkData, profileData) {
 	if (buttonShape !== 'underline') linkClasses.push(`btn-${buttonStyle}`);
 	linkClasses.push(buttonShape);
 	
-	const linkContent = iconHtml 
+	const linkContent = iconHtml 
 		? `<span class="w-6 h-6">${iconHtml}</span><span class="flex-grow text-center">${linkData.title}</span><span class="w-6 h-6"></span>`
 		: `<span class="flex-grow text-center">${linkData.title}</span>`;
 
@@ -567,6 +563,7 @@ function renderLinksEditor(links) {
 	lucide.createIcons();
 }
 
+// --- FASE 3: Nuevas definiciones de redes sociales y categorías ---
 const socialIcons = {
 	instagram: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>`,
 	twitter: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"></path></svg>`,
@@ -576,23 +573,22 @@ const socialIcons = {
 	youtube: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg>`,
 	facebook: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>`,
 	whatsapp: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 16 16" fill="currentColor"><path d="M13.601 2.326A7.85 7.85 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.9 7.9 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.9 7.9 0 0 0 13.6 2.326zM7.994 14.521a6.6 6.6 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.56 6.56 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592m3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.31-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.73.73 0 0 0-.529.247c-.182.198-.691.677-.691 1.654s.71 1.916.81 2.049c.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232"/></svg>`,
+	behance: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M22 7h-7v-2h7v2zm-11 1.5c0-.828-.672-1.5-1.5-1.5s-1.5.672-1.5 1.5.672 1.5 1.5 1.5 1.5-.672 1.5-1.5zm-1.5-3.5c-2.485 0-4.5 2.015-4.5 4.5s2.015 4.5 4.5 4.5 4.5-2.015 4.5-4.5-2.015-4.5-4.5-4.5zm1.5 8h-3c-2.209 0-4 1.791-4 4s1.791 4 4 4h3v-8zm-3 6c-1.104 0-2-.896-2-2s.896-2 2-2 2 .896 2 2-.896 2-2 2zm13-2h-7v-2h7v2z"/></svg>`,
+	pinterest: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.627 0-12 5.373-12 12 0 5.084 3.163 9.426 7.627 11.174-.105-.949-.2-2.405.042-3.441.218-.937 1.407-5.965 1.407-5.965s-.359-.719-.359-1.782c0-1.668.967-2.914 2.171-2.914 1.023 0 1.518.769 1.518 1.69 0 1.029-.655 2.568-.994 3.995-.283 1.194.599 2.169 1.777 2.169 2.133 0 3.772-2.249 3.772-5.495 0-2.873-2.064-4.882-5.012-4.882-3.414 0-5.418 2.561-5.418 5.207 0 .992.371 1.931.82 2.447.09.1.084.183.062.281-.056.248-.192.784-.233.949-.05.218-.223.265-.4.161-1.492-.691-2.43-2.878-2.43-4.649 0-3.785 2.75-7.262 7.929-7.262 4.163 0 7.398 2.967 7.398 6.931 0 4.136-2.607 7.464-6.227 7.464-1.216 0-2.359-.631-2.75-1.378l-.748 2.853c-.271 1.043-1.002 2.35-1.492 3.146 1.124.347 2.318.535 3.554.535 6.627 0 12-5.373 12-12s-5.373-12-12-12z"/></svg>`,
+	twitch: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M2.149 0l-2.149 4.773v16.454h5.741v2.773h3.223l2.773-2.773h5.292l6.219-6.219v-14.227h-21.099zm18.378 13.59l-3.223 3.223h-5.741l-2.773 2.773v-2.773h-4.654v-14.89h16.391v11.667zm-5.292-7.371v5.546h-2.149v-5.546h2.149zm-5.291 0v5.546h-2.149v-5.546h2.149z"/></svg>`,
+	discord: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M19.54 0c1.356 0 2.46 1.104 2.46 2.472v14.616c0 1.368-1.104 2.472-2.46 2.472h-15.08c-1.356 0-2.46-1.104-2.46-2.472v-14.616c0-1.368 1.104-2.472 2.46-2.472h15.08zm-2.883 5.949c-.837-1.12-1.844-1.95-2.93-2.586.23.18.44.38.64.59.32.33.61.68.87 1.05-1.09.2-2.22.3-3.38.3s-2.29-.1-3.38-.3c.26-.37.55-.72.87-1.05.2-.21.41-.41.64-.59-1.086.636-2.094 1.465-2.93 2.586-2.57 3.45-2.9 7.02-2.73 10.39.83.23 1.68.36 2.55.45.22.02.44.04.65.05.21.01.42.02.63.02.21 0 .42-.01.63-.02.21-.01.43-.03.65-.05.87-.09 1.72-.22 2.55-.45.17-3.37-.16-6.94-2.73-10.39zm-8.43 6.411c-.78 0-1.41-.64-1.41-1.42s.63-1.42 1.41-1.42c.78 0 1.41.64 1.41 1.42s-.63 1.42-1.41 1.42zm5.73 0c-.78 0-1.41-.64-1.41-1.42s.63-1.42 1.41-1.42c.78 0 1.41.64 1.41 1.42s-.63 1.42-1.41 1.42z"/></svg>`,
+	spotify: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.161 17.218c-.21.315-.576.42-.892.21-2.553-1.56-5.75-1.91-9.52-1.047-.36.084-.696-.134-.78-.494s.134-.696.494-.78c4.13-1.007 7.62-0.608 10.45 1.132.316.21.42.576.21.892zm1.201-2.73c-.255.38-.71.504-1.09.248-2.887-1.758-7.15-2.22-10.59-1.21-.434.12-.87-.135-.99-.565s.135-.87.565-.99c3.85-1.12 8.52-0.61 11.8 1.388.38.256.504.71.248 1.09zm.12-2.99c-3.48-2.03-9.21-2.22-12.32-1.21-.525.165-.99-.22-1.155-.745s.22-.99.745-1.155c3.62-1.12 10.02-.89 13.97 1.388.465.255.63.84.375 1.305-.255.465-.84.63-1.305.375z"/></svg>`,
+	soundcloud: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M24 13.151v-2.302c-1.96-.432-3.832-1.218-5.5-2.288 0-2.302 0-4.604 0-6.906h-1.053c-.313 2.995-1.258 5.83-2.73 8.339-2.04 3.551-5.12 5.928-8.717 6.661v-2.302c1.472-.432 2.817-1.134 4-2.057v-2.186c-1.183.432-2.438.734-3.75.864v-2.302c1.312-.13 2.567-.432 3.75-.864v-2.186c-1.183.432-2.438.734-3.75.864v-2.302c1.312-.13 2.567-.432 3.75-.864v-2.057c-2.375 1.068-4.247 2.76-5.5 4.928h-1.053c.21-3.855 1.555-7.452 3.803-10.364 2.248-2.912 5.228-4.782 8.497-5.288v16.398c2.567-1.488 4.538-3.657 5.5-6.364h1.053c-.19 2.535-.985 4.928-2.273 6.906 1.183.734 2.438 1.339 3.727 1.829z"/></svg>`,
+	telegram: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm7.253 8.216l-2.28 10.64-3.23-2.553-1.44 1.386c-.136.136-.315.204-.494.204-.06 0-.12-.01-.18-.028-.23-.063-.41-.22-.49-.44l-1.03-2.92 5.46-4.89-6.7 4.1-1.03-2.92c-.08-.22-.26-.377-.49-.44-.23-.063-.47-.028-.66.094l-11.22 6.13-1.44-1.386 19.32-7.304z"/></svg>`,
 };
-const largeSocialIcons = {
-	instagram: `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>`,
-	twitter: `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"></path></svg>`,
-	github: `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.166 6.839 9.49.5.092.682-.217.682-.482 0-.237-.009-.868-.014-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.031-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.378.203 2.398.1 2.651.64.7 1.03 1.595 1.03 2.688 0 3.848-2.338 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.577.688.482A10.001 10.001 0 0 0 22 12c0-5.523-4.477-10-10-10z"></path></svg>`,
-	linkedin: `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"></path></svg>`,
-	tiktok: `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 448 512" fill="currentColor"><path d="M448 209.9a210.1 210.1 0 0 1 -122.8-39.3V349.4A162.6 162.6 0 1 1 185 188.3V278.2a74.6 74.6 0 1 0 52.2 71.2V0l88 0a121.2 121.2 0 0 0 122.8 122.8V209.9z"/></svg>`,
-	youtube: `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg>`,
-	facebook: `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>`,
-	whatsapp: `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 16 16" fill="currentColor"><path d="M13.601 2.326A7.85 7.85 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.9 7.9 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.9 7.9 0 0 0 13.6 2.326zM7.994 14.521a6.6 6.6 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.56 6.56 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592m3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.31-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.73.73 0 0 0-.529.247c-.182.198-.691.677-.691 1.654s.71 1.916.81 2.049c.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232"/></svg>`,
-};
+const largeSocialIcons = { ...socialIcons }; // En este caso son los mismos, pero se mantiene la estructura por si se quiere cambiar en el futuro.
+
 const socialBaseUrls = {
 	instagram: 'https://instagram.com/', twitter: 'https://twitter.com/', github: 'https://github.com/', linkedin: 'https://linkedin.com/in/',
-	tiktok: 'https://tiktok.com/@', youtube: 'https://youtube.com/c/', facebook: 'https://facebook.com/', whatsapp: 'https://wa.me/'
+	tiktok: 'https://tiktok.com/@', youtube: 'https://youtube.com/c/', facebook: 'https://facebook.com/', whatsapp: 'https://wa.me/',
+	behance: 'https://www.behance.net/', pinterest: 'https://pinterest.com/', twitch: 'https://twitch.tv/', discord: 'https://discord.gg/',
+	spotify: 'https://open.spotify.com/user/', soundcloud: 'https://soundcloud.com/', telegram: 'https://t.me/'
 };
-
-const SOCIAL_ICON_ORDER = ['instagram', 'twitter', 'github', 'linkedin', 'tiktok', 'youtube', 'facebook', 'whatsapp'];
 
 const socialButtonStyles = {
 	instagram: { name: 'Instagram', icon: largeSocialIcons.instagram, color: 'text-white', bg: 'bg-gradient-to-r from-purple-500 via-pink-500 to-red-500', hover: 'hover:opacity-90' },
@@ -602,15 +598,34 @@ const socialButtonStyles = {
 	tiktok: { name: 'TikTok', icon: largeSocialIcons.tiktok, color: 'text-white', bg: 'bg-black', hover: 'hover:bg-gray-800' },
 	youtube: { name: 'YouTube', icon: largeSocialIcons.youtube, color: 'text-white', bg: 'bg-red-600', hover: 'hover:bg-red-500' },
 	facebook: { name: 'Facebook', icon: largeSocialIcons.facebook, color: 'text-white', bg: 'bg-blue-800', hover: 'hover:bg-blue-700' },
-	whatsapp: { name: 'WhatsApp', icon: largeSocialIcons.whatsapp, color: 'text-white', bg: 'bg-green-500', hover: 'hover:bg-green-400' }
+	whatsapp: { name: 'WhatsApp', icon: largeSocialIcons.whatsapp, color: 'text-white', bg: 'bg-green-500', hover: 'hover:bg-green-400' },
+	behance: { name: 'Behance', icon: largeSocialIcons.behance, color: 'text-white', bg: 'bg-blue-600', hover: 'hover:bg-blue-500' },
+	pinterest: { name: 'Pinterest', icon: largeSocialIcons.pinterest, color: 'text-white', bg: 'bg-red-700', hover: 'hover:bg-red-600' },
+	twitch: { name: 'Twitch', icon: largeSocialIcons.twitch, color: 'text-white', bg: 'bg-purple-600', hover: 'hover:bg-purple-500' },
+	discord: { name: 'Discord', icon: largeSocialIcons.discord, color: 'text-white', bg: 'bg-indigo-600', hover: 'hover:bg-indigo-500' },
+	spotify: { name: 'Spotify', icon: largeSocialIcons.spotify, color: 'text-white', bg: 'bg-green-600', hover: 'hover:bg-green-500' },
+	soundcloud: { name: 'SoundCloud', icon: largeSocialIcons.soundcloud, color: 'text-white', bg: 'bg-orange-500', hover: 'hover:bg-orange-400' },
+	telegram: { name: 'Telegram', icon: largeSocialIcons.telegram, color: 'text-white', bg: 'bg-sky-500', hover: 'hover:bg-sky-400' }
 };
+
+const socialCategories = [
+    { id: 'popular', name: 'Populares', icon: 'star', socials: ['instagram', 'tiktok', 'facebook', 'twitter', 'whatsapp'] },
+    { id: 'professional', name: 'Profesional', icon: 'briefcase', socials: ['linkedin', 'github', 'behance'] },
+    { id: 'gaming_audio', name: 'Gaming y Audio', icon: 'gamepad-2', socials: ['twitch', 'discord', 'spotify', 'soundcloud'] },
+    { id: 'creative_other', name: 'Creativo y Otros', icon: 'gem', socials: ['youtube', 'pinterest', 'telegram'] }
+];
+
+const SOCIAL_ICON_ORDER = socialCategories.flatMap(category => category.socials);
+// --- FIN FASE 3 ---
 
 function getSocialInfoForUrl(url) {
 	if (!url) return null;
 	const domainToInfoKey = {
 		'instagram.com': 'instagram', 'twitter.com': 'twitter', 'x.com': 'twitter', 'github.com': 'github',
 		'linkedin.com': 'linkedin', 'tiktok.com': 'tiktok', 'youtube.com': 'youtube', 'facebook.com': 'facebook',
-		'whatsapp.com': 'whatsapp', 'wa.me': 'whatsapp'
+		'whatsapp.com': 'whatsapp', 'wa.me': 'whatsapp', 'behance.net': 'behance', 'pinterest.com': 'pinterest',
+		'twitch.tv': 'twitch', 'discord.gg': 'discord', 'spotify.com': 'spotify', 'soundcloud.com': 'soundcloud',
+		't.me': 'telegram'
 	};
 	for (const domain in domainToInfoKey) {
 		if (url.includes(domain)) {
@@ -662,7 +677,7 @@ function renderSocialButtons(buttons) {
 		buttonEl.dataset.url = buttonData.url;
 		buttonEl.rel = 'noopener noreferrer';
 		buttonEl.className = `social-button flex items-center justify-center w-14 h-14 rounded-lg transition-all duration-200 transform hover:scale-105 ${info.bg} ${info.color} ${info.hover} draggable-item`;
-		buttonEl.innerHTML = `${info.icon}`;
+		buttonEl.innerHTML = `${largeSocialIcons[info.key]}`;
 		section.appendChild(buttonEl);
 	});
 }
@@ -702,8 +717,8 @@ document.getElementById('register-btn').addEventListener('click', async () => {
 	const password = document.getElementById('password-input').value;
 	if (!email || !password) return showAlert("Por favor, completa ambos campos.");
 	
-	const { data, error } = await supabaseClient.auth.signUp({ 
-		email, 
+	const { data, error } = await supabaseClient.auth.signUp({ 
+		email, 
 		password,
 		options: {
 			emailRedirectTo: `${window.location.origin}${window.location.pathname}`
@@ -742,7 +757,7 @@ document.getElementById('login-btn').addEventListener('click', async () => {
 });
 
 document.getElementById('google-login-btn').addEventListener('click', async () => {
-	const { error } = await supabaseClient.auth.signInWithOAuth({ 
+	const { error } = await supabaseClient.auth.signInWithOAuth({ 
 		provider: 'google',
 		options: {
 			redirectTo: `${window.location.origin}${window.location.pathname}`
@@ -890,53 +905,75 @@ function markSettingsAsDirty() {
 	appState.isSettingsDirty = true;
 }
 
-function renderSocialInputs(socials) {
-	const container = document.getElementById('socials-inputs-container');
-	container.innerHTML = '';
+// --- FASE 3: Nueva función para renderizar pestañas sociales ---
+function renderSocialTabs(container, mode, data) {
+    container.innerHTML = `
+        <div class="social-tabs-container">
+            <nav class="social-tabs-nav"></nav>
+            <div class="social-tabs-content"></div>
+        </div>
+    `;
 
-	SOCIAL_ICON_ORDER.forEach(key => {
-		const username = socials?.[key] || '';
-		const item = document.createElement('div');
-		item.className = 'flex items-center bg-gray-200 rounded-md focus-within:ring-2 focus-within:ring-cyan-500 w-full';
-		item.innerHTML = `
-			<span class="pl-3 pr-2 text-gray-500">${socialIcons[key]}</span>
-			<input type="text" data-social="${key}" placeholder="${key.charAt(0).toUpperCase() + key.slice(1)}" class="w-full p-2 text-gray-900 bg-transparent focus:outline-none" value="${username}">
-		`;
-		container.appendChild(item);
-	});
+    const nav = container.querySelector('.social-tabs-nav');
+    const content = container.querySelector('.social-tabs-content');
 
-	lucide.createIcons();
+    socialCategories.forEach((category, index) => {
+        // Crear botón de pestaña
+        const button = document.createElement('button');
+        button.className = `social-tab-button ${index === 0 ? 'active' : ''}`;
+        button.dataset.tab = category.id;
+        button.title = category.name;
+        button.innerHTML = `<i data-lucide="${category.icon}" class="w-5 h-5"></i>`;
+        nav.appendChild(button);
+
+        // Crear panel de contenido
+        const pane = document.createElement('div');
+        pane.className = `social-tab-pane ${index === 0 ? 'active' : ''}`;
+        pane.id = `${mode}-${category.id}`;
+        content.appendChild(pane);
+
+        // Rellenar panel con inputs
+        category.socials.forEach(key => {
+            const item = document.createElement('div');
+            const info = socialButtonStyles[key];
+            
+            if (mode === 'icons') {
+                const value = data?.[key] || '';
+                item.className = 'flex items-center bg-gray-200 rounded-md focus-within:ring-2 focus-within:ring-cyan-500 w-full';
+                item.innerHTML = `
+                    <span class="pl-3 pr-2 text-gray-500">${socialIcons[key]}</span>
+                    <input type="text" data-social="${key}" placeholder="${info.name}" class="w-full p-2 text-gray-900 bg-transparent focus:outline-none" value="${value}">
+                `;
+            } else { // mode === 'buttons'
+                const existingButton = (data || []).find(btn => getSocialInfoForUrl(btn.url)?.key === key);
+                const value = existingButton ? existingButton.url : '';
+                item.className = 'flex items-center gap-3';
+                const preview = `<div class="social-button flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-lg ${info.bg} ${info.color}">${info.icon.replace(/width="32"/g, 'width="20"').replace(/height="32"/g, 'height="20"')}</div>`;
+                const input = `<div class="flex-grow flex items-center bg-gray-200 rounded-md focus-within:ring-2 focus-within:ring-cyan-500 w-full"><input type="text" data-social-button="${key}" placeholder="${info.name}" class="w-full p-2 text-gray-900 bg-transparent focus:outline-none" value="${value}"></div>`;
+                item.innerHTML = preview + input;
+            }
+            pane.appendChild(item);
+        });
+    });
+    lucide.createIcons();
 }
 
-function renderSocialButtonsEditor(buttons) {
-    const container = document.getElementById('social-buttons-inputs-container');
-    container.innerHTML = '';
+// --- FASE 3: Manejador de eventos para las pestañas ---
+DOMElements.settingsPanel.addEventListener('click', (e) => {
+    const tabButton = e.target.closest('.social-tab-button');
+    if (tabButton) {
+        const container = tabButton.closest('.social-tabs-container');
+        const tabId = tabButton.dataset.tab;
 
-    SOCIAL_ICON_ORDER.forEach(key => {
-        const info = socialButtonStyles[key];
-        const existingButton = (buttons || []).find(btn => getSocialInfoForUrl(btn.url)?.key === key);
-        const value = existingButton ? existingButton.url : '';
+        container.querySelectorAll('.social-tab-button').forEach(btn => btn.classList.remove('active'));
+        container.querySelectorAll('.social-tab-pane').forEach(pane => pane.classList.remove('active'));
 
-        const item = document.createElement('div');
-        item.className = 'flex items-center gap-3';
+        tabButton.classList.add('active');
+        const activePane = container.querySelector(`.social-tab-pane[id$="-${tabId}"]`);
+        if(activePane) activePane.classList.add('active');
+    }
+});
 
-        // Previsualización del botón
-        const preview = document.createElement('div');
-        preview.className = `social-button flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-lg ${info.bg} ${info.color}`;
-        preview.innerHTML = info.icon.replace(/width="32"/g, 'width="20"').replace(/height="32"/g, 'height="20"');
-
-        // Input
-        const inputWrapper = document.createElement('div');
-        inputWrapper.className = 'flex-grow flex items-center bg-gray-200 rounded-md focus-within:ring-2 focus-within:ring-cyan-500 w-full';
-        inputWrapper.innerHTML = `
-            <input type="text" data-social-button="${key}" placeholder="${info.name}" class="w-full p-2 text-gray-900 bg-transparent focus:outline-none" value="${value}">
-        `;
-
-        item.appendChild(preview);
-        item.appendChild(inputWrapper);
-        container.appendChild(item);
-    });
-}
 
 function openSettingsPanel() {
 	if (!appState.profile) return;
@@ -980,8 +1017,10 @@ function openSettingsPanel() {
 	DOMElements.fontSelectorLabel.textContent = fontMap[currentFont].name;
 	DOMElements.fontSelectorLabel.className = currentFont;
 
-	renderSocialInputs(profile.socials);
-	renderSocialButtonsEditor(profile.social_buttons);
+    // --- FASE 3: Llamar a la nueva función de renderizado de pestañas ---
+    renderSocialTabs(document.getElementById('social-buttons-inputs-container'), 'buttons', profile.social_buttons);
+    renderSocialTabs(document.getElementById('socials-inputs-container'), 'icons', profile.socials);
+    // --- FIN FASE 3 ---
 
 	const contact = profile.contact_info || {};
 	document.querySelectorAll('#contact-inputs input').forEach(input => {
@@ -1044,8 +1083,9 @@ function closeSettingsPanel() {
 document.getElementById('save-changes-btn').addEventListener('click', async () => {
 	if (!appState.currentUser) return;
 
+    // --- FASE 3: Actualizar lógica de guardado para leer todas las pestañas ---
 	const newSocials = {};
-	document.querySelectorAll('#socials-inputs-container input').forEach(input => {
+	document.querySelectorAll('#socials-inputs-container input[data-social]').forEach(input => {
 		const key = input.dataset.social;
 		const value = input.value.trim();
 		if (value !== '') {
@@ -1061,7 +1101,7 @@ document.getElementById('save-changes-btn').addEventListener('click', async () =
 	});
 	
 	const newSocialButtons = [];
-	document.querySelectorAll('#social-buttons-inputs-container input').forEach(input => {
+	document.querySelectorAll('#social-buttons-inputs-container input[data-social-button]').forEach(input => {
 		const value = input.value.trim();
 		if (value) {
 			const key = input.dataset.socialButton;
@@ -1070,6 +1110,7 @@ document.getElementById('save-changes-btn').addEventListener('click', async () =
 			newSocialButtons.push({ url });
 		}
 	});
+    // --- FIN FASE 3 ---
 
 	const dataToSave = {
 		display_name: document.getElementById('display-name-input').value,
@@ -1131,8 +1172,9 @@ function updateLivePreview() {
 		opacityControls.classList.add('hidden');
 	}
 	
+    // --- FASE 3: Actualizar lógica de previsualización para leer todas las pestañas ---
 	const newSocialButtons = [];
-	document.querySelectorAll('#social-buttons-inputs-container input').forEach(input => {
+	document.querySelectorAll('#social-buttons-inputs-container input[data-social-button]').forEach(input => {
 		const value = input.value.trim();
 		if (value) {
 			const key = input.dataset.socialButton;
@@ -1141,6 +1183,12 @@ function updateLivePreview() {
 			newSocialButtons.push({ url });
 		}
 	});
+
+    const newSocials = {};
+    document.querySelectorAll('#socials-inputs-container input[data-social]').forEach(input => {
+		if (input.value.trim() !== '') newSocials[input.dataset.social] = input.value.trim();
+	});
+    // --- FIN FASE 3 ---
 
 	const selectedFont = DOMElements.fontFamilyValue.value;
 	loadFontIfNeeded(selectedFont);
@@ -1155,13 +1203,11 @@ function updateLivePreview() {
 		button_style: document.querySelector('input[name="buttonStyle"]:checked')?.value || 'filled',
 		button_shape_style: document.querySelector('input[name="buttonShape"]:checked')?.value || 'rounded-lg',
 		font_family: selectedFont,
-		socials: {},
+		socials: newSocials,
 		social_buttons: newSocialButtons,
 		contact_info: {},
 	};
-	document.querySelectorAll('#socials-inputs-container input').forEach(input => {
-		if (input.value.trim() !== '') previewData.socials[input.dataset.social] = input.value.trim();
-	});
+	
 	 document.querySelectorAll('#contact-inputs input').forEach(input => {
 		if (input.value.trim() !== '') previewData.contact_info[input.dataset.contact] = input.value.trim();
 	});
@@ -1794,10 +1840,7 @@ const stopDrag = () => {
 };
 dragger.addEventListener('touchstart', (e) => { e.preventDefault(); document.addEventListener('touchmove', handleDrag); document.addEventListener('touchend', stopDrag); });
 
-// --- 20. LÓGICA DE BOTONES SOCIALES ---
-// Se elimina la lógica anterior de renderizado y eventos de añadir/eliminar
-
-// --- 21. LÓGICA DEL TEXTAREA AUTO-AJUSTABLE ---
+// --- 20. LÓGICA DEL TEXTAREA AUTO-AJUSTABLE ---
 function autoResizeTextarea(element) {
 	element.style.height = 'auto';
 	element.style.height = (element.scrollHeight) + 'px';
@@ -1809,7 +1852,7 @@ DOMElements.settingsPanelContent.addEventListener('focusin', (e) => {
 	}
 });
 
-// --- 22. LÓGICA DE CAMBIO DE CONTRASEÑA ---
+// --- 21. LÓGICA DE CAMBIO DE CONTRASEÑA ---
 const passwordModal = { current: document.getElementById('current-password-input'), new: document.getElementById('new-password-input'), confirm: document.getElementById('confirm-password-input'), currentError: document.getElementById('current-password-error'), newError: document.getElementById('new-password-error'), confirmError: document.getElementById('confirm-password-error') };
 function showPasswordError(field, message) {
 	passwordModal[field].classList.add('!border-red-500', '!ring-red-500');
@@ -1844,7 +1887,7 @@ document.getElementById('password-change-save-btn').addEventListener('click', as
 	const { error: verificationError } = await supabaseClient.auth.signInWithPassword({ email: appState.currentUser?.email, password: passwordModal.current.value });
 	if (verificationError) return showPasswordError('current', 'La contraseña actual es incorrecta.');
 
-	const { error: updateError } = await supabaseClient.auth.updateUser({ password: newPassword });
+	const { error: updateError } = await supabaseClient.auth.updateUser({ password: passwordModal.new.value });
 	if (updateError) showAlert(`Error al actualizar: ${updateError.message}`);
 	else {
 		showAlert('¡Contraseña actualizada con éxito!');
@@ -1852,7 +1895,7 @@ document.getElementById('password-change-save-btn').addEventListener('click', as
 	}
 });
 
-// --- 23. LÓGICA PARA MOSTRAR/OCULTAR CONTRASEÑA ---
+// --- 22. LÓGICA PARA MOSTRAR/OCULTAR CONTRASEÑA ---
 function setupPasswordToggle(inputId, toggleId) {
 	const passwordInput = document.getElementById(inputId);
 	const toggleButton = document.getElementById(toggleId);
@@ -1865,7 +1908,7 @@ function setupPasswordToggle(inputId, toggleId) {
 	});
 }
 
-// --- 24. LÓGICA DE RECUPERACIÓN DE CONTRASEÑA ---
+// --- 23. LÓGICA DE RECUPERACIÓN DE CONTRASEÑA ---
 document.getElementById('forgot-password-link').addEventListener('click', (e) => { e.preventDefault(); showPage('forgotPassword'); });
 document.getElementById('back-to-login-link').addEventListener('click', (e) => { e.preventDefault(); appState.isRecoveringPassword = false; showPage('auth'); });
 document.getElementById('send-recovery-btn').addEventListener('click', async () => {
@@ -1891,7 +1934,7 @@ document.getElementById('update-password-btn').addEventListener('click', async (
 	}
 });
 
-// --- 25. LÓGICA DEL SELECTOR DE FUENTE PERSONALIZADO ---
+// --- 24. LÓGICA DEL SELECTOR DE FUENTE PERSONALIZADO ---
 function populateFontSelector() {
 	DOMElements.fontSelectorOptions.innerHTML = '';
 	for (const fontClass in fontMap) {
@@ -1940,7 +1983,7 @@ DOMElements.fontSelectorOptions.addEventListener('click', (e) => {
 
 document.addEventListener('click', () => toggleFontSelector(true));
 
-// --- 26. LÓGICA DE ELIMINACIÓN Y REACTIVACIÓN DE CUENTA ---
+// --- 25. LÓGICA DE ELIMINACIÓN Y REACTIVACIÓN DE CUENTA ---
 document.getElementById('delete-account-btn').addEventListener('click', () => {
 	document.getElementById('delete-account-confirm-modal').classList.remove('hidden');
 });
@@ -1972,9 +2015,9 @@ document.getElementById('delete-account-confirm-btn').addEventListener('click', 
 	
 	const { error: updateError } = await supabaseClient
 		.from('profiles')
-		.update({ 
-			is_deactivated: true, 
-			deletion_scheduled_at: new Date().toISOString() 
+		.update({ 
+			is_deactivated: true, 
+			deletion_scheduled_at: new Date().toISOString() 
 		})
 		.eq('id', appState.currentUser.id);
 
@@ -2008,13 +2051,13 @@ document.getElementById('logout-for-deletion-btn').addEventListener('click', asy
 
 // --- INICIALIZACIÓN ---
 initializeApp();
-window.onload = () => { 
-	lucide.createIcons(); 
+window.onload = () => { 
+	lucide.createIcons(); 
 	setupPasswordToggle('password-input', 'auth-password-toggle');
 	setupPasswordToggle('current-password-input', 'current-password-toggle');
 	setupPasswordToggle('new-password-input', 'new-password-toggle');
 	setupPasswordToggle('confirm-password-input', 'confirm-password-toggle');
 	setupPasswordToggle('update-password-input', 'update-password-toggle');
-	setupPasswordToggle('update-confirm-password-toggle', 'update-confirm-password-toggle');
+	setupPasswordToggle('update-confirm-password-input', 'update-confirm-password-toggle');
 	setupPasswordToggle('delete-confirm-password-input', 'delete-confirm-password-toggle');
 };
