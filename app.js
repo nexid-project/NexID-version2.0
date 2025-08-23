@@ -209,9 +209,14 @@ async function fetchUserProfileWithRetry(userId, retries = 3, delay = 500) {
 async function handleAuthStateChange(session) {
 	if (appState.isRecoveringPassword) return;
 
+	// === CAMBIO: Añadir condición para no recargar si se está editando ===
+	if (appState.isSettingsDirty && DOMElements.settingsPanel.classList.contains('open')) {
+		return; // No hacer nada para no perder la previsualización
+	}
+	// === FIN DEL CAMBIO ===
+
 	if (appState.subscriptions.links) appState.subscriptions.links.unsubscribe();
 	
-	// Limpiar el estado del usuario actual al cambiar de estado
 	appState.currentUser = null;
 	appState.myProfile = null;
 
@@ -306,6 +311,7 @@ async function loadPublicProfile(username) {
 	}
 }
 
+// === CAMBIO: Se modifica la función para no recargar el perfil completo ===
 async function refreshLinks() {
 	if (!appState.currentUser) return;
 	const { data: linksData, error: linksError } = await supabaseClient
@@ -314,17 +320,20 @@ async function refreshLinks() {
 		.eq('user_id', appState.currentUser.id)
 		.order('order_index', { ascending: true });
 
-	if (linksError) return;
+	if (linksError) {
+        console.error("Error refreshing links:", linksError);
+        return;
+    }
 	
 	appState.links = linksData || [];
 	
-	const { data: updatedProfile } = await supabaseClient.from('profiles').select('*').eq('id', appState.currentUser.id).single();
-	appState.myProfile = updatedProfile;
-	appState.profile = updatedProfile;
-
-	renderProfile(appState.myProfile, true);
+	// 1. Actualizar la lista de enlaces en el editor del panel
 	renderLinksEditor(appState.links);
+    // 2. Volver a generar la previsualización en tiempo real para reflejar el nuevo enlace
+    //    y mantener los cambios no guardados (como la fuente).
+    updateLivePreview();
 }
+// === FIN DEL CAMBIO ===
 
 function listenToUserLinks(userId) {
 	if (appState.subscriptions.links) appState.subscriptions.links.unsubscribe();
@@ -385,7 +394,7 @@ function renderSingleLink(linkData, profileData) {
 	if (buttonShape !== 'underline') linkClasses.push(`btn-${buttonStyle}`);
 	linkClasses.push(buttonShape);
 	
-	const linkContent = iconHtml 
+	const linkContent = iconHtml 
 		? `<span class="w-6 h-6">${iconHtml}</span><span class="flex-grow text-center">${linkData.title}</span><span class="w-6 h-6"></span>`
 		: `<span class="flex-grow text-center">${linkData.title}</span>`;
 
@@ -681,8 +690,8 @@ document.getElementById('register-btn').addEventListener('click', async () => {
 	const password = document.getElementById('password-input').value;
 	if (!email || !password) return showAlert("Por favor, completa ambos campos.");
 	
-	const { data, error } = await supabaseClient.auth.signUp({ 
-		email, 
+	const { data, error } = await supabaseClient.auth.signUp({ 
+		email, 
 		password,
 		options: {
 			emailRedirectTo: `${window.location.origin}${window.location.pathname}`
@@ -721,7 +730,7 @@ document.getElementById('login-btn').addEventListener('click', async () => {
 });
 
 document.getElementById('google-login-btn').addEventListener('click', async () => {
-	const { error } = await supabaseClient.auth.signInWithOAuth({ 
+	const { error } = await supabaseClient.auth.signInWithOAuth({ 
 		provider: 'google',
 		options: {
 			redirectTo: `${window.location.origin}${window.location.pathname}`
@@ -1480,18 +1489,14 @@ function enterDesignMode() {
 		forceFallback: true,
 		fallbackOnBody: true,
 		
-		// === CAMBIO: Se ajusta la lógica de onStart para un posicionamiento y escalado perfectos ===
 		onStart: (evt) => {
-			// 1. Capturar la geometría del elemento original ANTES de cualquier cambio
 			const rect = evt.item.getBoundingClientRect();
 
-			// 2. Aplicar la clase de panorama y estilizar el clon en el siguiente ciclo de renderizado
 			setTimeout(() => {
 				DOMElements.profilePage.classList.add('panorama-active');
 				const fallbackEl = document.querySelector('.sortable-fallback');
 				
 				if (fallbackEl) {
-					// Aplicar clases de tema y fuente
 					const bodyClasses = document.body.className.split(' ');
 					const profilePageClasses = DOMElements.profilePage.className.split(' ');
 					const themeClass = bodyClasses.find(c => c.startsWith('theme-'));
@@ -1499,13 +1504,11 @@ function enterDesignMode() {
 					if (themeClass) fallbackEl.classList.add(themeClass);
 					if (fontClass) fallbackEl.classList.add(fontClass);
 					
-					// 3. Usar la geometría capturada para posicionar y dimensionar el clon
 					fallbackEl.style.width = `${rect.width}px`;
 					fallbackEl.style.height = `${rect.height}px`;
 					fallbackEl.style.top = `${rect.top}px`;
 					fallbackEl.style.left = `${rect.left}px`;
 					
-					// 4. Aplicar la transformación de escala
 					fallbackEl.style.transform = 'scale(0.85)';
 					fallbackEl.style.transformOrigin = 'top left';
 				}
@@ -1945,9 +1948,9 @@ document.getElementById('delete-account-confirm-btn').addEventListener('click', 
 	
 	const { error: updateError } = await supabaseClient
 		.from('profiles')
-		.update({ 
-			is_deactivated: true, 
-			deletion_scheduled_at: new Date().toISOString() 
+		.update({ 
+			is_deactivated: true, 
+			deletion_scheduled_at: new Date().toISOString() 
 		})
 		.eq('id', appState.currentUser.id);
 
@@ -1981,8 +1984,8 @@ document.getElementById('logout-for-deletion-btn').addEventListener('click', asy
 
 // --- INICIALIZACIÓN ---
 initializeApp();
-window.onload = () => { 
-	lucide.createIcons(); 
+window.onload = () => { 
+	lucide.createIcons(); 
 	setupPasswordToggle('password-input', 'auth-password-toggle');
 	setupPasswordToggle('current-password-input', 'current-password-toggle');
 	setupPasswordToggle('new-password-input', 'new-password-toggle');
