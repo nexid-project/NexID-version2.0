@@ -193,7 +193,7 @@
 .sortable-fallback {
 	opacity: 1 !important;
 	background: transparent !important;
-	box-sizing: border-box; 
+	box-sizing: border-box; 
 	color: var(--text-color);
 }
 .drag-handle {
@@ -286,3 +286,60 @@
 		overflow: hidden;
 	}
 }
+
+/* === CAMBIO: Nuevos estilos para las Pestañas Sociales === */
+.social-tabs-container {
+	display: flex;
+	gap: 1rem; /* 16px */
+	min-height: 300px; /* Altura mínima para evitar que se colapse */
+}
+
+.social-tabs-nav {
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem; /* 8px */
+	flex-shrink: 0;
+	border-right: 1px solid #4a5568; /* border-gray-600 */
+	padding-right: 1rem; /* 16px */
+}
+
+.social-tab-button {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 40px;
+	height: 40px;
+	background-color: transparent;
+	border-radius: 0.5rem; /* rounded-lg */
+	color: #9ca3af; /* text-gray-400 */
+	cursor: pointer;
+	transition: all 0.2s ease-in-out;
+	border: 2px solid transparent;
+}
+
+.social-tab-button:hover {
+	background-color: #4a5568; /* bg-gray-600 */
+	color: #e5e7eb; /* text-gray-200 */
+}
+
+.social-tab-button.active {
+	background-color: #4f46e5; /* bg-indigo-600 */
+	color: white;
+	border-color: #818cf8; /* border-indigo-400 */
+}
+
+.social-tabs-content {
+	flex-grow: 1;
+	min-width: 0; /* Previene que el contenido se desborde */
+}
+
+.social-tab-pane {
+	display: none;
+	flex-direction: column;
+	gap: 0.75rem; /* 12px */
+}
+
+.social-tab-pane.active {
+	display: flex;
+}
+/* === FIN DEL CAMBIO === */
