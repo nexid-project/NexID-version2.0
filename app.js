@@ -908,35 +908,34 @@ function renderSocialInputs(socials) {
 	lucide.createIcons();
 }
 
-// === CAMBIO: Nueva función para renderizar la interfaz de Botones Sociales ===
 function renderSocialButtonsEditor(buttons) {
-    const container = document.getElementById('social-buttons-inputs-container');
-    container.innerHTML = '';
+    const container = document.getElementById('social-buttons-inputs-container');
+    container.innerHTML = '';
 
-    SOCIAL_ICON_ORDER.forEach(key => {
-        const info = socialButtonStyles[key];
-        const existingButton = (buttons || []).find(btn => getSocialInfoForUrl(btn.url)?.key === key);
-        const value = existingButton ? existingButton.url : '';
+    SOCIAL_ICON_ORDER.forEach(key => {
+        const info = socialButtonStyles[key];
+        const existingButton = (buttons || []).find(btn => getSocialInfoForUrl(btn.url)?.key === key);
+        const value = existingButton ? existingButton.url : '';
 
-        const item = document.createElement('div');
-        item.className = 'flex items-center gap-3';
+        const item = document.createElement('div');
+        item.className = 'flex items-center gap-3';
 
-        // Previsualización del botón
-        const preview = document.createElement('div');
-        preview.className = `social-button flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-lg ${info.bg} ${info.color}`;
-        preview.innerHTML = info.icon.replace(/width="32"/g, 'width="20"').replace(/height="32"/g, 'height="20"');
+        // Previsualización del botón
+        const preview = document.createElement('div');
+        preview.className = `social-button flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-lg ${info.bg} ${info.color}`;
+        preview.innerHTML = info.icon.replace(/width="32"/g, 'width="20"').replace(/height="32"/g, 'height="20"');
 
-        // Input
-        const inputWrapper = document.createElement('div');
-        inputWrapper.className = 'flex-grow flex items-center bg-gray-200 rounded-md focus-within:ring-2 focus-within:ring-cyan-500 w-full';
-        inputWrapper.innerHTML = `
-            <input type="text" data-social-button="${key}" placeholder="${info.name}" class="w-full p-2 text-gray-900 bg-transparent focus:outline-none" value="${value}">
-        `;
+        // Input
+        const inputWrapper = document.createElement('div');
+        inputWrapper.className = 'flex-grow flex items-center bg-gray-200 rounded-md focus-within:ring-2 focus-within:ring-cyan-500 w-full';
+        inputWrapper.innerHTML = `
+            <input type="text" data-social-button="${key}" placeholder="${info.name}" class="w-full p-2 text-gray-900 bg-transparent focus:outline-none" value="${value}">
+        `;
 
-        item.appendChild(preview);
-        item.appendChild(inputWrapper);
-        container.appendChild(item);
-    });
+        item.appendChild(preview);
+        item.appendChild(inputWrapper);
+        container.appendChild(item);
+    });
 }
 
 function openSettingsPanel() {
@@ -982,7 +981,7 @@ function openSettingsPanel() {
 	DOMElements.fontSelectorLabel.className = currentFont;
 
 	renderSocialInputs(profile.socials);
-	renderSocialButtonsEditor(profile.social_buttons); // Se llama a la nueva función
+	renderSocialButtonsEditor(profile.social_buttons);
 
 	const contact = profile.contact_info || {};
 	document.querySelectorAll('#contact-inputs input').forEach(input => {
@@ -1061,7 +1060,6 @@ document.getElementById('save-changes-btn').addEventListener('click', async () =
 		}
 	});
 	
-	// === CAMBIO: Nueva lógica para guardar los botones sociales ===
 	const newSocialButtons = [];
 	document.querySelectorAll('#social-buttons-inputs-container input').forEach(input => {
 		const value = input.value.trim();
@@ -1072,7 +1070,6 @@ document.getElementById('save-changes-btn').addEventListener('click', async () =
 			newSocialButtons.push({ url });
 		}
 	});
-	// === FIN DEL CAMBIO ===
 
 	const dataToSave = {
 		display_name: document.getElementById('display-name-input').value,
@@ -1134,7 +1131,6 @@ function updateLivePreview() {
 		opacityControls.classList.add('hidden');
 	}
 	
-	// === CAMBIO: Nueva lógica para la previsualización de botones sociales ===
 	const newSocialButtons = [];
 	document.querySelectorAll('#social-buttons-inputs-container input').forEach(input => {
 		const value = input.value.trim();
@@ -1145,7 +1141,6 @@ function updateLivePreview() {
 			newSocialButtons.push({ url });
 		}
 	});
-	// === FIN DEL CAMBIO ===
 
 	const selectedFont = DOMElements.fontFamilyValue.value;
 	loadFontIfNeeded(selectedFont);
