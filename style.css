@@ -363,3 +363,9 @@
 	height: auto; /* Permite que la cuadrícula controle la altura */
 	aspect-ratio: 1 / 1; /* Mantiene los botones cuadrados */
 }
+
+/* === AJUSTE PARA ICONOS ADAPTABLES DENTRO DE BOTONES === */
+#social-buttons-section .social-button svg {
+	width: 60%; /* El icono ocupará el 60% del ancho del botón */
+	height: 60%; /* El icono ocupará el 60% de la altura del botón */
+}
