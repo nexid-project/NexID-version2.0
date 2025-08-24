@@ -193,7 +193,7 @@
 .sortable-fallback {
 	opacity: 1 !important;
 	background: transparent !important;
-	box-sizing: border-box; 
+	box-sizing: border-box; 
 	color: var(--text-color);
 }
 .drag-handle {
@@ -343,3 +343,14 @@
 	display: flex;
 }
 /* === FIN DEL CAMBIO === */
+
+/* === AJUSTE PARA BOTONES SOCIALES EN MÓVIL === */
+@media (max-width: 639px) {
+	#social-buttons-section {
+		gap: 0.5rem; /* Reduce el espacio entre botones */
+	}
+	#social-buttons-section .social-button {
+		width: 3rem;  /* Reduce el ancho del botón (w-12) */
+		height: 3rem; /* Reduce la altura del botón (h-12) */
+	}
+}
