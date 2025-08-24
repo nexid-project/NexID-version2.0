@@ -193,7 +193,7 @@
 .sortable-fallback {
 	opacity: 1 !important;
 	background: transparent !important;
-	box-sizing: border-box; 
+	box-sizing: border-box; 
 	color: var(--text-color);
 }
 .drag-handle {
@@ -290,21 +290,17 @@
 /* === CAMBIO: Nuevos estilos para las Pestañas Sociales === */
 .social-tabs-container {
 	display: flex;
-	flex-direction: column; /* CAMBIO: De flex a column */
 	gap: 1rem; /* 16px */
 	min-height: 300px; /* Altura mínima para evitar que se colapse */
 }
 
 .social-tabs-nav {
 	display: flex;
-	flex-direction: row; /* CAMBIO: De column a row */
+	flex-direction: column;
 	gap: 0.5rem; /* 8px */
 	flex-shrink: 0;
-	border-right: none; /* CAMBIO: Se elimina borde derecho */
-	border-bottom: 1px solid #4a5568; /* CAMBIO: Se añade borde inferior */
-	padding-right: 0; /* CAMBIO: Se elimina padding */
-	padding-bottom: 0.5rem; /* CAMBIO: Se añade padding inferior */
-	overflow-x: auto; /* Permite scroll horizontal si hay muchas pestañas */
+	border-right: 1px solid #4a5568; /* border-gray-600 */
+	padding-right: 1rem; /* 16px */
 }
 
 .social-tab-button {
@@ -319,7 +315,6 @@
 	cursor: pointer;
 	transition: all 0.2s ease-in-out;
 	border: 2px solid transparent;
-	flex-shrink: 0; /* Evita que los botones se encojan */
 }
 
 .social-tab-button:hover {
@@ -348,15 +343,3 @@
 	display: flex;
 }
 /* === FIN DEL CAMBIO === */
-
-/* === AJUSTE PARA CAMPOS DE ICONOS SOCIALES === */
-/* Fuerza a los inputs de la sección "Iconos Sociales" a ocupar una sola columna para mayor legibilidad */
-#socials-inputs-container .social-tab-pane {
-	display: none; /* Oculta por defecto */
-	flex-direction: column;
-	gap: 0.75rem; /* 12px */
-}
-
-#socials-inputs-container .social-tab-pane.active {
-	display: flex; /* Muestra solo el activo */
-}
