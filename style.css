@@ -403,7 +403,7 @@
 }
 
 /* === AJUSTE FINAL PARA GARANTIZAR 6 BOTONES EN MÓVIL === */
-@media (max-width: 400px) {
+@media (max-width: 639px) {
 	#social-buttons-section {
 		gap: 0.5rem; /* 8px */
 	}
