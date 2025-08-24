@@ -369,3 +369,14 @@
 	width: 60%; /* El icono ocupará el 60% del ancho del botón */
 	height: 60%; /* El icono ocupará el 60% de la altura del botón */
 }
+
+/* === CORRECCIÓN PARA ICONOS DE PIE DE PÁGINA Y PREVISUALIZACIÓN === */
+#socials-footer svg {
+	width: 24px;
+	height: 24px;
+}
+
+.social-tabs-container .social-button svg {
+	width: 20px;
+	height: 20px;
+}
