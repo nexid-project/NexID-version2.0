@@ -371,7 +371,7 @@
 }
 
 /* === CORRECCIÓN PARA ICONOS DE PIE DE PÁGINA Y PREVISUALIZACIÓN === */
-#socials-footer svg {
+#socials-inputs-container svg {
 	width: 24px;
 	height: 24px;
 }
@@ -379,4 +379,20 @@
 .social-tabs-container .social-button svg {
 	width: 20px;
 	height: 20px;
+}
+
+#socials-footer {
+	display: grid;
+	grid-template-columns: repeat(8, 1fr);
+	gap: 1rem;
+	width: 100%;
+	max-width: 448px;
+	margin-left: auto;
+	margin-right: auto;
+}
+
+#socials-footer svg {
+	width: 100%;
+	height: auto;
+	aspect-ratio: 1 / 1;
 }
