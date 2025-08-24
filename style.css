@@ -347,7 +347,7 @@
 /* === AJUSTE PARA ARMONÍA Y CENTRADO DE BOTONES SOCIALES === */
 #social-buttons-section {
 	display: flex;
-	justify-content: center;
+	justify-content: space-around;
 	flex-wrap: wrap;
 	gap: 0.75rem; /* 12px */
 	width: 100%;
@@ -382,7 +382,7 @@
 /* === AJUSTE PARA ARMONÍA Y LÍMITE DE 8 ICONOS SOCIALES === */
 #socials-footer {
 	display: flex;
-	justify-content: center;
+	justify-content: space-around;
 	flex-wrap: wrap;
 	gap: 1rem; /* 16px */
 	width: 100%;
