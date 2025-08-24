@@ -383,7 +383,7 @@ const profileSectionTemplates = {
 	'username': (profileData) => `<div data-section="username" class="text-center draggable-item p-2"><p id="public-username" class="text-lg opacity-80">${profileData.username || ''}</p></div>`,
 	'description': (profileData) => `<div data-section="description" class="text-center draggable-item p-2"><p id="public-description" class="opacity-90">${profileData.description || ''}</p></div>`,
 	'social-buttons': () => `<section id="social-buttons-section" data-section="social-buttons" class="draggable-item p-2"></section>`,
-	'socials': () => `<footer id="socials-footer" data-section="socials" class="pt-6 pb-2 flex justify-center items-center gap-4 flex-wrap draggable-item p-2"></footer>`
+	'socials': () => `<footer id="socials-footer" data-section="socials" class="pt-6 pb-2 draggable-item p-2"></footer>`
 };
 
 function renderSingleLink(linkData, profileData) {
@@ -609,10 +609,10 @@ const socialButtonStyles = {
 };
 
 const socialCategories = [
-    { id: 'popular', name: 'Populares', icon: 'star', socials: ['instagram', 'tiktok', 'facebook', 'twitter', 'whatsapp'] },
-    { id: 'professional', name: 'Profesional', icon: 'briefcase', socials: ['linkedin', 'github', 'behance'] },
-    { id: 'gaming_audio', name: 'Gaming y Audio', icon: 'gamepad-2', socials: ['twitch', 'discord', 'spotify', 'soundcloud'] },
-    { id: 'creative_other', name: 'Creativo y Otros', icon: 'gem', socials: ['youtube', 'pinterest', 'telegram'] }
+    { id: 'popular', name: 'Populares', icon: 'star', socials: ['instagram', 'facebook', 'twitter', 'tiktok', 'pinterest'] },
+    { id: 'comunicacion', name: 'Comunicación', icon: 'messages-square', socials: ['whatsapp', 'telegram', 'discord'] },
+    { id: 'profesional', name: 'Profesional', icon: 'briefcase', socials: ['linkedin', 'github', 'behance'] },
+    { id: 'contenido', name: 'Contenido', icon: 'play-circle', socials: ['youtube', 'twitch', 'spotify', 'soundcloud'] }
 ];
 
 const SOCIAL_ICON_ORDER = socialCategories.flatMap(category => category.socials);
