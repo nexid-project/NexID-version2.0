@@ -344,24 +344,22 @@
 }
 /* === FIN DEL CAMBIO === */
 
-/* === AJUSTE PARA ARMONÍA Y LÍMITE DE 6 BOTONES SOCIALES === */
+/* === AJUSTE PARA ARMONÍA Y CENTRADO DE BOTONES SOCIALES === */
 #social-buttons-section {
-	display: grid;
-	/* Define explícitamente 6 columnas para mantener la consistencia */
-	grid-template-columns: repeat(6, 1fr);
+	display: flex;
+	justify-content: center;
+	flex-wrap: wrap;
 	gap: 0.75rem; /* 12px */
 	width: 100%;
-	/* Establece un ancho máximo igual al de los enlaces para armonía visual */
 	max-width: 448px;
-	/* Centra el contenedor en pantallas grandes */
 	margin-left: auto;
 	margin-right: auto;
 }
 
 #social-buttons-section .social-button {
-	width: auto;  /* Permite que la cuadrícula controle el ancho */
-	height: auto; /* Permite que la cuadrícula controle la altura */
-	aspect-ratio: 1 / 1; /* Mantiene los botones cuadrados */
+    width: 3.5rem; /* 56px */
+    height: 3.5rem; /* 56px */
+    flex-shrink: 0;
 }
 
 /* === AJUSTE PARA ICONOS ADAPTABLES DENTRO DE BOTONES === */
@@ -381,10 +379,12 @@
 	height: 20px;
 }
 
+/* === AJUSTE PARA ARMONÍA Y LÍMITE DE 8 ICONOS SOCIALES === */
 #socials-footer {
-	display: grid;
-	grid-template-columns: repeat(8, 1fr);
-	gap: 0.5rem; /* 8px */
+	display: flex;
+	justify-content: center;
+	flex-wrap: wrap;
+	gap: 1rem; /* 16px */
 	width: 100%;
 	max-width: 448px;
 	margin-left: auto;
