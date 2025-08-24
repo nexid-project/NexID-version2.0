@@ -344,13 +344,18 @@
 }
 /* === FIN DEL CAMBIO === */
 
-/* === AJUSTE INTELIGENTE PARA BOTONES SOCIALES (CSS GRID) === */
+/* === AJUSTE PARA ARMONÍA Y LÍMITE DE 6 BOTONES SOCIALES === */
 #social-buttons-section {
 	display: grid;
-	/* Crea tantas columnas como quepan, con un tamaño mínimo de 48px y máximo flexible */
-	grid-template-columns: repeat(auto-fit, minmax(48px, 1fr));
+	/* Define explícitamente 6 columnas para mantener la consistencia */
+	grid-template-columns: repeat(6, 1fr);
 	gap: 0.75rem; /* 12px */
 	width: 100%;
+	/* Establece un ancho máximo igual al de los enlaces para armonía visual */
+	max-width: 448px;
+	/* Centra el contenedor en pantallas grandes */
+	margin-left: auto;
+	margin-right: auto;
 }
 
 #social-buttons-section .social-button {
