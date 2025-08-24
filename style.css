@@ -344,13 +344,17 @@
 }
 /* === FIN DEL CAMBIO === */
 
-/* === AJUSTE PARA BOTONES SOCIALES EN MÓVIL === */
-@media (max-width: 639px) {
-	#social-buttons-section {
-		gap: 0.5rem; /* Reduce el espacio entre botones */
-	}
-	#social-buttons-section .social-button {
-		width: 3rem;  /* Reduce el ancho del botón (w-12) */
-		height: 3rem; /* Reduce la altura del botón (h-12) */
-	}
+/* === AJUSTE INTELIGENTE PARA BOTONES SOCIALES (CSS GRID) === */
+#social-buttons-section {
+	display: grid;
+	/* Crea tantas columnas como quepan, con un tamaño mínimo de 48px y máximo flexible */
+	grid-template-columns: repeat(auto-fit, minmax(48px, 1fr));
+	gap: 0.75rem; /* 12px */
+	width: 100%;
+}
+
+#social-buttons-section .social-button {
+	width: auto;  /* Permite que la cuadrícula controle el ancho */
+	height: auto; /* Permite que la cuadrícula controle la altura */
+	aspect-ratio: 1 / 1; /* Mantiene los botones cuadrados */
 }
