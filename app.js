@@ -383,7 +383,7 @@ const profileSectionTemplates = {
 	'username': (profileData) => `<div data-section="username" class="text-center draggable-item p-2"><p id="public-username" class="text-lg opacity-80">${profileData.username || ''}</p></div>`,
 	'description': (profileData) => `<div data-section="description" class="text-center draggable-item p-2"><p id="public-description" class="opacity-90">${profileData.description || ''}</p></div>`,
 	'social-buttons': () => `<section id="social-buttons-section" data-section="social-buttons" class="draggable-item p-2"></section>`,
-	'socials': () => `<footer id="socials-footer" data-section="socials" class="pt-6 pb-2 draggable-item p-2"></footer>`
+	'socials': () => `<footer id="socials-footer" data-section="socials" class="pt-4 pb-2 draggable-item p-2"></footer>`
 };
 
 function renderSingleLink(linkData, profileData) {
