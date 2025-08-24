@@ -364,8 +364,8 @@
 
 /* === AJUSTE PARA ICONOS ADAPTABLES DENTRO DE BOTONES === */
 #social-buttons-section .social-button svg {
-	width: 60%; /* El icono ocupará el 60% del ancho del botón */
-	height: 60%; /* El icono ocupará el 60% de la altura del botón */
+	width: 75%; /* El icono ocupará el 60% del ancho del botón */
+	height: 75%; /* El icono ocupará el 60% de la altura del botón */
 }
 
 /* === CORRECCIÓN PARA ICONOS DE PIE DE PÁGINA Y PREVISUALIZACIÓN === */
@@ -412,3 +412,4 @@
 		height: 3rem; /* 48px */
 	}
 }
+
