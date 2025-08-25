@@ -380,7 +380,9 @@
 /* === AJUSTE PARA ARMONÍA Y LÍMITE DE 8 ICONOS SOCIALES === */
 #socials-footer {
 	display: flex;
+	justify-content: center;
 	flex-wrap: wrap;
+	gap: 1rem; /* 16px */
 	width: 100%;
 	max-width: 448px;
 	margin-left: auto;
