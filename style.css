@@ -414,7 +414,9 @@
 /* === NUEVO: AJUSTE DE ESPACIADO PARA ICONOS EN ESCRITORIO === */
 @media (min-width: 640px) {
 	#socials-footer {
-		gap: 2.25rem; /* 36px */
-		max-width: 392px; /* (28px * 8) + (24px * 7) = 224 + 168 = 392px */
+		display: grid;
+		grid-template-columns: repeat(8, 1fr);
+		gap: 1rem;
+		justify-items: center;
 	}
 }
