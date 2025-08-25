@@ -410,3 +410,11 @@
 		height: 3rem; /* 48px */
 	}
 }
+
+/* === NUEVO: AJUSTE DE ESPACIADO PARA ICONOS EN ESCRITORIO === */
+@media (min-width: 640px) {
+	#socials-footer {
+		gap: 2rem; /* 32px */
+		max-width: 448px; /* (28px * 8) + (32px * 7) = 224 + 224 = 448px */
+	}
+}
