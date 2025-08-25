@@ -384,7 +384,7 @@
 	flex-wrap: wrap;
 	gap: 1rem; /* 16px */
 	width: 100%;
-	max-width: 448px;
+	max-width: 344px; /* (28px * 8) + (16px * 7) = 224 + 112 = 336px. Se da un poco de margen. */
 	margin-left: auto;
 	margin-right: auto;
 }
