@@ -668,7 +668,9 @@ function renderSocialButtons(buttons) {
 	const section = document.getElementById('social-buttons-section');
 	if (!section) return;
 	section.innerHTML = '';
-	(buttons || []).forEach(buttonData => {
+	const buttonList = buttons || []; // Asegurarse de que tenemos un array
+
+	buttonList.forEach(buttonData => {
 		const info = getSocialInfoForUrl(buttonData.url);
 		if (!info) return;
 
@@ -680,6 +682,26 @@ function renderSocialButtons(buttons) {
 		buttonEl.innerHTML = `${largeSocialIcons[info.key]}`;
 		section.appendChild(buttonEl);
 	});
+
+	// --- Lógica de alineación inteligente ---
+	const buttonCount = buttonList.length;
+	// Resetea los estilos en línea para empezar de cero
+	section.style.justifyContent = '';
+	section.style.gap = '';
+
+	if (buttonCount > 0 && buttonCount <= 3) {
+		section.style.justifyContent = 'center';
+		section.style.gap = '20px';
+	} else if (buttonCount === 4) {
+		section.style.justifyContent = 'space-evenly';
+	} else if (buttonCount === 5) {
+		section.style.justifyContent = 'space-around';
+	} else if (buttonCount === 6) {
+		section.style.justifyContent = 'space-between';
+	} else if (buttonCount >= 7) {
+		section.style.justifyContent = 'center';
+		section.style.gap = '12px';
+	}
 }
 
 function renderProfileActions(profileData) {
