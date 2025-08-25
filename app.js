@@ -648,7 +648,6 @@ function renderSocialIcons(socials, socialsOrder) {
 	if (!socials) return;
 
 	const order = socialsOrder && socialsOrder.length > 0 ? socialsOrder : SOCIAL_ICON_ORDER;
-	let iconCount = 0;
 	
 	order.forEach(key => {
 		const username = socials[key];
@@ -661,27 +660,12 @@ function renderSocialIcons(socials, socialsOrder) {
 			link.className = 'opacity-70 hover:opacity-100 transition-opacity draggable-item';
 			link.dataset.socialKey = key;
 			footer.appendChild(link);
-			iconCount++;
 		}
 	});
 
-	// --- Lógica de alineación inteligente para iconos ---
-	footer.style.justifyContent = '';
-	footer.style.gap = '';
-
-	if (iconCount > 0 && iconCount <= 3) {
-		footer.style.justifyContent = 'center';
-		footer.style.gap = '20px';
-	} else if (iconCount === 4) {
-		footer.style.justifyContent = 'space-evenly';
-	} else if (iconCount === 5) {
-		footer.style.justifyContent = 'space-around';
-	} else if (iconCount === 6) {
-		footer.style.justifyContent = 'space-between';
-	} else if (iconCount >= 7) {
-		footer.style.justifyContent = 'center';
-		footer.style.gap = '12px';
-	}
+	// --- Lógica de alineación simplificada ---
+	footer.style.justifyContent = 'center';
+	footer.style.gap = '1rem'; // 16px
 }
 
 function renderSocialButtons(buttons) {
