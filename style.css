@@ -384,7 +384,6 @@
 	flex-wrap: wrap;
 	gap: 1rem; /* 16px */
 	width: 100%;
-	max-width: 344px; /* (28px * 8) + (16px * 7) = 224 + 112 = 336px. Se da un poco de margen. */
 	margin-left: auto;
 	margin-right: auto;
 }
@@ -414,7 +413,6 @@
 /* === NUEVO: AJUSTE DE ESPACIADO PARA ICONOS EN ESCRITORIO === */
 @media (min-width: 640px) {
 	#socials-footer {
-		gap: 2rem; /* 32px */
-		max-width: 448px; /* (28px * 8) + (32px * 7) = 224 + 224 = 448px */
+		gap: 1.75rem; /* 28px */
 	}
 }
