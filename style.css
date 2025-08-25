@@ -381,11 +381,15 @@
 #socials-footer {
 	display: flex;
 	justify-content: center;
+	width: 100%;
+}
+
+.social-icons-wrapper {
+	display: flex;
+	justify-content: center;
 	flex-wrap: wrap;
 	gap: 1rem; /* 16px */
 	width: 100%;
-	margin-left: auto;
-	margin-right: auto;
 }
 
 #socials-footer a {
@@ -413,7 +417,7 @@
 
 /* === NUEVO: AJUSTE DE ESPACIADO PARA ICONOS EN ESCRITORIO === */
 @media (min-width: 640px) {
-	#socials-footer {
+	.social-icons-wrapper {
 		max-width: 392px; /* (28px * 8) + (24px * 7) = 392px */
 		gap: 1.5rem; /* 24px */
 	}
