@@ -413,6 +413,6 @@
 /* === NUEVO: AJUSTE DE ESPACIADO PARA ICONOS EN ESCRITORIO === */
 @media (min-width: 640px) {
 	#socials-footer {
-		gap: 2.2rem; /* 35.2px */
+		gap: 2.25rem; /* 36px */
 	}
 }
