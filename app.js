@@ -644,7 +644,9 @@ function getSocialIconForUrl(url) {
 function renderSocialIcons(socials, socialsOrder) {
 	const footer = document.getElementById('socials-footer');
 	if (!footer) return;
-	footer.innerHTML = '';
+	// Añadimos un contenedor interno para controlar el ancho y el centrado
+	footer.innerHTML = '<div class="social-icons-wrapper"></div>';
+	const wrapper = footer.querySelector('.social-icons-wrapper');
 	if (!socials) return;
 
 	const order = socialsOrder && socialsOrder.length > 0 ? socialsOrder : SOCIAL_ICON_ORDER;
@@ -657,15 +659,11 @@ function renderSocialIcons(socials, socialsOrder) {
 			link.target = '_blank';
 			link.rel = 'noopener noreferrer';
 			link.innerHTML = socialIcons[key];
-			link.className = 'opacity-70 hover:opacity-100 transition-opacity draggable-item';
+			link.className = 'opacity-70 hover:opacity-100 transition-opacity';
 			link.dataset.socialKey = key;
-			footer.appendChild(link);
+			wrapper.appendChild(link);
 		}
 	});
-
-	// --- Lógica de alineación simplificada ---
-	footer.style.justifyContent = 'center';
-	footer.style.gap = '1rem'; // 16px
 }
 
 function renderSocialButtons(buttons) {
