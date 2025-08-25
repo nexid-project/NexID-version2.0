@@ -384,6 +384,7 @@
 	flex-wrap: wrap;
 	gap: 1rem; /* 16px */
 	width: 100%;
+	max-width: 448px; 
 	margin-left: auto;
 	margin-right: auto;
 }
@@ -413,13 +414,6 @@
 /* === NUEVO: AJUSTE DE ESPACIADO PARA ICONOS EN ESCRITORIO === */
 @media (min-width: 640px) {
 	#socials-footer {
-		gap: 15rem; /* 28px */
+		gap: 2rem; /* 32px */
 	}
 }
-
-
-
-
-
-
-
