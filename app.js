@@ -503,6 +503,22 @@ function renderProfile(profileData, isOwner) {
 	const allSections = ["profile-image", "display-name", "username", "description", "featured-video", "social-buttons", "socials"];
 	let layoutOrder = appState.tempLayoutOrder || profileData.layout_order || [...allSections];
 
+    // --- INICIO DE LA CORRECCIÓN ---
+    // Asegurarse de que todas las secciones por defecto existan en el layout del usuario,
+    // especialmente para perfiles antiguos que no tienen las nuevas secciones.
+    allSections.forEach(section => {
+        if (!layoutOrder.includes(section)) {
+            // Si falta una sección, la insertamos en una posición lógica (antes de los iconos sociales)
+            const socialsIndex = layoutOrder.indexOf('socials');
+            if (socialsIndex !== -1) {
+                layoutOrder.splice(socialsIndex, 0, section);
+            } else {
+                layoutOrder.push(section); // Si no hay 'socials', la añadimos al final
+            }
+        }
+    });
+    // --- FIN DE LA CORRECCIÓN ---
+
 	const linksIndex = layoutOrder.indexOf('links');
 	if (linksIndex !== -1) {
 		const linkIds = appState.links.map(link => `link_${link.id}`);
