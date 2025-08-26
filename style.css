@@ -390,6 +390,8 @@
 	flex-wrap: wrap;
 	gap: 1rem; /* 16px */
 	width: 100%;
+	/* === NUEVO: Límite de 8 iconos en móvil === */
+	max-width: 336px; /* (28px * 8) + (16px * 7) = 336px */
 }
 
 #socials-footer a {
@@ -415,7 +417,7 @@
 	}
 }
 
-/* === NUEVO: AJUSTE DE ESPACIADO PARA ICONOS EN ESCRITORIO === */
+/* === AJUSTE DE ESPACIADO PARA ICONOS EN ESCRITORIO === */
 @media (min-width: 640px) {
 	.social-icons-wrapper {
 		max-width: 392px; /* (28px * 8) + (24px * 7) = 392px */
