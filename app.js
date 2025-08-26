@@ -100,6 +100,14 @@ const DOMElements = {
 	fontSelectorLabel: document.getElementById('font-selector-label'),
 	fontSelectorOptions: document.getElementById('font-selector-options'),
 	fontFamilyValue: document.getElementById('font-family-value'),
+    // Referencias para el nuevo modal de registro
+    registerModal: document.getElementById('register-modal'),
+    showRegisterModalBtn: document.getElementById('show-register-modal-btn'),
+    createAccountBtn: document.getElementById('create-account-btn'),
+    backToLoginLink: document.getElementById('back-to-login-link'),
+    registerEmailInput: document.getElementById('register-email-input'),
+    registerPasswordInput: document.getElementById('register-password-input'),
+    registerConfirmPasswordInput: document.getElementById('register-confirm-password-input'),
 };
 
 // --- 4. FUNCIONES DE UTILIDAD (MODALES, ETC.) ---
@@ -736,33 +744,52 @@ function renderProfileActions(profileData) {
 
 // --- 7. MANEJADORES DE EVENTOS ---
 
-document.getElementById('register-btn').addEventListener('click', async () => {
-	const email = document.getElementById('email-input').value;
-	const password = document.getElementById('password-input').value;
-	if (!email || !password) return showAlert("Por favor, completa ambos campos.");
-	
-	const { data, error } = await supabaseClient.auth.signUp({ 
-		email, 
-		password,
-		options: {
-			emailRedirectTo: `${window.location.origin}${window.location.pathname}`
-		}
-	});
-
-	if (error) {
-		if (error.message.toLowerCase().includes('user already registered')) {
-			showAlert('Ya existe una cuenta con este correo. Por favor, inicia sesión.');
-		} else {
-			showAlert(`Error al registrar: ${error.message}`);
-		}
-	} else if (data.user) {
-		if (data.user.identities && data.user.identities.length > 0) {
-			showAlert("¡Registro exitoso! Revisa tu correo para confirmar tu cuenta.");
-		} else {
-			showAlert('Ya existe una cuenta con este correo. Hemos reenviado el enlace de confirmación si es necesario.');
-		}
-	}
+// NUEVO: Lógica para el modal de registro
+DOMElements.showRegisterModalBtn.addEventListener('click', () => {
+    // Transfiere los datos del formulario de login al modal
+    DOMElements.registerEmailInput.value = document.getElementById('email-input').value;
+    DOMElements.registerPasswordInput.value = document.getElementById('password-input').value;
+    // Muestra el modal
+    DOMElements.registerModal.classList.remove('hidden');
 });
+
+DOMElements.backToLoginLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    DOMElements.registerModal.classList.add('hidden');
+});
+
+DOMElements.createAccountBtn.addEventListener('click', async () => {
+    const email = DOMElements.registerEmailInput.value;
+    const password = DOMElements.registerPasswordInput.value;
+    const confirmPassword = DOMElements.registerConfirmPasswordInput.value;
+
+    if (!email || !password || !confirmPassword) {
+        return showAlert("Por favor, completa todos los campos.");
+    }
+    if (password !== confirmPassword) {
+        return showAlert("Las contraseñas no coinciden.");
+    }
+
+    const { data, error } = await supabaseClient.auth.signUp({
+        email,
+        password,
+        options: {
+            emailRedirectTo: `${window.location.origin}${window.location.pathname}`
+        }
+    });
+
+    if (error) {
+        if (error.message.toLowerCase().includes('user already registered')) {
+            showAlert('Ya existe una cuenta con este correo. Por favor, inicia sesión.');
+        } else {
+            showAlert(`Error al registrar: ${error.message}`);
+        }
+    } else if (data.user) {
+        showAlert("¡Registro exitoso! Revisa tu correo para confirmar tu cuenta.");
+        DOMElements.registerModal.classList.add('hidden');
+    }
+});
+
 
 document.getElementById('login-btn').addEventListener('click', async () => {
 	const email = document.getElementById('email-input').value;
@@ -1967,7 +1994,9 @@ function setupPasswordToggle(inputId, toggleId) {
 
 // --- 23. LÓGICA DE RECUPERACIÓN DE CONTRASEÑA ---
 document.getElementById('forgot-password-link').addEventListener('click', (e) => { e.preventDefault(); showPage('forgotPassword'); });
-document.getElementById('back-to-login-link').addEventListener('click', (e) => { e.preventDefault(); appState.isRecoveringPassword = false; showPage('auth'); });
+// Actualizado para que el enlace de "volver" funcione desde la página de olvido de contraseña
+document.getElementById('back-to-login-link-from-forgot').addEventListener('click', (e) => { e.preventDefault(); appState.isRecoveringPassword = false; showPage('auth'); });
+
 document.getElementById('send-recovery-btn').addEventListener('click', async () => {
 	const email = document.getElementById('recovery-email-input').value;
 	if (!email) return showAlert('Por favor, introduce tu correo electrónico.');
@@ -2111,6 +2140,10 @@ initializeApp();
 window.onload = () => { 
 	lucide.createIcons(); 
 	setupPasswordToggle('password-input', 'auth-password-toggle');
+    // Nuevos toggles para el modal de registro
+    setupPasswordToggle('register-password-input', 'register-password-toggle');
+    setupPasswordToggle('register-confirm-password-input', 'register-confirm-password-toggle');
+    // Toggles existentes
 	setupPasswordToggle('current-password-input', 'current-password-toggle');
 	setupPasswordToggle('new-password-input', 'new-password-toggle');
 	setupPasswordToggle('confirm-password-input', 'confirm-password-toggle');
