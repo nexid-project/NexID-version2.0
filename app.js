@@ -737,24 +737,24 @@ function getSocialIconForUrl(url) {
 function renderSocialIcons(socials, socialsOrder) {
 	const footer = document.getElementById('socials-footer');
 	if (!footer) return;
-	footer.innerHTML = ''; // Empezar limpio
+	footer.innerHTML = ''; // Start clean
 
-	if (!socials || Object.keys(socials).length === 0) return; // Salir si no hay datos sociales
+	if (!socials || Object.keys(socials).length === 0) return; // Exit if no social data
 
 	const order = socialsOrder && socialsOrder.length > 0 ? socialsOrder : SOCIAL_ICON_ORDER;
 	
-    // Filtrar por claves que realmente existen en el objeto socials
+    // Filter for keys that actually exist in the socials object
     const validKeys = order.filter(key => socials[key]); 
 
-    if (validKeys.length === 0) return; // Salir si no hay iconos válidos para mostrar
+    if (validKeys.length === 0) return; // Exit if no valid icons to show
 
-    // Ahora que sabemos que hay iconos, creamos el contenedor
+    // Now that we know we have icons, create the wrapper
     const wrapper = document.createElement('div');
     wrapper.className = 'social-icons-wrapper';
 	
 	validKeys.forEach(key => {
 		const username = socials[key];
-        // La comprobación `if (username && socialIcons[key])` es ahora redundante debido al filtro validKeys, pero la mantenemos por seguridad.
+        // The check `if (username && socialIcons[key])` is now redundant because of validKeys filter, but let's keep it for safety.
 		if (username && socialIcons[key]) {
 			const link = document.createElement('a');
 			link.href = `${socialBaseUrls[key]}${username}`;
