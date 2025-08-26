@@ -1367,8 +1367,20 @@ document.getElementById('add-update-link-btn').addEventListener('click', async (
 				}
 			}
 			
-			const { error: profileUpdateError } = await supabaseClient.from('profiles').update({ layout_order: currentLayout }).eq('id', appState.currentUser.id);
-			if (profileUpdateError) showAlert('Enlace creado, pero no se pudo actualizar el diseño.');
+			const { data: updatedProfile, error: profileUpdateError } = await supabaseClient
+				.from('profiles')
+				.update({ layout_order: currentLayout })
+				.eq('id', appState.currentUser.id)
+				.select()
+				.single();
+
+			if (profileUpdateError) {
+				showAlert('Enlace creado, pero no se pudo actualizar el diseño.');
+			} else {
+				// === FIX: Actualizar el estado del perfil local con el nuevo layout_order ===
+				appState.myProfile = updatedProfile;
+				appState.profile = updatedProfile;
+			}
 			exitEditMode();
 			await refreshLinks();
 		}
