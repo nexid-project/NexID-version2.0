@@ -570,10 +570,12 @@ function renderProfile(profileData, isOwner) {
 
 function updateContainerVisibilityInDesignMode(profileData) {
 	if (!appState.isDesignModeActive) return;
-	const descriptionContainer = document.querySelector('[data-section="description"]');
-	if (descriptionContainer) descriptionContainer.classList.toggle('is-empty', !profileData.description || profileData.description.trim() === '');
 	
-    // CORRECCIÓN: Comprobar directamente los datos en lugar del DOM
+    const descriptionContainer = document.querySelector('[data-section="description"]');
+	if (descriptionContainer) {
+        descriptionContainer.classList.toggle('is-empty', !profileData.description || profileData.description.trim() === '');
+    }
+	
     const socialButtonsContainer = document.querySelector('[data-section="social-buttons"]');
 	if (socialButtonsContainer) {
         const hasButtons = profileData.social_buttons && profileData.social_buttons.length > 0;
@@ -587,7 +589,9 @@ function updateContainerVisibilityInDesignMode(profileData) {
     }
     
     const videoContainer = document.querySelector('[data-section="featured-video"]');
-    if(videoContainer) videoContainer.classList.toggle('is-empty', !parseVideoUrl(profileData.featured_video_url));
+    if(videoContainer) {
+        videoContainer.classList.toggle('is-empty', !parseVideoUrl(profileData.featured_video_url));
+    }
 }
 
 function renderLinksEditor(links) {
@@ -733,24 +737,24 @@ function getSocialIconForUrl(url) {
 function renderSocialIcons(socials, socialsOrder) {
 	const footer = document.getElementById('socials-footer');
 	if (!footer) return;
-	footer.innerHTML = ''; // Start clean
+	footer.innerHTML = ''; // Empezar limpio
 
-	if (!socials || Object.keys(socials).length === 0) return; // Exit if no social data
+	if (!socials || Object.keys(socials).length === 0) return; // Salir si no hay datos sociales
 
 	const order = socialsOrder && socialsOrder.length > 0 ? socialsOrder : SOCIAL_ICON_ORDER;
 	
-    // Filter for keys that actually exist in the socials object
+    // Filtrar por claves que realmente existen en el objeto socials
     const validKeys = order.filter(key => socials[key]); 
 
-    if (validKeys.length === 0) return; // Exit if no valid icons to show
+    if (validKeys.length === 0) return; // Salir si no hay iconos válidos para mostrar
 
-    // Now that we know we have icons, create the wrapper
+    // Ahora que sabemos que hay iconos, creamos el contenedor
     const wrapper = document.createElement('div');
     wrapper.className = 'social-icons-wrapper';
 	
 	validKeys.forEach(key => {
 		const username = socials[key];
-        // The check `if (username && socialIcons[key])` is now redundant because of validKeys filter, but let's keep it for safety.
+        // La comprobación `if (username && socialIcons[key])` es ahora redundante debido al filtro validKeys, pero la mantenemos por seguridad.
 		if (username && socialIcons[key]) {
 			const link = document.createElement('a');
 			link.href = `${socialBaseUrls[key]}${username}`;
