@@ -424,3 +424,19 @@
 		gap: 1.5rem; /* 24px */
 	}
 }
+
+/* --- NUEVO: Solución para arrastrar y deshabilitar video en modo diseño --- */
+.design-mode .draggable-item[data-section="featured-video"] {
+	position: relative;
+}
+
+.design-mode .draggable-item[data-section="featured-video"]::after {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 10; /* Se asegura de que esté sobre el iframe */
+	cursor: grab;
+}
