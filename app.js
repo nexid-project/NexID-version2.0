@@ -186,9 +186,6 @@ function initializeApp() {
 		appState.subscriptions.auth.unsubscribe();
 	}
 
-	// === CORRECCIÓN: Ser más específico para detectar la recuperación de contraseña ===
-	// El enlace de verificación de correo también contiene 'access_token', pero solo el de
-	// recuperación contiene 'type=recovery'. Esto evita la confusión.
 	if (window.location.hash.includes('type=recovery')) {
 		appState.isRecoveringPassword = true;
 	}
