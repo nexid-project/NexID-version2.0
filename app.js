@@ -1382,7 +1382,10 @@ document.getElementById('add-update-link-btn').addEventListener('click', async (
 				appState.profile = updatedProfile;
 			}
 			exitEditMode();
-			await refreshLinks();
+			// === FIX: Actualizar el estado local y la UI directamente en lugar de llamar a refreshLinks() ===
+			appState.links.push(newLink);
+			renderLinksEditor(appState.links);
+			updateLivePreview();
 		}
 	}
 });
