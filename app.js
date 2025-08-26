@@ -443,8 +443,18 @@ const profileSectionTemplates = {
         }
         return '';
     },
-	'social-buttons': () => `<section id="social-buttons-section" data-section="social-buttons" class="draggable-item p-2"></section>`,
-	'socials': () => `<footer id="socials-footer" data-section="socials" class="pt-4 pb-2 draggable-item p-2"></footer>`
+	'social-buttons': (profileData) => {
+        if (profileData.social_buttons && profileData.social_buttons.length > 0) {
+            return `<section id="social-buttons-section" data-section="social-buttons" class="draggable-item p-2"></section>`;
+        }
+        return '';
+    },
+	'socials': (profileData) => {
+        if (profileData.socials && Object.keys(profileData.socials).length > 0) {
+            return `<footer id="socials-footer" data-section="socials" class="pt-4 pb-2 draggable-item p-2"></footer>`;
+        }
+        return '';
+    }
 };
 
 function renderSingleLink(linkData, profileData) {
@@ -503,21 +513,16 @@ function renderProfile(profileData, isOwner) {
 	const allSections = ["profile-image", "display-name", "username", "description", "featured-video", "social-buttons", "socials"];
 	let layoutOrder = appState.tempLayoutOrder || profileData.layout_order || [...allSections];
 
-    // --- INICIO DE LA CORRECCIÓN ---
-    // Asegurarse de que todas las secciones por defecto existan en el layout del usuario,
-    // especialmente para perfiles antiguos que no tienen las nuevas secciones.
     allSections.forEach(section => {
         if (!layoutOrder.includes(section)) {
-            // Si falta una sección, la insertamos en una posición lógica (antes de los iconos sociales)
             const socialsIndex = layoutOrder.indexOf('socials');
             if (socialsIndex !== -1) {
                 layoutOrder.splice(socialsIndex, 0, section);
             } else {
-                layoutOrder.push(section); // Si no hay 'socials', la añadimos al final
+                layoutOrder.push(section);
             }
         }
     });
-    // --- FIN DE LA CORRECCIÓN ---
 
 	const linksIndex = layoutOrder.indexOf('links');
 	if (linksIndex !== -1) {
@@ -737,24 +742,24 @@ function getSocialIconForUrl(url) {
 function renderSocialIcons(socials, socialsOrder) {
 	const footer = document.getElementById('socials-footer');
 	if (!footer) return;
-	footer.innerHTML = ''; // Start clean
+	footer.innerHTML = ''; // Empezar limpio
 
-	if (!socials || Object.keys(socials).length === 0) return; // Exit if no social data
+	if (!socials || Object.keys(socials).length === 0) return; // Salir si no hay datos sociales
 
 	const order = socialsOrder && socialsOrder.length > 0 ? socialsOrder : SOCIAL_ICON_ORDER;
 	
-    // Filter for keys that actually exist in the socials object
+    // Filtrar por claves que realmente existen en el objeto socials
     const validKeys = order.filter(key => socials[key]); 
 
-    if (validKeys.length === 0) return; // Exit if no valid icons to show
+    if (validKeys.length === 0) return; // Salir si no hay iconos válidos para mostrar
 
-    // Now that we know we have icons, create the wrapper
+    // Ahora que sabemos que hay iconos, creamos el contenedor
     const wrapper = document.createElement('div');
     wrapper.className = 'social-icons-wrapper';
 	
 	validKeys.forEach(key => {
 		const username = socials[key];
-        // The check `if (username && socialIcons[key])` is now redundant because of validKeys filter, but let's keep it for safety.
+        // La comprobación `if (username && socialIcons[key])` es ahora redundante debido al filtro validKeys, pero la mantenemos por seguridad.
 		if (username && socialIcons[key]) {
 			const link = document.createElement('a');
 			link.href = `${socialBaseUrls[key]}${username}`;
