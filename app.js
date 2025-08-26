@@ -572,10 +572,20 @@ function updateContainerVisibilityInDesignMode(profileData) {
 	if (!appState.isDesignModeActive) return;
 	const descriptionContainer = document.querySelector('[data-section="description"]');
 	if (descriptionContainer) descriptionContainer.classList.toggle('is-empty', !profileData.description || profileData.description.trim() === '');
-	const socialButtonsContainer = document.querySelector('[data-section="social-buttons"]');
-	if (socialButtonsContainer) socialButtonsContainer.classList.toggle('is-empty', socialButtonsContainer.children.length === 0);
-	const socialsFooterContainer = document.querySelector('[data-section="socials"]');
-	if (socialsFooterContainer) socialsFooterContainer.classList.toggle('is-empty', socialsFooterContainer.children.length === 0);
+	
+    // CORRECCIÓN: Comprobar directamente los datos en lugar del DOM
+    const socialButtonsContainer = document.querySelector('[data-section="social-buttons"]');
+	if (socialButtonsContainer) {
+        const hasButtons = profileData.social_buttons && profileData.social_buttons.length > 0;
+        socialButtonsContainer.classList.toggle('is-empty', !hasButtons);
+    }
+	
+    const socialsFooterContainer = document.querySelector('[data-section="socials"]');
+	if (socialsFooterContainer) {
+        const hasIcons = profileData.socials && Object.keys(profileData.socials).length > 0;
+        socialsFooterContainer.classList.toggle('is-empty', !hasIcons);
+    }
+    
     const videoContainer = document.querySelector('[data-section="featured-video"]');
     if(videoContainer) videoContainer.classList.toggle('is-empty', !parseVideoUrl(profileData.featured_video_url));
 }
@@ -723,15 +733,24 @@ function getSocialIconForUrl(url) {
 function renderSocialIcons(socials, socialsOrder) {
 	const footer = document.getElementById('socials-footer');
 	if (!footer) return;
-	// Añadimos un contenedor interno para controlar el ancho y el centrado
-	footer.innerHTML = '<div class="social-icons-wrapper"></div>';
-	const wrapper = footer.querySelector('.social-icons-wrapper');
-	if (!socials) return;
+	footer.innerHTML = ''; // Start clean
+
+	if (!socials || Object.keys(socials).length === 0) return; // Exit if no social data
 
 	const order = socialsOrder && socialsOrder.length > 0 ? socialsOrder : SOCIAL_ICON_ORDER;
 	
-	order.forEach(key => {
+    // Filter for keys that actually exist in the socials object
+    const validKeys = order.filter(key => socials[key]); 
+
+    if (validKeys.length === 0) return; // Exit if no valid icons to show
+
+    // Now that we know we have icons, create the wrapper
+    const wrapper = document.createElement('div');
+    wrapper.className = 'social-icons-wrapper';
+	
+	validKeys.forEach(key => {
 		const username = socials[key];
+        // The check `if (username && socialIcons[key])` is now redundant because of validKeys filter, but let's keep it for safety.
 		if (username && socialIcons[key]) {
 			const link = document.createElement('a');
 			link.href = `${socialBaseUrls[key]}${username}`;
@@ -743,6 +762,8 @@ function renderSocialIcons(socials, socialsOrder) {
 			wrapper.appendChild(link);
 		}
 	});
+
+    footer.appendChild(wrapper);
 }
 
 function renderSocialButtons(buttons) {
