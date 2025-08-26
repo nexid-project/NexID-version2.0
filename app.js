@@ -108,6 +108,8 @@ const DOMElements = {
     registerEmailInput: document.getElementById('register-email-input'),
     registerPasswordInput: document.getElementById('register-password-input'),
     registerConfirmPasswordInput: document.getElementById('register-confirm-password-input'),
+    // Referencia para el video
+    featuredVideoUrlInput: document.getElementById('featured-video-url-input'),
 };
 
 // --- 4. FUNCIONES DE UTILIDAD (MODALES, ETC.) ---
@@ -379,6 +381,33 @@ function showPage(pageName) {
 	DOMElements.globalBackground.style.opacity = pageName === 'profile' ? '1' : '0';
 }
 
+function parseVideoUrl(url) {
+    if (!url) return null;
+    let embedUrl = null;
+    try {
+        // Asegurarse de que la URL tenga un protocolo para el constructor de URL
+        const fullUrl = url.startsWith('http') ? url : `https://${url}`;
+        const urlObj = new URL(fullUrl);
+
+        if (urlObj.hostname.includes('youtube.com') || urlObj.hostname.includes('youtu.be')) {
+            const videoId = urlObj.hostname.includes('youtu.be')
+                ? urlObj.pathname.slice(1)
+                : urlObj.searchParams.get('v');
+            if (videoId) embedUrl = `https://www.youtube.com/embed/${videoId}`;
+        } else if (urlObj.hostname.includes('vimeo.com')) {
+            // Extrae el ID del video de la ruta, que puede contener letras y números
+            const videoId = urlObj.pathname.split('/').pop();
+            if (videoId && /^\d+$/.test(videoId)) { // Verifica si el ID es numérico
+                 embedUrl = `https://player.vimeo.com/video/${videoId}`;
+            }
+        }
+    } catch (error) {
+        console.error("Invalid video URL:", error);
+        return null;
+    }
+    return embedUrl;
+}
+
 const profileSectionTemplates = {
 	'profile-image': (profileData, isOwner) => `
 		<div data-section="profile-image" class="draggable-item flex justify-center items-center p-2">
@@ -396,6 +425,24 @@ const profileSectionTemplates = {
 	},
 	'username': (profileData) => `<div data-section="username" class="text-center draggable-item p-2"><p id="public-username" class="text-lg opacity-80">${profileData.username || ''}</p></div>`,
 	'description': (profileData) => `<div data-section="description" class="text-center draggable-item p-2"><p id="public-description" class="opacity-90">${profileData.description || ''}</p></div>`,
+    'featured-video': (profileData) => {
+        const embedUrl = parseVideoUrl(profileData.featured_video_url);
+        if (embedUrl) {
+            return `
+                <div data-section="featured-video" class="draggable-item p-2 w-full aspect-video">
+                    <iframe
+                        class="w-full h-full rounded-lg"
+                        src="${embedUrl}"
+                        title="Video player"
+                        frameborder="0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowfullscreen
+                    ></iframe>
+                </div>
+            `;
+        }
+        return '';
+    },
 	'social-buttons': () => `<section id="social-buttons-section" data-section="social-buttons" class="draggable-item p-2"></section>`,
 	'socials': () => `<footer id="socials-footer" data-section="socials" class="pt-4 pb-2 draggable-item p-2"></footer>`
 };
@@ -453,7 +500,7 @@ function renderProfile(profileData, isOwner) {
 	const layoutContainer = document.getElementById('profile-layout-container');
 	layoutContainer.innerHTML = '';
 	
-	const allSections = ["profile-image", "display-name", "username", "description", "social-buttons", "socials"];
+	const allSections = ["profile-image", "display-name", "username", "description", "featured-video", "social-buttons", "socials"];
 	let layoutOrder = appState.tempLayoutOrder || profileData.layout_order || [...allSections];
 
 	const linksIndex = layoutOrder.indexOf('links');
@@ -513,6 +560,8 @@ function updateContainerVisibilityInDesignMode(profileData) {
 	if (socialButtonsContainer) socialButtonsContainer.classList.toggle('is-empty', socialButtonsContainer.children.length === 0);
 	const socialsFooterContainer = document.querySelector('[data-section="socials"]');
 	if (socialsFooterContainer) socialsFooterContainer.classList.toggle('is-empty', socialsFooterContainer.children.length === 0);
+    const videoContainer = document.querySelector('[data-section="featured-video"]');
+    if(videoContainer) videoContainer.classList.toggle('is-empty', !parseVideoUrl(profileData.featured_video_url));
 }
 
 function renderLinksEditor(links) {
@@ -751,6 +800,12 @@ function renderProfileActions(profileData) {
 // --- 7. MANEJADORES DE EVENTOS ---
 
 // NUEVO: Lógica para el modal de registro
+function closeRegisterModal() {
+    DOMElements.registerModal.classList.add('hidden');
+    DOMElements.registerPasswordInput.value = '';
+    DOMElements.registerConfirmPasswordInput.value = '';
+}
+
 DOMElements.showRegisterModalBtn.addEventListener('click', () => {
     // Transfiere los datos del formulario de login al modal
     DOMElements.registerEmailInput.value = document.getElementById('email-input').value;
@@ -758,12 +813,6 @@ DOMElements.showRegisterModalBtn.addEventListener('click', () => {
     // Muestra el modal
     DOMElements.registerModal.classList.remove('hidden');
 });
-
-function closeRegisterModal() {
-    DOMElements.registerModal.classList.add('hidden');
-    DOMElements.registerPasswordInput.value = '';
-    DOMElements.registerConfirmPasswordInput.value = '';
-}
 
 DOMElements.backToLoginLink.addEventListener('click', (e) => {
     e.preventDefault();
@@ -1094,6 +1143,7 @@ function openSettingsPanel() {
 		}
 	});
 	
+    DOMElements.featuredVideoUrlInput.value = profile.featured_video_url || '';
 	document.getElementById('private-profile-toggle').checked = profile.is_public;
 
 	DOMElements.settingsPanel.classList.add('open');
@@ -1189,6 +1239,7 @@ document.getElementById('save-changes-btn').addEventListener('click', async () =
 		socials_order: currentSocialsOrder,
 		social_buttons: newSocialButtons,
 		contact_info: {},
+        featured_video_url: DOMElements.featuredVideoUrlInput.value.trim(),
 		is_public: document.getElementById('private-profile-toggle').checked,
 	};
 	
@@ -1278,6 +1329,7 @@ function updateLivePreview() {
 		social_buttons: newSocialButtons,
 		socials_order: newSocialsOrder, // Usar el nuevo orden calculado
 		contact_info: {},
+        featured_video_url: DOMElements.featuredVideoUrlInput.value.trim(),
 	};
 	
 	 document.querySelectorAll('#contact-inputs input').forEach(input => {
@@ -1395,7 +1447,7 @@ document.getElementById('add-update-link-btn').addEventListener('click', async (
 			showAlert(`Error al crear enlace: ${error.message}`);
 		} else {
 			// === CORRECCIÓN: Asegurarse de que el layout por defecto se usa si no existe uno. ===
-			const defaultLayout = ["profile-image", "display-name", "username", "description", "social-buttons", "socials"];
+			const defaultLayout = ["profile-image", "display-name", "username", "description", "featured-video", "social-buttons", "socials"];
 			const currentLayout = appState.myProfile.layout_order && appState.myProfile.layout_order.length > 0 ? [...appState.myProfile.layout_order] : [...defaultLayout];
 			
 			const lastLinkIndex = currentLayout.map((item, index) => ({ item, index })).filter(obj => obj.item.startsWith('link_')).pop()?.index ?? -1;
