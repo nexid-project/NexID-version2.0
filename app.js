@@ -305,6 +305,12 @@ async function handleAuthStateChange(session) {
 		document.getElementById('email-input').value = '';
 		document.getElementById('password-input').value = '';
 		showPage('auth');
+        
+        // Check for action parameter to open register modal automatically
+        const urlParamsOnLoad = new URLSearchParams(window.location.search);
+        if (urlParamsOnLoad.get('action') === 'register') {
+            DOMElements.registerModal.classList.remove('hidden');
+        }
 	}
 }
 
@@ -753,9 +759,15 @@ DOMElements.showRegisterModalBtn.addEventListener('click', () => {
     DOMElements.registerModal.classList.remove('hidden');
 });
 
+function closeRegisterModal() {
+    DOMElements.registerModal.classList.add('hidden');
+    DOMElements.registerPasswordInput.value = '';
+    DOMElements.registerConfirmPasswordInput.value = '';
+}
+
 DOMElements.backToLoginLink.addEventListener('click', (e) => {
     e.preventDefault();
-    DOMElements.registerModal.classList.add('hidden');
+    closeRegisterModal();
 });
 
 DOMElements.createAccountBtn.addEventListener('click', async () => {
@@ -786,7 +798,7 @@ DOMElements.createAccountBtn.addEventListener('click', async () => {
         }
     } else if (data.user) {
         showAlert("¡Registro exitoso! Revisa tu correo para confirmar tu cuenta.");
-        DOMElements.registerModal.classList.add('hidden');
+        closeRegisterModal();
     }
 });
 
