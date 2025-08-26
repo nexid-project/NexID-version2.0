@@ -1349,13 +1349,22 @@ document.getElementById('add-update-link-btn').addEventListener('click', async (
 		if (error) {
 			showAlert(`Error al crear enlace: ${error.message}`);
 		} else {
-			const currentLayout = appState.myProfile.layout_order || [];
+			// === CORRECCIÓN: Asegurarse de que el layout por defecto se usa si no existe uno. ===
+			const defaultLayout = ["profile-image", "display-name", "username", "description", "social-buttons", "socials"];
+			const currentLayout = appState.myProfile.layout_order && appState.myProfile.layout_order.length > 0 ? [...appState.myProfile.layout_order] : [...defaultLayout];
+			
 			const lastLinkIndex = currentLayout.map((item, index) => ({ item, index })).filter(obj => obj.item.startsWith('link_')).pop()?.index ?? -1;
 
 			if (lastLinkIndex !== -1) {
 				currentLayout.splice(lastLinkIndex + 1, 0, `link_${newLink.id}`);
 			} else {
-				currentLayout.push(`link_${newLink.id}`);
+				// Si no hay enlaces, lo añadimos antes de la sección de 'socials'
+				const socialsIndex = currentLayout.indexOf('socials');
+				if (socialsIndex !== -1) {
+					currentLayout.splice(socialsIndex, 0, `link_${newLink.id}`);
+				} else {
+					currentLayout.push(`link_${newLink.id}`);
+				}
 			}
 			
 			const { error: profileUpdateError } = await supabaseClient.from('profiles').update({ layout_order: currentLayout }).eq('id', appState.currentUser.id);
