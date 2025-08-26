@@ -776,6 +776,8 @@ function renderSocialButtons(buttons) {
 	section.innerHTML = '';
 	const buttonList = buttons || []; // Asegurarse de que tenemos un array
 
+	if (buttonList.length === 0) return; // Salir si no hay botones
+
 	buttonList.forEach(buttonData => {
 		const info = getSocialInfoForUrl(buttonData.url);
 		if (!info) return;
