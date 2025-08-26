@@ -1199,7 +1199,6 @@ function updateLivePreview() {
 		opacityControls.classList.add('hidden');
 	}
 	
-    // --- FASE 3: Actualizar lógica de previsualización para leer todas las pestañas ---
 	const newSocialButtons = [];
 	document.querySelectorAll('#social-buttons-inputs-container input[data-social-button]').forEach(input => {
 		const value = input.value.trim();
@@ -1215,7 +1214,16 @@ function updateLivePreview() {
     document.querySelectorAll('#socials-inputs-container input[data-social]').forEach(input => {
 		if (input.value.trim() !== '') newSocials[input.dataset.social] = input.value.trim();
 	});
-    // --- FIN FASE 3 ---
+
+	// === FIX: Actualizar el orden de los iconos sociales para la previsualización en tiempo real ===
+	let newSocialsOrder = appState.profile.socials_order ? [...appState.profile.socials_order] : [];
+	Object.keys(newSocials).forEach(key => {
+		if (!newSocialsOrder.includes(key)) {
+			newSocialsOrder.push(key);
+		}
+	});
+	newSocialsOrder = newSocialsOrder.filter(key => newSocials[key]);
+
 
 	const selectedFont = DOMElements.fontFamilyValue.value;
 	loadFontIfNeeded(selectedFont);
@@ -1232,6 +1240,7 @@ function updateLivePreview() {
 		font_family: selectedFont,
 		socials: newSocials,
 		social_buttons: newSocialButtons,
+		socials_order: newSocialsOrder, // Usar el nuevo orden calculado
 		contact_info: {},
 	};
 	
