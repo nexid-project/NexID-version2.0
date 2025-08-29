@@ -55,7 +55,6 @@
 #profile-page .btn-shadow, .sortable-fallback .btn-shadow { background-color: var(--button-bg); color: var(--button-text-color); box-shadow: 4px 4px 0px var(--profile-border-color); }
 #profile-page .btn-shadow:hover { box-shadow: 6px 6px 0px var(--profile-border-color); transform: translate(-2px, -2px);}	
 
-/* --- Animaciones para el botón de Unirse --- */
 @keyframes pulse {
 	0%, 100% { transform: scale(1); }
 	50% { transform: scale(1.05); }
@@ -65,7 +64,6 @@
 	50% { box-shadow: 0 0 10px #2dd4bf, 0 0 20px #2dd4bf, 0 0 30px #2dd4bf; }
 }
 
-/* --- NUEVO: Animación de brillo para modo Panorama --- */
 @keyframes latent-glow {
 	from {
 		box-shadow: 0 0 4px -1px #22d3ee, 0 0 7px -2px #22d3ee;
@@ -75,14 +73,12 @@
 	}
 }
 
-/* --- Botón para Unirse a NexID --- */
 .join-nexid-button {
 	background-color: var(--text-color);
 	color: var(--background);
 	animation: pulse 2.5s infinite cubic-bezier(0.4, 0, 0.6, 1), glow 3s infinite alternate;
 }
 
-/* --- Panel de Configuración Responsivo --- */
 #settings-panel {
 	position: fixed;
 	bottom: 0;
@@ -90,7 +86,7 @@
 	right: 0;
 	height: 60vh;
 	transform: translateY(100%);
-	transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1), height 0s; /* No animar la altura */
+	transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1), height 0s;
 	border-top-left-radius: 1.5rem;
 	border-top-right-radius: 1.5rem;
 	overflow: hidden;
@@ -134,7 +130,6 @@
 #gemini-results-container .gemini-option-label:hover { background-color: rgba(255, 255, 255, 0.1); transform: translateY(-2px); box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
 #gemini-results-container .gemini-option-label.selected { background-color: #3730a3; border-color: #818cf8; box-shadow: 0 0 0 2px #4f46e5; }
 
-/* --- PROYECTO PANORAMA: Estilos Modo Diseño --- */
 #panorama-grid {
 	position: fixed;
 	inset: 0;
@@ -156,36 +151,32 @@
 	padding-bottom: 2rem;
 }
 .content-wrapper {
-	transition: box-shadow 0.3s ease, padding-bottom 0s; /* No animar la altura */
+	transition: box-shadow 0.3s ease, padding-bottom 0s;
 }
 .draggable-item {
 	cursor: grab;
-	border: 2px solid transparent; /* CAMBIO: Borde siempre transparente para evitar saltos */
+	border: 2px solid transparent;
 	transition: border-color 0.2s ease;
 }
-/* CAMBIO: Se elimina el borde punteado y se añade la animación de brillo */
 .design-mode .draggable-item {
 	 animation: latent-glow 2.5s infinite alternate ease-in-out;
-	 border-radius: 12px; /* Asegura que el brillo sea redondeado */
+	 border-radius: 12px;
 }
-/* Bloquea las interacciones con los enlaces y botones cuando el modo diseño está activo */
 .design-mode .social-button,
 .design-mode #socials-footer a,
 .design-mode #public-profile-img,
-.design-mode #image-actions-container button {
+.design-mode #image-actions-container button,
+.design-mode .video-wrapper::after {
 	pointer-events: none;
 }
-/* Oculta los contenedores vacíos solo en modo diseño */
 .design-mode .draggable-item.is-empty {
 	display: none;
 }
-/* --- Estilos de arrastre mejorados --- */
 .sortable-ghost {	
 	opacity: 0.1;
 	background: #4f46e5;	
 	border-radius: 12px;
 }
-/* El elemento original se oculta mientras se arrastra */
 .sortable-chosen {
 	opacity: 0 !important;	
 	cursor: grabbing;
@@ -193,7 +184,7 @@
 .sortable-fallback {
 	opacity: 1 !important;
 	background: transparent !important;
-	box-sizing: border-box; 
+	box-sizing: border-box; 
 	color: var(--text-color);
 }
 .drag-handle {
@@ -226,44 +217,40 @@
 .accordion-item .accordion-icon { transition: transform 0.3s ease; }
 .accordion-item.open .accordion-icon { transform: rotate(180deg); }
 
-/* --- Scrollbar Personalizado --- */
 #settings-panel-content::-webkit-scrollbar, #settings-panel::-webkit-scrollbar { width: 8px; }
 #settings-panel-content::-webkit-scrollbar-track, #settings-panel::-webkit-scrollbar-track { background: transparent; }
 #settings-panel-content::-webkit-scrollbar-thumb, #settings-panel::-webkit-scrollbar-thumb { background-color: #4a5568; border-radius: 20px; border: 3px solid transparent; background-clip: content-box; }
 #settings-panel-content::-webkit-scrollbar-thumb:hover, #settings-panel::-webkit-scrollbar-thumb:hover { background-color: #6b7280; }
 #settings-panel-content, #settings-panel { scrollbar-width: thin; scrollbar-color: #4a5568 transparent; }
 
-/* --- Estilos para el nuevo selector de iconos --- */
 .icon-option-btn {
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	width: 100%;
 	aspect-ratio: 1 / 1;
-	background-color: #4a5568; /* bg-gray-600 */
-	border-radius: 0.5rem; /* rounded-lg */
-	color: #e5e7eb; /* text-gray-200 */
+	background-color: #4a5568;
+	border-radius: 0.5rem;
+	color: #e5e7eb;
 	cursor: pointer;
 	transition: all 0.2s ease-in-out;
 	border: 2px solid transparent;
 }
 .icon-option-btn:hover {
-	background-color: #6b7280; /* bg-gray-500 */
+	background-color: #6b7280;
 	transform: scale(1.05);
 }
 .icon-option-btn.selected-icon {
-	background-color: #4f46e5; /* bg-indigo-600 */
-	border-color: #818cf8; /* border-indigo-400 */
+	background-color: #4f46e5;
+	border-color: #818cf8;
 	color: white;
 }
 
-/* --- Estilos para el cuadro de texto de la biografía --- */
 #description-input {
-	resize: none; /* Desactiva el redimensionamiento manual */
-	overflow: hidden; /* Oculta la barra de scroll */
+	resize: none;
+	overflow: hidden;
 }
 
-/* --- Estilos para el selector de fuente personalizado --- */
 #font-selector-options {
 	transform-origin: top;
 	transition: transform 0.2s ease-out, opacity 0.2s ease-out;
@@ -280,27 +267,25 @@
 	transform: rotate(180deg);
 }
 
-/* Hace que la página de perfil sea el contenedor de scroll en móviles */
 @media (max-width: 639px) {
 	body.overflow-hidden-mobile {
 		overflow: hidden;
 	}
 }
 
-/* === CAMBIO: Nuevos estilos para las Pestañas Sociales === */
 .social-tabs-container {
 	display: flex;
-	gap: 1rem; /* 16px */
-	min-height: 300px; /* Altura mínima para evitar que se colapse */
+	gap: 1rem;
+	min-height: 300px;
 }
 
 .social-tabs-nav {
 	display: flex;
 	flex-direction: column;
-	gap: 0.5rem; /* 8px */
+	gap: 0.5rem;
 	flex-shrink: 0;
-	border-right: 1px solid #4a5568; /* border-gray-600 */
-	padding-right: 1rem; /* 16px */
+	border-right: 1px solid #4a5568;
+	padding-right: 1rem;
 }
 
 .social-tab-button {
@@ -310,41 +295,39 @@
 	width: 40px;
 	height: 40px;
 	background-color: transparent;
-	border-radius: 0.5rem; /* rounded-lg */
-	color: #9ca3af; /* text-gray-400 */
+	border-radius: 0.5rem;
+	color: #9ca3af;
 	cursor: pointer;
 	transition: all 0.2s ease-in-out;
 	border: 2px solid transparent;
 }
 
 .social-tab-button:hover {
-	background-color: #4a5568; /* bg-gray-600 */
-	color: #e5e7eb; /* text-gray-200 */
+	background-color: #4a5568;
+	color: #e5e7eb;
 }
 
 .social-tab-button.active {
-	background-color: #4f46e5; /* bg-indigo-600 */
+	background-color: #4f46e5;
 	color: white;
-	border-color: #818cf8; /* border-indigo-400 */
+	border-color: #818cf8;
 }
 
 .social-tabs-content {
 	flex-grow: 1;
-	min-width: 0; /* Previene que el contenido se desborde */
+	min-width: 0;
 }
 
 .social-tab-pane {
 	display: none;
 	flex-direction: column;
-	gap: 0.75rem; /* 12px */
+	gap: 0.75rem;
 }
 
 .social-tab-pane.active {
 	display: flex;
 }
-/* === FIN DEL CAMBIO === */
 
-/* === AJUSTE PARA ARMONÍA Y CENTRADO DE BOTONES SOCIALES === */
 #social-buttons-section {
 	display: flex;
 	flex-wrap: wrap;
@@ -355,18 +338,16 @@
 }
 
 #social-buttons-section .social-button {
-    width: 3.5rem; /* 56px */
-    height: 3.5rem; /* 56px */
+    width: 3.5rem;
+    height: 3.5rem;
     flex-shrink: 0;
 }
 
-/* === AJUSTE PARA ICONOS ADAPTABLES DENTRO DE BOTONES === */
 #social-buttons-section .social-button svg {
-	width: 75%; /* El icono ocupará el 60% del ancho del botón */
-	height: 75%; /* El icono ocupará el 60% de la altura del botón */
+	width: 75%;
+	height: 75%;
 }
 
-/* === CORRECCIÓN PARA ICONOS DE PIE DE PÁGINA Y PREVISUALIZACIÓN === */
 #socials-inputs-container svg {
 	width: 24px;
 	height: 24px;
@@ -377,7 +358,6 @@
 	height: 20px;
 }
 
-/* === AJUSTE PARA ARMONÍA Y LÍMITE DE 8 ICONOS SOCIALES === */
 #socials-footer {
 	display: flex;
 	justify-content: center;
@@ -388,17 +368,16 @@
 	display: flex;
 	justify-content: center;
 	flex-wrap: wrap;
-	gap: 1rem; /* 16px */
+	gap: 1rem;
 	width: 100%;
-	/* === NUEVO: Límite de 8 iconos en móvil === */
-	max-width: 336px; /* (28px * 8) + (16px * 7) = 336px */
+	max-width: 336px;
 }
 
 #socials-footer a {
 	display: flex;
 	justify-content: center;
 	align-items: center;
-	flex-shrink: 0; /* Evita que los iconos se encojan */
+	flex-shrink: 0;
 }
 
 #socials-footer svg {
@@ -406,37 +385,131 @@
 	height: 28px;
 }
 
-/* === AJUSTE FINAL PARA GARANTIZAR 6 BOTONES EN MÓVIL === */
 @media (max-width: 639px) {
 	#social-buttons-section {
-		gap: 0.5rem; /* 8px */
+		gap: 0.5rem;
 	}
 	#social-buttons-section .social-button {
-		width: 3rem;  /* 48px */
-		height: 3rem; /* 48px */
+		width: 3rem; 
+		height: 3rem;
 	}
 }
 
-/* === AJUSTE DE ESPACIADO PARA ICONOS EN ESCRITORIO === */
 @media (min-width: 640px) {
 	.social-icons-wrapper {
-		max-width: 392px; /* (28px * 8) + (24px * 7) = 392px */
-		gap: 1.5rem; /* 24px */
+		max-width: 392px;
+		gap: 1.5rem;
 	}
 }
 
-/* --- NUEVO: Solución para arrastrar y deshabilitar video en modo diseño --- */
-.design-mode .draggable-item[data-section="featured-video"] {
-	position: relative;
+/* === NUEVO: Estilos para Video y Galería === */
+.video-wrapper, .immersive-gallery {
+    position: relative;
+    width: 100%;
+}
+/* Capa invisible para el modo diseño */
+.design-mode .video-wrapper::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    cursor: grab;
 }
 
-.design-mode .draggable-item[data-section="featured-video"]::after {
-	content: '';
-	position: absolute;
-	top: 0;
-	left: 0;
-	right: 0;
-	bottom: 0;
-	z-index: 10; /* Se asegura de que esté sobre el iframe */
-	cursor: grab;
+/* Galería Inmersiva */
+.immersive-gallery {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
 }
+
+.main-image-container {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    position: relative;
+    background-color: #374151;
+}
+
+.main-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: opacity 0.3s ease-in-out;
+}
+
+.caption {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 0.75rem 1rem;
+    background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
+    color: white;
+    font-size: 0.875rem;
+    transition: opacity 0.3s ease-in-out;
+    opacity: 1;
+}
+
+.thumbnail-strip {
+    display: flex;
+    gap: 0.5rem;
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+}
+
+.thumbnail {
+    width: 64px;
+    height: 64px;
+    object-fit: cover;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    border: 2px solid transparent;
+    opacity: 0.6;
+    transition: all 0.2s ease-in-out;
+    flex-shrink: 0;
+}
+
+.thumbnail:hover {
+    opacity: 1;
+    transform: scale(1.05);
+}
+
+.thumbnail.active {
+    opacity: 1;
+    border-color: var(--profile-border-color, #67e8f9);
+}
+
+.thumbnail-strip::-webkit-scrollbar { height: 6px; }
+.thumbnail-strip::-webkit-scrollbar-track { background: #4b5563; border-radius: 10px; }
+.thumbnail-strip::-webkit-scrollbar-thumb { background: #9ca3af; border-radius: 10px; }
+.thumbnail-strip::-webkit-scrollbar-thumb:hover { background: #d1d5db; }
+
+/* Editor de la Galería */
+#gallery-editor-list {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+}
+
+.gallery-editor-item .gallery-caption-input {
+    width: 100%;
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 0.75rem;
+    padding: 0.25rem;
+    resize: none;
+    flex-grow: 1;
+    outline: none;
+}
+
+.gallery-editor-item .delete-gallery-image-btn {
+    transition: transform 0.2s ease;
+}
+
+.gallery-editor-item .delete-gallery-image-btn:hover {
+    transform: scale(1.1);
+}
+```
