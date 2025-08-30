@@ -655,18 +655,12 @@
 		<div id="gallery-edit-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
 			<div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-sm flex flex-col max-h-[90vh]">
 				<h3 class="text-xl font-bold text-cyan-400 mb-4 text-center">Editar Imagen</h3>
-				<img id="gallery-edit-preview" src="" class="w-full aspect-video object-cover rounded-md mb-4">
+				<div id="gallery-edit-preview-container" class="w-full aspect-video rounded-md overflow-hidden cursor-grab bg-gray-700 relative mb-4">
+					<img id="gallery-edit-preview" src="" class="absolute w-full h-auto -translate-y-1/2" style="top: 50%;">
+				</div>
 				<textarea id="gallery-edit-caption" class="w-full px-4 py-2 text-gray-900 bg-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500" placeholder="Añade un pie de foto..."></textarea>
 				
-				<!-- NUEVO: Controles de Punto de Enfoque -->
-				<div class="mt-4">
-					<label class="block text-sm font-medium text-gray-300 mb-2 text-center">Punto de Enfoque</label>
-					<div id="gallery-edit-focus-controls" class="flex justify-center gap-2">
-						<button data-focus="top" class="focus-btn px-4 py-2 text-sm font-semibold bg-gray-700 rounded-md">Arriba</button>
-						<button data-focus="center" class="focus-btn px-4 py-2 text-sm font-semibold bg-gray-700 rounded-md">Centro</button>
-						<button data-focus="bottom" class="focus-btn px-4 py-2 text-sm font-semibold bg-gray-700 rounded-md">Abajo</button>
-					</div>
-				</div>
+				<p class="text-sm text-gray-400 mt-2 text-center">Arrastra la imagen de arriba para ajustar el enfoque vertical.</p>
 
 				<div class="mt-4 space-y-2">
 					<button id="gallery-edit-crop-btn" class="w-full flex items-center justify-center gap-2 px-4 py-2 font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-500">
@@ -759,6 +753,7 @@
 	<script type="module" src="app.js"></script>
 </body>
 </html>
+
 
 
 
