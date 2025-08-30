@@ -637,7 +637,7 @@
 				 </div>
 			</div>
 		</div>
-        <!-- NUEVO: Modal para Recortar Miniaturas de la Galería -->
+		<!-- Modal para Recortar Miniaturas de la Galería -->
         <div id="thumbnail-cropper-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
             <div id="thumbnail-cropper-modal-content" class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-lg flex flex-col max-h-[90vh]">
                  <h3 class="text-2xl font-bold text-cyan-400 mb-4 text-center">Ajustar Miniatura (16:9)</h3>
@@ -650,6 +650,29 @@
                  </div>
             </div>
         </div>
+
+		<!-- NUEVO: Modal para Editar Imagen de la Galería -->
+		<div id="gallery-edit-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+			<div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-sm flex flex-col max-h-[90vh]">
+				<h3 class="text-xl font-bold text-cyan-400 mb-4 text-center">Editar Imagen</h3>
+				<img id="gallery-edit-preview" src="" class="w-full aspect-video object-cover rounded-md mb-4">
+				<textarea id="gallery-edit-caption" class="w-full px-4 py-2 text-gray-900 bg-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500" placeholder="Añade un pie de foto..."></textarea>
+				<div class="mt-4 space-y-2">
+					<button id="gallery-edit-crop-btn" class="w-full flex items-center justify-center gap-2 px-4 py-2 font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-500">
+						<i data-lucide="crop" class="w-5 h-5"></i>
+						Ajustar Miniatura
+					</button>
+					<button id="gallery-edit-delete-btn" class="w-full flex items-center justify-center gap-2 px-4 py-2 font-semibold text-white bg-red-600 rounded-md hover:bg-red-500">
+						<i data-lucide="trash-2" class="w-5 h-5"></i>
+						Eliminar Imagen
+					</button>
+				</div>
+				<div class="mt-6">
+					<button id="gallery-edit-close-btn" class="w-full px-4 py-2 font-bold text-gray-300 hover:bg-gray-700">Cerrar</button>
+				</div>
+			</div>
+		</div>
+
 		<div id="library-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
 			<div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-4xl flex flex-col max-h-[90vh]">
 				<div class="flex justify-between items-center mb-4">
@@ -725,4 +748,5 @@
 	<script type="module" src="app.js"></script>
 </body>
 </html>
+
 
