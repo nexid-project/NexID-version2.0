@@ -2453,7 +2453,7 @@ function openGalleryEditModal(image) {
     appState.editingGalleryImageId = image.id;
     const modal = DOMElements.galleryEditModal;
     const previewImage = modal.querySelector('#gallery-edit-preview');
-    const previewContainer = modal.querySelector('#gallery-edit-preview-container');
+    const previewContainer = modal.querySelector('#gallery-focus-adjuster');
     
     // Limpiar listeners antiguos si existen
     if (previewContainer.dragListeners) {
@@ -2468,27 +2468,23 @@ function openGalleryEditModal(image) {
     previewImage.src = image.image_url;
     modal.querySelector('#gallery-edit-caption').value = image.caption || '';
     
-    // Usamos onload para asegurarnos de que las dimensiones de la imagen están disponibles
     previewImage.onload = () => {
         const containerHeight = previewContainer.offsetHeight;
-        // Cálculo robusto de la altura renderizada basado en el aspect ratio
         const renderedImageHeight = previewContainer.offsetWidth * (previewImage.naturalHeight / previewImage.naturalWidth);
-        previewImage.style.height = `${renderedImageHeight}px`; // Aseguramos la altura
+        previewImage.style.height = `${renderedImageHeight}px`;
 
-        let initialTop = (containerHeight - renderedImageHeight) / 2; // Default a centro
+        let initialTop = (containerHeight - renderedImageHeight) / 2; 
 
         if (image.focus_point) {
             const yPercent = parseFloat(image.focus_point.split(' ')[1]);
             if (!isNaN(yPercent)) {
-                // Usamos la altura calculada para consistencia
                 initialTop = -((renderedImageHeight - containerHeight) * (yPercent / 100));
             }
         }
         
         previewImage.style.top = `${initialTop}px`;
-
-        // Pasamos la altura calculada a la función de arrastre
-        enableFocusDrag(previewContainer, previewImage, image, renderedImageHeight);
+        
+        enableFocusDrag(previewContainer, previewImage, image, renderedImageHeight, initialTop);
     };
 
     modal.classList.remove('hidden');
@@ -2497,19 +2493,27 @@ function openGalleryEditModal(image) {
 
 function closeGalleryEditModal() {
     DOMElements.galleryEditModal.classList.add('hidden');
+    const previewContainer = DOMElements.galleryEditModal.querySelector('#gallery-focus-adjuster');
+    if (previewContainer.dragListeners) {
+        previewContainer.removeEventListener('mousedown', previewContainer.dragListeners.onMouseDown);
+        document.removeEventListener('mousemove', previewContainer.dragListeners.onMouseMove);
+        document.removeEventListener('mouseup', previewContainer.dragListeners.onMouseUp);
+        previewContainer.removeEventListener('touchstart', previewContainer.dragListeners.onMouseDown);
+        document.removeEventListener('touchmove', previewContainer.dragListeners.onMouseMove);
+        document.removeEventListener('touchend', previewContainer.dragListeners.onMouseUp);
+    }
     appState.editingGalleryImageId = null;
 }
 
-function enableFocusDrag(container, image, galleryImageData, renderedImageHeight) {
+function enableFocusDrag(container, image, galleryImageData, renderedImageHeight, initialTop) {
     let isDragging = false;
     let startY = 0;
-    let startTop = 0;
+    let currentTop = initialTop; 
 
     const onMouseDown = (e) => {
         e.preventDefault();
         isDragging = true;
         startY = e.clientY || e.touches[0].clientY;
-        startTop = image.offsetTop;
         container.style.cursor = 'grabbing';
     };
 
@@ -2517,19 +2521,17 @@ function enableFocusDrag(container, image, galleryImageData, renderedImageHeight
         if (!isDragging) return;
         const currentY = e.clientY || e.touches[0].clientY;
         const deltaY = currentY - startY;
-        let newTop = startTop + deltaY;
+        let newTop = currentTop + deltaY;
 
-        // Constrain movement
         const containerHeight = container.offsetHeight;
-        const imageHeight = renderedImageHeight; // Usar la altura pre-calculada
+        const imageHeight = renderedImageHeight;
         const minTop = containerHeight - imageHeight;
         const maxTop = 0;
         
-        // Solo aplicar si la imagen es más alta que el contenedor
         if (imageHeight > containerHeight) {
             newTop = Math.max(minTop, Math.min(newTop, maxTop));
         } else {
-            newTop = (containerHeight - imageHeight) / 2; // Mantener centrada si es más pequeña
+            newTop = (containerHeight - imageHeight) / 2;
         }
         
         image.style.top = `${newTop}px`;
@@ -2539,19 +2541,18 @@ function enableFocusDrag(container, image, galleryImageData, renderedImageHeight
         if (!isDragging) return;
         isDragging = false;
         container.style.cursor = 'grab';
+        
+        currentTop = image.offsetTop;
 
         const containerHeight = container.offsetHeight;
-        const imageHeight = renderedImageHeight; // Usar la altura pre-calculada
-        const newTop = image.offsetTop;
+        const imageHeight = renderedImageHeight;
         
         const draggableRange = imageHeight - containerHeight;
-        // Solo guardar si hay rango para arrastrar
+        
         if (draggableRange > 0) {
-            // Calculate percentage
-            const focusPercent = (Math.abs(newTop) / draggableRange) * 100;
+            const focusPercent = (Math.abs(currentTop) / draggableRange) * 100;
             const newFocusPoint = `50% ${focusPercent.toFixed(2)}%`;
             
-            // Update local state and save to DB only if changed
             if (galleryImageData.focus_point !== newFocusPoint) {
                 galleryImageData.focus_point = newFocusPoint;
 
@@ -2577,7 +2578,6 @@ function enableFocusDrag(container, image, galleryImageData, renderedImageHeight
     document.addEventListener('touchmove', onMouseMove, { passive: false });
     document.addEventListener('touchend', onMouseUp);
 
-    // Store a reference to remove them later
     container.dragListeners = { onMouseDown, onMouseMove, onMouseUp };
 }
 
@@ -2787,6 +2787,4 @@ window.onload = () => {
 	setupPasswordToggle('update-confirm-password-input', 'update-confirm-password-toggle');
 	setupPasswordToggle('delete-confirm-password-input', 'delete-confirm-password-toggle');
 };
-
-
 
