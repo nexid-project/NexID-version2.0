@@ -2349,7 +2349,7 @@ function renderImmersiveGallery(images) {
     container.innerHTML = `
         <div class="immersive-gallery">
             <div class="main-image-container">
-                <img src="${images[0].image_url}" class="main-image" id="gallery-main-image">
+                <img src="${images[0].image_url}" class="main-image" id="gallery-main-image" style="object-position: ${images[0].focus_point || 'center'}">
                 <p class="caption" id="gallery-caption">${images[0].caption || ''}</p>
             </div>
             <div class="thumbnail-strip" id="gallery-thumbnail-strip"></div>
@@ -2378,6 +2378,7 @@ function displayGalleryImage(images, index) {
 
     setTimeout(() => {
         mainImage.src = images[index].image_url;
+        mainImage.style.objectPosition = images[index].focus_point || 'center';
         caption.textContent = images[index].caption || '';
         mainImage.style.opacity = 1;
         caption.style.opacity = 1;
@@ -2453,6 +2454,13 @@ function openGalleryEditModal(image) {
     const modal = DOMElements.galleryEditModal;
     modal.querySelector('#gallery-edit-preview').src = image.image_url;
     modal.querySelector('#gallery-edit-caption').value = image.caption || '';
+    
+    // Set active focus button
+    const focusControls = modal.querySelector('#gallery-edit-focus-controls');
+    focusControls.querySelectorAll('.focus-btn').forEach(btn => btn.classList.remove('active'));
+    const currentFocus = image.focus_point || 'center';
+    focusControls.querySelector(`[data-focus="${currentFocus}"]`).classList.add('active');
+
     modal.classList.remove('hidden');
     lucide.createIcons();
 }
@@ -2531,10 +2539,11 @@ DOMElements.galleryEditorList.addEventListener('click', (e) => {
     }
 });
 
-DOMElements.galleryEditModal.addEventListener('click', (e) => {
+DOMElements.galleryEditModal.addEventListener('click', async (e) => {
     const closeBtn = e.target.closest('#gallery-edit-close-btn');
     const cropBtn = e.target.closest('#gallery-edit-crop-btn');
     const deleteBtn = e.target.closest('#gallery-edit-delete-btn');
+    const focusBtn = e.target.closest('.focus-btn');
     
     if (closeBtn) {
         closeGalleryEditModal();
@@ -2574,6 +2583,25 @@ DOMElements.galleryEditModal.addEventListener('click', (e) => {
                     closeGalleryEditModal();
                 }
             });
+        }
+    } else if (focusBtn) {
+        const newFocus = focusBtn.dataset.focus;
+        const imageToUpdate = appState.galleryImages.find(img => img.id === appState.editingGalleryImageId);
+        if (imageToUpdate && imageToUpdate.focus_point !== newFocus) {
+            const { error } = await supabaseClient
+                .from('gallery_images')
+                .update({ focus_point: newFocus })
+                .eq('id', appState.editingGalleryImageId);
+            
+            if (error) {
+                showAlert("No se pudo guardar el punto de enfoque.");
+            } else {
+                imageToUpdate.focus_point = newFocus;
+                const focusControls = DOMElements.galleryEditModal.querySelector('#gallery-edit-focus-controls');
+                focusControls.querySelectorAll('.focus-btn').forEach(btn => btn.classList.remove('active'));
+                focusBtn.classList.add('active');
+                updateLivePreview();
+            }
         }
     }
 });
