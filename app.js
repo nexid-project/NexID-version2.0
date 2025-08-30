@@ -2788,3 +2788,4 @@ window.onload = () => {
 	setupPasswordToggle('delete-confirm-password-input', 'delete-confirm-password-toggle');
 };
 
+
