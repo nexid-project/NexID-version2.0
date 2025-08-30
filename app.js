@@ -1949,7 +1949,7 @@ function openImageZoomModal(event) {
 		event.stopPropagation();
 		return;
 	}
-	const src = event.currentTarget.src;
+	const src = event.target.src; // CORRECCIÓN: Usar event.target en lugar de event.currentTarget
 	if (!src || src.includes('placehold.co')) return;
 	const modal = document.createElement('div');
 	modal.className = 'fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4 cursor-zoom-out';
@@ -2573,4 +2573,5 @@ window.onload = () => {
 	setupPasswordToggle('update-confirm-password-input', 'update-confirm-password-toggle');
 	setupPasswordToggle('delete-confirm-password-input', 'delete-confirm-password-toggle');
 };
+
 
