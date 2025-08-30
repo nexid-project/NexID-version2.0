@@ -55,6 +55,7 @@
 #profile-page .btn-shadow, .sortable-fallback .btn-shadow { background-color: var(--button-bg); color: var(--button-text-color); box-shadow: 4px 4px 0px var(--profile-border-color); }
 #profile-page .btn-shadow:hover { box-shadow: 6px 6px 0px var(--profile-border-color); transform: translate(-2px, -2px);}	
 
+/* --- Animaciones para el botón de Unirse --- */
 @keyframes pulse {
 	0%, 100% { transform: scale(1); }
 	50% { transform: scale(1.05); }
@@ -73,12 +74,14 @@
 	}
 }
 
+/* --- Botón para Unirse a NexID --- */
 .join-nexid-button {
 	background-color: var(--text-color);
 	color: var(--background);
 	animation: pulse 2.5s infinite cubic-bezier(0.4, 0, 0.6, 1), glow 3s infinite alternate;
 }
 
+/* --- Panel de Configuración Responsivo --- */
 #settings-panel {
 	position: fixed;
 	bottom: 0;
@@ -146,7 +149,7 @@
 #profile-page.panorama-active .content-wrapper {
 	transform: scale(0.85);
 	box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);
-	border-radius: 1.5rem; /* rounded-3xl */
+	border-radius: 1.5rem;
 	padding-top: 2rem;
 	padding-bottom: 2rem;
 }
@@ -165,8 +168,7 @@
 .design-mode .social-button,
 .design-mode #socials-footer a,
 .design-mode #public-profile-img,
-.design-mode #image-actions-container button,
-.design-mode .video-wrapper::after {
+.design-mode #image-actions-container button {
 	pointer-events: none;
 }
 .design-mode .draggable-item.is-empty {
@@ -184,7 +186,7 @@
 .sortable-fallback {
 	opacity: 1 !important;
 	background: transparent !important;
-	box-sizing: border-box; 
+	box-sizing: border-box; 
 	color: var(--text-color);
 }
 .drag-handle {
@@ -409,11 +411,12 @@
 }
 
 .video-wrapper {
-    aspect-ratio: 16 / 9; /* <-- AÑADIDO: Fija la proporción del video */
+    aspect-ratio: 16 / 9;
 }
 
 /* Capa invisible para el modo diseño */
-.design-mode .video-wrapper::after {
+.design-mode .video-wrapper::after,
+.design-mode .immersive-gallery::after {
     content: '';
     position: absolute;
     inset: 0;
@@ -517,5 +520,4 @@
 .gallery-editor-item .delete-gallery-image-btn:hover {
     transform: scale(1.1);
 }
-
 
