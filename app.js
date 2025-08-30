@@ -82,6 +82,7 @@ const DOMElements = {
 	cropperImage: document.getElementById('cropper-image'),
     thumbnailCropperModal: document.getElementById('thumbnail-cropper-modal'),
     thumbnailCropperImage: document.getElementById('thumbnail-cropper-image'),
+    galleryEditModal: document.getElementById('gallery-edit-modal'),
 	geminiModal: document.getElementById('gemini-modal'),
 	uploadBackgroundBtn: document.getElementById('upload-background-btn'),
 	backgroundUploadInput: document.getElementById('background-upload-input'),
@@ -1581,14 +1582,10 @@ DOMElements.profilePage.addEventListener('click', (e) => {
 		}
 	}
 
-    const thumbnail = e.target.closest('.thumbnail');
     const mainImage = e.target.closest('.main-image');
     const profileImage = e.target.closest('#public-profile-img');
 
-    if (thumbnail) {
-        const index = parseInt(thumbnail.dataset.index, 10);
-        displayGalleryImage(appState.galleryImages, index);
-    } else if (mainImage) {
+    if (mainImage) {
         const currentIndex = appState.galleryImages.findIndex(img => img.image_url === mainImage.src);
         if (currentIndex !== -1) {
             openImageZoomModal(appState.galleryImages, currentIndex);
@@ -1977,8 +1974,9 @@ function openImageZoomModal(images, startIndex) {
             imgEl.style.opacity = 1;
         }, 150);
 
-        prevBtn.style.display = images.length > 1 ? 'block' : 'none';
-        nextBtn.style.display = images.length > 1 ? 'block' : 'none';
+        const isMobile = window.innerWidth < 768;
+        prevBtn.style.display = images.length > 1 && !isMobile ? 'flex' : 'none';
+        nextBtn.style.display = images.length > 1 && !isMobile ? 'flex' : 'none';
         prevBtn.disabled = currentIndex === 0;
         nextBtn.disabled = currentIndex === images.length - 1;
     }
@@ -2008,7 +2006,6 @@ function openImageZoomModal(images, startIndex) {
         else if (e.key === 'Escape') { closeModal(); }
     }
 
-    // Lógica de Deslizamiento (Swipe)
     let touchStartX = 0;
     let touchEndX = 0;
 
@@ -2022,13 +2019,9 @@ function openImageZoomModal(images, startIndex) {
     }, { passive: true });
 
     function handleSwipe() {
-        const swipeThreshold = 50; // Mínima distancia para considerarlo un swipe
-        if (touchEndX < touchStartX - swipeThreshold) {
-            nextImage();
-        }
-        if (touchEndX > touchStartX + swipeThreshold) {
-            prevImage();
-        }
+        const swipeThreshold = 50;
+        if (touchEndX < touchStartX - swipeThreshold) nextImage();
+        if (touchEndX > touchStartX + swipeThreshold) prevImage();
     }
 
 
@@ -2398,20 +2391,12 @@ function renderGalleryEditor() {
 
     appState.galleryImages.forEach(image => {
         const item = document.createElement('div');
-        item.className = 'gallery-editor-item relative group';
+        item.className = 'gallery-editor-item relative group cursor-pointer';
         item.dataset.id = image.id;
         item.innerHTML = `
-            <img src="${image.thumbnail_url || image.image_url}" class="w-full h-24 object-cover rounded-lg">
-            <div class="absolute inset-0 bg-black bg-opacity-50 flex flex-col p-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
-                <div class="flex self-end gap-1">
-                    <button data-id="${image.id}" class="crop-thumbnail-btn p-1 text-white bg-blue-600 rounded-full">
-                        <i data-lucide="crop" class="w-4 h-4"></i>
-                    </button>
-                    <button data-id="${image.id}" data-path="${image.image_path}" data-thumbpath="${image.thumbnail_path || ''}" class="delete-gallery-image-btn p-1 text-white bg-red-600 rounded-full">
-                        <i data-lucide="x" class="w-4 h-4"></i>
-                    </button>
-                </div>
-                <textarea class="gallery-caption-input mt-auto" data-id="${image.id}" placeholder="Pie de foto...">${image.caption || ''}</textarea>
+            <img src="${image.thumbnail_url || image.image_url}" class="w-full h-full object-cover rounded-lg pointer-events-none">
+            <div class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                <i data-lucide="edit" class="w-8 h-8 text-white"></i>
             </div>
         `;
         listEl.appendChild(item);
@@ -2457,6 +2442,20 @@ function updateAddImageButtonState() {
     const canUpload = appState.galleryImages.length < 6;
     DOMElements.addGalleryImageBtn.disabled = !canUpload;
     DOMElements.addGalleryImageBtn.textContent = canUpload ? `Añadir Imágenes (${appState.galleryImages.length}/6)` : 'Galería Llena (6/6)';
+}
+
+function openGalleryEditModal(image) {
+    appState.editingGalleryImageId = image.id;
+    const modal = DOMElements.galleryEditModal;
+    modal.querySelector('#gallery-edit-preview').src = image.image_url;
+    modal.querySelector('#gallery-edit-caption').value = image.caption || '';
+    modal.classList.remove('hidden');
+    lucide.createIcons();
+}
+
+function closeGalleryEditModal() {
+    DOMElements.galleryEditModal.classList.add('hidden');
+    appState.editingGalleryImageId = null;
 }
 
 DOMElements.addGalleryImageBtn.addEventListener('click', () => {
@@ -2517,63 +2516,75 @@ DOMElements.galleryImageUploadInput.addEventListener('change', async (e) => {
     DOMElements.galleryImageUploadInput.value = '';
 });
 
-DOMElements.galleryEditorList.addEventListener('click', async (e) => {
-    const deleteBtn = e.target.closest('.delete-gallery-image-btn');
-    const cropBtn = e.target.closest('.crop-thumbnail-btn');
+DOMElements.galleryEditorList.addEventListener('click', (e) => {
+    const item = e.target.closest('.gallery-editor-item');
+    if (item) {
+        const imageId = item.dataset.id;
+        const image = appState.galleryImages.find(img => img.id === imageId);
+        if (image) {
+            openGalleryEditModal(image);
+        }
+    }
+});
 
-    if (deleteBtn) {
-        const id = deleteBtn.dataset.id;
-        const path = deleteBtn.dataset.path;
-        const thumbpath = deleteBtn.dataset.thumbpath;
-        
-        showConfirm("¿Estás seguro de que quieres eliminar esta imagen?", async (confirmed) => {
-            if (confirmed) {
-                const { error: dbError } = await supabaseClient.from('gallery_images').delete().eq('id', id);
-                if (dbError) return showAlert(`Error al eliminar: ${dbError.message}`);
-
-                const pathsToDelete = [path];
-                if (thumbpath && thumbpath !== 'null') pathsToDelete.push(thumbpath);
-                await supabaseClient.storage.from('gallery-images').remove(pathsToDelete);
-                
-                appState.galleryImages = appState.galleryImages.filter(img => img.id !== id);
-                renderGalleryEditor();
-                updateLivePreview();
-            }
-        });
+DOMElements.galleryEditModal.addEventListener('click', (e) => {
+    const closeBtn = e.target.closest('#gallery-edit-close-btn');
+    const cropBtn = e.target.closest('#gallery-edit-crop-btn');
+    const deleteBtn = e.target.closest('#gallery-edit-delete-btn');
+    
+    if (closeBtn) {
+        closeGalleryEditModal();
     } else if (cropBtn) {
-        const id = cropBtn.dataset.id;
-        const imageToCrop = appState.galleryImages.find(img => img.id === id);
+        const imageToCrop = appState.galleryImages.find(img => img.id === appState.editingGalleryImageId);
         if (imageToCrop) {
-            appState.editingGalleryImageId = id;
             DOMElements.thumbnailCropperImage.src = imageToCrop.image_url;
             DOMElements.thumbnailCropperModal.classList.remove('hidden');
             if (appState.thumbnailCropper) appState.thumbnailCropper.destroy();
             appState.thumbnailCropper = new Cropper(DOMElements.thumbnailCropperImage, {
-                aspectRatio: 1 / 1, // Proporción cuadrada
+                aspectRatio: 1 / 1,
                 viewMode: 1,
                 background: false,
+            });
+        }
+    } else if (deleteBtn) {
+        const imageToDelete = appState.galleryImages.find(img => img.id === appState.editingGalleryImageId);
+        if (imageToDelete) {
+             showConfirm("¿Estás seguro de que quieres eliminar esta imagen?", async (confirmed) => {
+                if (confirmed) {
+                    const { error: dbError } = await supabaseClient.from('gallery_images').delete().eq('id', imageToDelete.id);
+                    if (dbError) return showAlert(`Error al eliminar: ${dbError.message}`);
+
+                    const pathsToDelete = [imageToDelete.image_path];
+                    if (imageToDelete.thumbnail_path) pathsToDelete.push(imageToDelete.thumbnail_path);
+                    await supabaseClient.storage.from('gallery-images').remove(pathsToDelete);
+                    
+                    appState.galleryImages = appState.galleryImages.filter(img => img.id !== imageToDelete.id);
+                    renderGalleryEditor();
+                    updateLivePreview();
+                    closeGalleryEditModal();
+                }
             });
         }
     }
 });
 
-DOMElements.galleryEditorList.addEventListener('input', debounce(async (e) => {
-    const captionInput = e.target.closest('.gallery-caption-input');
-    if (captionInput) {
-        const id = captionInput.dataset.id;
-        const newCaption = captionInput.value;
-        const { error } = await supabaseClient.from('gallery_images').update({ caption: newCaption }).eq('id', id);
-        
-        if (error) {
-            showAlert("No se pudo guardar el pie de foto.");
-            console.error("Error updating caption:", error);
-        } else {
-            const img = appState.galleryImages.find(i => i.id === id);
-            if (img) img.caption = newCaption;
-            updateLivePreview();
-        }
+DOMElements.galleryEditModal.querySelector('#gallery-edit-caption').addEventListener('input', debounce(async (e) => {
+    const newCaption = e.target.value;
+    const { error } = await supabaseClient
+        .from('gallery_images')
+        .update({ caption: newCaption })
+        .eq('id', appState.editingGalleryImageId);
+    
+    if (error) {
+        showAlert("No se pudo guardar el pie de foto.");
+        console.error("Error updating caption:", error);
+    } else {
+        const img = appState.galleryImages.find(i => i.id === appState.editingGalleryImageId);
+        if (img) img.caption = newCaption;
+        updateLivePreview();
     }
 }, 500));
+
 
 document.getElementById('thumbnail-cropper-cancel-btn').addEventListener('click', () => {
     DOMElements.thumbnailCropperModal.classList.add('hidden');
@@ -2628,7 +2639,7 @@ document.getElementById('thumbnail-cropper-save-btn').addEventListener('click', 
             DOMElements.thumbnailCropperModal.classList.add('hidden');
             if(appState.thumbnailCropper) appState.thumbnailCropper.destroy();
             appState.thumbnailCropper = null;
-            appState.editingGalleryImageId = null;
+            // No reseteamos editingGalleryImageId para que el modal de edición principal sepa qué imagen recargar.
         }
     }, 'image/webp');
 });
