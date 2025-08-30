@@ -56,8 +56,8 @@ let appState = {
 	subscriptions: { auth: null, links: null },
 	sortable: { layout: null, gallery: null },
 	cropper: null,
-    thumbnailCropper: null, // Cropper para miniaturas
-    editingGalleryImageId: null, // ID de la imagen de galería que se está editando
+    thumbnailCropper: null, 
+    editingGalleryImageId: null, 
 	isUsernameAvailable: false,
 	isSettingsDirty: false,
 	isDesignModeActive: false,
@@ -1565,7 +1565,7 @@ document.getElementById('links-list-editor').addEventListener('click', (e) => {
 	}
 });
 
-document.getElementById('profile-page').addEventListener('click', (e) => {
+DOMElements.profilePage.addEventListener('click', (e) => {
 	const linkButton = e.target.closest('.public-link-button, .social-button');
 	if (linkButton) {
 		if (appState.isDesignModeActive) {
@@ -1584,6 +1584,17 @@ document.getElementById('profile-page').addEventListener('click', (e) => {
 			});
 		}
 	}
+
+    // NUEVO: Delegación de eventos para la galería
+    const thumbnail = e.target.closest('.thumbnail');
+    const mainImage = e.target.closest('.main-image');
+
+    if (thumbnail) {
+        const index = parseInt(thumbnail.dataset.index, 10);
+        displayGalleryImage(appState.galleryImages, index);
+    } else if (mainImage) {
+        openImageZoomModal(e);
+    }
 });
 
 
@@ -2267,13 +2278,12 @@ function renderImmersiveGallery(images) {
     const thumbnailStrip = document.getElementById('gallery-thumbnail-strip');
     images.forEach((image, index) => {
         const thumb = document.createElement('img');
-        thumb.src = image.thumbnail_url || image.image_url; // Usa el thumbnail si existe
+        thumb.src = image.thumbnail_url || image.image_url; 
         thumb.className = `thumbnail ${index === 0 ? 'active' : ''}`;
         thumb.dataset.index = index;
         thumbnailStrip.appendChild(thumb);
     });
 
-    // CORRECCIÓN: Activar el zoom en la imagen principal
     const mainImageEl = document.getElementById('gallery-main-image');
     if(mainImageEl) mainImageEl.addEventListener('click', openImageZoomModal);
 
@@ -2343,7 +2353,6 @@ function renderGalleryEditor() {
                 order_index: index,
             }));
 
-            // CORRECCIÓN: Actualizar el orden individualmente
             const updatePromises = updatedOrder.map(item =>
                 supabaseClient
                     .from('gallery_images')
