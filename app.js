@@ -1953,7 +1953,7 @@ function openImageZoomModal(images, startIndex) {
     const modal = document.createElement('div');
     modal.className = 'fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4';
     modal.innerHTML = `
-        <div class="relative w-full h-full flex items-center justify-center">
+        <div class="relative w-full h-full flex items-center justify-center" id="zoom-content-wrapper">
             <img src="" class="max-w-full max-h-full rounded-lg shadow-2xl transition-opacity duration-300" id="zoomed-image">
             <button class="zoom-nav-btn left-4" id="zoom-prev-btn"><i data-lucide="chevron-left" class="w-8 h-8"></i></button>
             <button class="zoom-nav-btn right-4" id="zoom-next-btn"><i data-lucide="chevron-right" class="w-8 h-8"></i></button>
@@ -1968,6 +1968,7 @@ function openImageZoomModal(images, startIndex) {
     const prevBtn = modal.querySelector('#zoom-prev-btn');
     const nextBtn = modal.querySelector('#zoom-next-btn');
     const closeBtn = modal.querySelector('#zoom-close-btn');
+    const contentWrapper = modal.querySelector('#zoom-content-wrapper');
 
     function updateZoomedImage() {
         imgEl.style.opacity = 0;
@@ -1986,48 +1987,55 @@ function openImageZoomModal(images, startIndex) {
         modal.remove();
         document.removeEventListener('keydown', handleKeyDown);
     }
-
-    function handleKeyDown(e) {
-        if (e.key === 'ArrowLeft') {
-            e.preventDefault();
-            if (currentIndex > 0) {
-                currentIndex--;
-                updateZoomedImage();
-            }
-        } else if (e.key === 'ArrowRight') {
-            e.preventDefault();
-            if (currentIndex < images.length - 1) {
-                currentIndex++;
-                updateZoomedImage();
-            }
-        } else if (e.key === 'Escape') {
-            closeModal();
-        }
-    }
-
-    prevBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (currentIndex > 0) {
-            currentIndex--;
-            updateZoomedImage();
-        }
-    });
-
-    nextBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
+    
+    function nextImage() {
         if (currentIndex < images.length - 1) {
             currentIndex++;
             updateZoomedImage();
         }
-    });
+    }
+    
+    function prevImage() {
+        if (currentIndex > 0) {
+            currentIndex--;
+            updateZoomedImage();
+        }
+    }
 
-    closeBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        closeModal();
-    });
+    function handleKeyDown(e) {
+        if (e.key === 'ArrowLeft') { e.preventDefault(); prevImage(); }
+        else if (e.key === 'ArrowRight') { e.preventDefault(); nextImage(); }
+        else if (e.key === 'Escape') { closeModal(); }
+    }
 
-    modal.addEventListener('click', closeModal);
+    // Lógica de Deslizamiento (Swipe)
+    let touchStartX = 0;
+    let touchEndX = 0;
 
+    contentWrapper.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+    }, { passive: true });
+
+    contentWrapper.addEventListener('touchend', (e) => {
+        touchEndX = e.changedTouches[0].screenX;
+        handleSwipe();
+    }, { passive: true });
+
+    function handleSwipe() {
+        const swipeThreshold = 50; // Mínima distancia para considerarlo un swipe
+        if (touchEndX < touchStartX - swipeThreshold) {
+            nextImage();
+        }
+        if (touchEndX > touchStartX + swipeThreshold) {
+            prevImage();
+        }
+    }
+
+
+    prevBtn.addEventListener('click', (e) => { e.stopPropagation(); prevImage(); });
+    nextBtn.addEventListener('click', (e) => { e.stopPropagation(); nextImage(); });
+    closeBtn.addEventListener('click', (e) => { e.stopPropagation(); closeModal(); });
+    modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
     document.addEventListener('keydown', handleKeyDown);
 
     updateZoomedImage();
@@ -2541,7 +2549,7 @@ DOMElements.galleryEditorList.addEventListener('click', async (e) => {
             DOMElements.thumbnailCropperModal.classList.remove('hidden');
             if (appState.thumbnailCropper) appState.thumbnailCropper.destroy();
             appState.thumbnailCropper = new Cropper(DOMElements.thumbnailCropperImage, {
-                aspectRatio: 16 / 9,
+                aspectRatio: 1 / 1, // Proporción cuadrada
                 viewMode: 1,
                 background: false,
             });
@@ -2581,12 +2589,12 @@ document.getElementById('thumbnail-cropper-save-btn').addEventListener('click', 
     saveBtn.disabled = true;
     saveBtn.innerHTML = `<div class="w-5 h-5 border-2 border-t-transparent border-white rounded-full animate-spin"></div><span>Procesando...</span>`;
 
-    appState.thumbnailCropper.getCroppedCanvas({ width: 1280, height: 720 }).toBlob(async (blob) => {
+    appState.thumbnailCropper.getCroppedCanvas({ width: 400, height: 400 }).toBlob(async (blob) => {
         try {
             const imageToUpdate = appState.galleryImages.find(img => img.id === appState.editingGalleryImageId);
             if (!imageToUpdate) throw new Error("Image not found");
 
-            const compressedBlob = await imageCompression(blob, { maxSizeMB: 0.1, maxWidthOrHeight: 1280, useWebWorker: true });
+            const compressedBlob = await imageCompression(blob, { maxSizeMB: 0.1, maxWidthOrHeight: 400, useWebWorker: true });
             
             if (imageToUpdate.thumbnail_path) {
                 await supabaseClient.storage.from('gallery-images').remove([imageToUpdate.thumbnail_path]);
