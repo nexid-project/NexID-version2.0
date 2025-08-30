@@ -2455,7 +2455,6 @@ function openGalleryEditModal(image) {
     const previewImage = modal.querySelector('#gallery-edit-preview');
     const previewContainer = modal.querySelector('#gallery-focus-adjuster');
     
-    // Limpiar listeners antiguos si existen
     if (previewContainer.dragListeners) {
         previewContainer.removeEventListener('mousedown', previewContainer.dragListeners.onMouseDown);
         document.removeEventListener('mousemove', previewContainer.dragListeners.onMouseMove);
@@ -2787,5 +2786,4 @@ window.onload = () => {
 	setupPasswordToggle('update-confirm-password-input', 'update-confirm-password-toggle');
 	setupPasswordToggle('delete-confirm-password-input', 'delete-confirm-password-toggle');
 };
-
 
