@@ -1,46 +1,88 @@
-const { createClient } = supabase;
+function openImageZoomModal(images, startIndex) {
+    if (!images || images.length === 0) return;
 
-// --- 1. CONFIGURACIÓN E INICIALIZACIÓN ---
-const SUPABASE_URL = 'https://ukowtlaytmqgdhjygulq.supabase.co';	
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVrb3d0bGF5dG1xZ2RoanlndWxxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM2NTEyMTgsImV4cCI6MjA2OTIyNzIxOH0.Kmg90Xdcu0RzAP55YwwuYfuRYj2U5LU90KAiKbEtLQg';
+    let currentIndex = startIndex;
 
-const backgroundLibraryUrls = [
-	'https://ukowtlaytmqgdhjygulq.supabase.co/storage/v1/object/public/library-backgrounds//wallpaperflare.com_wallpaper.jpg',
-	'https://placehold.co/1920x1080/1E40AF/FFFFFF?text=Fondo+2',
-	'https://placehold.co/1920x1080/991B1B/FFFFFF?text=Fondo+3',
-	'https://placehold.co/1920x1080/166534/FFFFFF?text=Fondo+4',
-	'https://placehold.co/1920x1080/854D0E/FFFFFF?text=Fondo+5',
-	'https://placehold.co/1920x1080/581C87/FFFFFF?text=Fondo+6',
-	'https://placehold.co/1920x1080/9D174D/FFFFFF?text=Fondo+7',
-	'https://placehold.co/1920x1080/374151/FFFFFF?text=Fondo+8',
-];
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4';
+    modal.innerHTML = `
+        <div class="relative w-full h-full flex items-center justify-center">
+            <img src="" class="max-w-full max-h-full rounded-lg shadow-2xl transition-opacity duration-300" id="zoomed-image">
+            <button class="zoom-nav-btn left-4" id="zoom-prev-btn"><i data-lucide="chevron-left" class="w-8 h-8"></i></button>
+            <button class="zoom-nav-btn right-4" id="zoom-next-btn"><i data-lucide="chevron-right" class="w-8 h-8"></i></button>
+            <button class="absolute top-4 right-4 text-white" id="zoom-close-btn"><i data-lucide="x" class="w-8 h-8"></i></button>
+        </div>
+    `;
 
-let supabaseClient;
+    document.body.appendChild(modal);
+    lucide.createIcons();
 
-// --- Lógica de carga dinámica de fuentes ---
-const fontMap = {
-	'font-inter': { name: 'Inter (Sans-serif)', query: 'Inter:wght@400;500;700' },
-	'font-lora': { name: 'Lora (Serif)', query: 'Lora:wght@400;500;700' },
-	'font-roboto-mono': { name: 'Roboto Mono (Mono)', query: 'Roboto+Mono:wght@400;500;700' },
-	'font-playfair-display': { name: 'Playfair Display (Serif)', query: 'Playfair+Display:wght@400;500;700' },
-	'font-poppins': { name: 'Poppins (Sans-serif)', query: 'Poppins:wght@400;500;700' },
-	'font-jetbrains-mono': { name: 'JetBrains Mono (Mono)', query: 'JetBrains+Mono:wght@400;500;700' },
-	'font-lato': { name: 'Lato (Sans-serif)', query: 'Lato:wght@400;700' },
-	'font-montserrat': { name: 'Montserrat (Sans-serif)', query: 'Montserrat:wght@400;500;700' },
-	'font-oswald': { name: 'Oswald (Condensed)', query: 'Oswald:wght@400;500;700' },
-	'font-lobster': { name: 'Lobster (Cursive)', query: 'Lobster:wght@400' },
-};
-const loadedFonts = new Set(['font-inter']);
+    const imgEl = modal.querySelector('#zoomed-image');
+    const prevBtn = modal.querySelector('#zoom-prev-btn');
+    const nextBtn = modal.querySelector('#zoom-next-btn');
+    const closeBtn = modal.querySelector('#zoom-close-btn');
 
-function loadFontIfNeeded(fontClass) {
-	if (!fontClass || loadedFonts.has(fontClass)) return;
-	const fontData = fontMap[fontClass];
-	if (!fontData) return;
-	const link = document.createElement('link');
-	link.rel = 'stylesheet';
-	link.href = `https://fonts.googleapis.com/css2?family=${fontData.query.replace(/ /g, "+")}&display=swap`;
-	document.head.appendChild(link);
-	loadedFonts.add(fontClass);
+    function updateZoomedImage() {
+        imgEl.style.opacity = 0;
+        setTimeout(() => {
+            // Usa image_url porque el array puede contener la foto de perfil que no tiene thumbnail_url
+            imgEl.src = images[currentIndex].image_url;
+            imgEl.style.opacity = 1;
+        }, 150); // Reducido para una sensación más rápida
+
+        prevBtn.disabled = currentIndex === 0;
+        nextBtn.disabled = currentIndex === images.length - 1;
+    }
+
+    function closeModal() {
+        modal.remove();
+        document.removeEventListener('keydown', handleKeyDown);
+    }
+
+    function handleKeyDown(e) {
+        if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            if (currentIndex > 0) {
+                currentIndex--;
+                updateZoomedImage();
+            }
+        } else if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            if (currentIndex < images.length - 1) {
+                currentIndex++;
+                updateZoomedImage();
+            }
+        } else if (e.key === 'Escape') {
+            closeModal();
+        }
+    }
+
+    prevBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (currentIndex > 0) {
+            currentIndex--;
+            updateZoomedImage();
+        }
+    });
+
+    nextBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (currentIndex < images.length - 1) {
+            currentIndex++;
+            updateZoomedImage();
+        }
+    });
+
+    closeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        closeModal();
+    });
+
+    modal.addEventListener('click', closeModal);
+
+    document.addEventListener('keydown', handleKeyDown);
+
+    updateZoomedImage();
 }
 
 // --- 2. ESTADO GLOBAL DE LA APLICACIÓN ---
@@ -1585,15 +1627,19 @@ DOMElements.profilePage.addEventListener('click', (e) => {
 		}
 	}
 
-    // NUEVO: Delegación de eventos para la galería
+    // CORRECCIÓN: Delegación de eventos unificada para zoom
     const thumbnail = e.target.closest('.thumbnail');
     const mainImage = e.target.closest('.main-image');
+    const profileImage = e.target.closest('#public-profile-img');
 
     if (thumbnail) {
         const index = parseInt(thumbnail.dataset.index, 10);
         displayGalleryImage(appState.galleryImages, index);
     } else if (mainImage) {
-        openImageZoomModal(e);
+        const currentIndex = parseInt(mainImage.dataset.currentIndex, 10) || 0;
+        openImageZoomModal(appState.galleryImages, currentIndex);
+    } else if (profileImage && !e.target.closest('#edit-profile-img-btn')) {
+        openImageZoomModal([{ image_url: profileImage.src }], 0);
     }
 });
 
@@ -2573,5 +2619,3 @@ window.onload = () => {
 	setupPasswordToggle('update-confirm-password-input', 'update-confirm-password-toggle');
 	setupPasswordToggle('delete-confirm-password-input', 'delete-confirm-password-toggle');
 };
-
-
