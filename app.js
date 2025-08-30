@@ -2452,23 +2452,98 @@ function updateAddImageButtonState() {
 function openGalleryEditModal(image) {
     appState.editingGalleryImageId = image.id;
     const modal = DOMElements.galleryEditModal;
-    modal.querySelector('#gallery-edit-preview').src = image.image_url;
+    const previewImage = modal.querySelector('#gallery-edit-preview');
+    const previewContainer = modal.querySelector('#gallery-edit-preview-container');
+    
+    previewImage.src = image.image_url;
     modal.querySelector('#gallery-edit-caption').value = image.caption || '';
     
-    // Set active focus button
-    const focusControls = modal.querySelector('#gallery-edit-focus-controls');
-    focusControls.querySelectorAll('.focus-btn').forEach(btn => btn.classList.remove('active'));
-    const currentFocus = image.focus_point || 'center';
-    focusControls.querySelector(`[data-focus="${currentFocus}"]`).classList.add('active');
+    // Set initial focus point
+    const focus = image.focus_point || 'center center';
+    previewImage.style.objectPosition = focus;
 
     modal.classList.remove('hidden');
     lucide.createIcons();
+
+    // Attach drag listeners
+    enableFocusDrag(previewContainer, previewImage, image);
 }
 
 function closeGalleryEditModal() {
     DOMElements.galleryEditModal.classList.add('hidden');
     appState.editingGalleryImageId = null;
 }
+
+function enableFocusDrag(container, image, galleryImageData) {
+    let isDragging = false;
+    let startY = 0;
+    let startTop = 0;
+
+    const onMouseDown = (e) => {
+        e.preventDefault();
+        isDragging = true;
+        startY = e.clientY || e.touches[0].clientY;
+        startTop = image.offsetTop;
+        container.style.cursor = 'grabbing';
+    };
+
+    const onMouseMove = (e) => {
+        if (!isDragging) return;
+        const currentY = e.clientY || e.touches[0].clientY;
+        const deltaY = currentY - startY;
+        let newTop = startTop + deltaY;
+
+        // Constrain movement
+        const containerHeight = container.offsetHeight;
+        const imageHeight = image.offsetHeight;
+        const minTop = containerHeight - imageHeight;
+        const maxTop = 0;
+        newTop = Math.max(minTop, Math.min(newTop, maxTop));
+        
+        image.style.top = `${newTop}px`;
+    };
+
+    const onMouseUp = async () => {
+        if (!isDragging) return;
+        isDragging = false;
+        container.style.cursor = 'grab';
+
+        const containerHeight = container.offsetHeight;
+        const imageHeight = image.offsetHeight;
+        const newTop = image.offsetTop;
+        
+        // Calculate percentage
+        const focusPercent = (Math.abs(newTop) / (imageHeight - containerHeight)) * 100;
+        const newFocusPoint = `50% ${focusPercent.toFixed(2)}%`;
+        
+        // Update local state
+        galleryImageData.focus_point = newFocusPoint;
+
+        // Save to DB
+        const { error } = await supabaseClient
+            .from('gallery_images')
+            .update({ focus_point: newFocusPoint })
+            .eq('id', galleryImageData.id);
+
+        if (error) {
+            showAlert("No se pudo guardar el punto de enfoque.");
+        } else {
+            updateLivePreview();
+        }
+    };
+
+    container.addEventListener('mousedown', onMouseDown);
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+
+    container.addEventListener('touchstart', onMouseDown, { passive: false });
+    document.addEventListener('touchmove', onMouseMove, { passive: false });
+    document.addEventListener('touchend', onMouseUp);
+
+    // Store a reference to remove them later
+    container.dragListeners = { onMouseDown, onMouseMove, onMouseUp };
+}
+
 
 DOMElements.addGalleryImageBtn.addEventListener('click', () => {
     DOMElements.galleryImageUploadInput.click();
@@ -2539,11 +2614,10 @@ DOMElements.galleryEditorList.addEventListener('click', (e) => {
     }
 });
 
-DOMElements.galleryEditModal.addEventListener('click', async (e) => {
+DOMElements.galleryEditModal.addEventListener('click', (e) => {
     const closeBtn = e.target.closest('#gallery-edit-close-btn');
     const cropBtn = e.target.closest('#gallery-edit-crop-btn');
     const deleteBtn = e.target.closest('#gallery-edit-delete-btn');
-    const focusBtn = e.target.closest('.focus-btn');
     
     if (closeBtn) {
         closeGalleryEditModal();
@@ -2583,25 +2657,6 @@ DOMElements.galleryEditModal.addEventListener('click', async (e) => {
                     closeGalleryEditModal();
                 }
             });
-        }
-    } else if (focusBtn) {
-        const newFocus = focusBtn.dataset.focus;
-        const imageToUpdate = appState.galleryImages.find(img => img.id === appState.editingGalleryImageId);
-        if (imageToUpdate && imageToUpdate.focus_point !== newFocus) {
-            const { error } = await supabaseClient
-                .from('gallery_images')
-                .update({ focus_point: newFocus })
-                .eq('id', appState.editingGalleryImageId);
-            
-            if (error) {
-                showAlert("No se pudo guardar el punto de enfoque.");
-            } else {
-                imageToUpdate.focus_point = newFocus;
-                const focusControls = DOMElements.galleryEditModal.querySelector('#gallery-edit-focus-controls');
-                focusControls.querySelectorAll('.focus-btn').forEach(btn => btn.classList.remove('active'));
-                focusBtn.classList.add('active');
-                updateLivePreview();
-            }
         }
     }
 });
