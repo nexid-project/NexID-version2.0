@@ -3,7 +3,6 @@ const { createClient } = supabase;
 // --- 1. CONFIGURACIÓN E INICIALIZACIÓN ---
 const SUPABASE_URL = 'https://ukowtlaytmqgdhjygulq.supabase.co';	
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVrb3d0bGF5dG1xZ2RoanlndWxxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM2NTEyMTgsImV4cCI6MjA2OTIyNzIxOH0.Kmg90Xdcu0RzAP55YwwuYfuRYj2U5LU90KAiKbEtLQg';
-const GALLERY_IMAGE_LIMIT = 6;
 
 const backgroundLibraryUrls = [
 	'https://ukowtlaytmqgdhjygulq.supabase.co/storage/v1/object/public/library-backgrounds//wallpaperflare.com_wallpaper.jpg',
@@ -55,7 +54,7 @@ let appState = {
 	tempBackgroundImagePath: null,
 	tempLayoutOrder: null,
 	subscriptions: { auth: null, links: null },
-	sortable: { layout: null, gallery: null }, // NUEVO: Sortable para la galería
+	sortable: { layout: null, gallery: null }, // Añadido gallery a sortable
 	cropper: null,
 	isUsernameAvailable: false,
 	isSettingsDirty: false,
@@ -102,6 +101,7 @@ const DOMElements = {
 	fontSelectorLabel: document.getElementById('font-selector-label'),
 	fontSelectorOptions: document.getElementById('font-selector-options'),
 	fontFamilyValue: document.getElementById('font-family-value'),
+    // Referencias para el nuevo modal de registro
     registerModal: document.getElementById('register-modal'),
     showRegisterModalBtn: document.getElementById('show-register-modal-btn'),
     createAccountBtn: document.getElementById('create-account-btn'),
@@ -109,11 +109,12 @@ const DOMElements = {
     registerEmailInput: document.getElementById('register-email-input'),
     registerPasswordInput: document.getElementById('register-password-input'),
     registerConfirmPasswordInput: document.getElementById('register-confirm-password-input'),
+    // Referencia para el video
     featuredVideoUrlInput: document.getElementById('featured-video-url-input'),
-    // NUEVO: Referencias para la galería
-    addGalleryImageBtn: document.getElementById('add-gallery-image-btn'),
-    galleryUploadInput: document.getElementById('gallery-upload-input'),
+    // CORRECCIÓN: Referencias para el editor de la galería
     galleryEditorList: document.getElementById('gallery-editor-list'),
+    addGalleryImageBtn: document.getElementById('add-gallery-image-btn'),
+    galleryImageUploadInput: document.getElementById('gallery-image-upload-input'),
 };
 
 // --- 4. FUNCIONES DE UTILIDAD (MODALES, ETC.) ---
@@ -275,6 +276,9 @@ async function handleAuthStateChange(session) {
 			return;
 		}
 
+        const { data: galleryImages } = await supabaseClient.from('gallery_images').select('*').eq('user_id', appState.currentUser.id).order('order_index', { ascending: true });
+        appState.galleryImages = galleryImages || [];
+
 		if (publicUsername && myProfile.username && myProfile.username !== `@${publicUsername}`) {
 			const backBtn = document.getElementById('back-to-my-profile-btn');
 			backBtn.classList.remove('hidden');
@@ -283,14 +287,8 @@ async function handleAuthStateChange(session) {
 		} else {
 			document.getElementById('back-to-my-profile-btn').classList.add('hidden');
 			appState.profile = myProfile;
-			// Cargar datos de enlaces y galería en paralelo
-			const [linksResponse, galleryResponse] = await Promise.all([
-				supabaseClient.from('links').select('*').eq('user_id', appState.currentUser.id).order('order_index', { ascending: true }),
-				supabaseClient.from('gallery_images').select('*').eq('user_id', appState.currentUser.id).order('order_index', { ascending: true })
-			]);
-			
-			appState.links = linksResponse.data || [];
-            appState.galleryImages = galleryResponse.data || [];
+			const { data: links } = await supabaseClient.from('links').select('*').eq('user_id', appState.currentUser.id).order('order_index', { ascending: true });
+			appState.links = links || [];
 			appState.socialButtons = myProfile.social_buttons || [];
 			
 			if (myProfile && myProfile.username_set) {
@@ -300,6 +298,7 @@ async function handleAuthStateChange(session) {
 				}
 				renderProfile(myProfile, true);
 				renderLinksEditor(appState.links);
+                renderGalleryEditor();
 				listenToUserLinks(myProfile.id);
 				showPage('profile');
 			} else {
@@ -334,14 +333,12 @@ async function loadPublicProfile(username) {
 			return;
 		}
 		
-		const [linksResponse, galleryResponse] = await Promise.all([
-			supabaseClient.from('links').select('*').eq('user_id', profile.id).order('order_index', { ascending: true }),
-			supabaseClient.from('gallery_images').select('*').eq('user_id', profile.id).order('order_index', { ascending: true })
-		]);
+		const { data: links } = await supabaseClient.from('links').select('*').eq('user_id', profile.id).order('order_index', { ascending: true });
+        const { data: galleryImages } = await supabaseClient.from('gallery_images').select('*').eq('user_id', profile.id).order('order_index', { ascending: true });
 
 		appState.profile = profile;
-		appState.links = linksResponse.data || [];
-        appState.galleryImages = galleryResponse.data || [];
+		appState.links = links || [];
+        appState.galleryImages = galleryImages || [];
 		appState.socialButtons = profile.social_buttons || [];
 		
 		const isOwner = appState.currentUser && appState.currentUser.id === profile.id;
@@ -440,10 +437,10 @@ const profileSectionTemplates = {
         const embedUrl = parseVideoUrl(profileData.featured_video_url);
         if (embedUrl) {
             return `
-                <div data-section="featured-video" class="draggable-item p-2 w-full aspect-video">
+                <div data-section="featured-video" class="draggable-item p-2">
                     <div class="video-wrapper">
                         <iframe
-                            class="w-full h-full rounded-lg"
+                            class="w-full h-full rounded-lg absolute inset-0"
                             src="${embedUrl}"
                             title="Video player"
                             frameborder="0"
@@ -456,23 +453,9 @@ const profileSectionTemplates = {
         }
         return '';
     },
-    'gallery': (profileData, isOwner, galleryImages) => {
-        if (galleryImages && galleryImages.length > 0) {
-            return `
-                <div data-section="gallery" class="draggable-item p-2 w-full">
-                    <div class="immersive-gallery">
-                        <div class="main-image-container">
-                            <img src="${galleryImages[0].image_url}" alt="${galleryImages[0].caption || 'Imagen de la galería'}" class="main-image">
-                            <p class="caption">${galleryImages[0].caption || ''}</p>
-                        </div>
-                        <div class="thumbnail-strip">
-                            ${galleryImages.map((img, index) => `
-                                <img src="${img.image_url}" class="thumbnail ${index === 0 ? 'active' : ''}" data-index="${index}" alt="Miniatura ${index + 1}">
-                            `).join('')}
-                        </div>
-                    </div>
-                </div>
-            `;
+    'gallery': (profileData) => {
+        if (appState.galleryImages && appState.galleryImages.length > 0) {
+            return `<div data-section="gallery" id="gallery-container" class="draggable-item p-2"></div>`;
         }
         return '';
     },
@@ -565,8 +548,7 @@ function renderProfile(profileData, isOwner) {
 
 	layoutOrder.forEach(sectionId => {
 		if (profileSectionTemplates[sectionId]) {
-			// Pasamos appState.galleryImages a la plantilla de la galería
-			layoutContainer.innerHTML += profileSectionTemplates[sectionId](profileData, isOwner, appState.galleryImages);
+			layoutContainer.innerHTML += profileSectionTemplates[sectionId](profileData, isOwner);
 		} else if (sectionId.startsWith('link_')) {
 			const linkId = sectionId.replace('link_', '');
 			const linkData = appState.links.find(l => String(l.id) === linkId);
@@ -575,6 +557,17 @@ function renderProfile(profileData, isOwner) {
 			}
 		}
 	});
+
+    // Post-render actions for dynamic content
+    if (layoutContainer.querySelector('#gallery-container')) {
+        renderImmersiveGallery(appState.galleryImages);
+    }
+    if (layoutContainer.querySelector('#social-buttons-section')) {
+        renderSocialButtons(profileData.social_buttons);
+    }
+    if (layoutContainer.querySelector('#socials-footer')) {
+        renderSocialIcons(profileData.socials, profileData.socials_order);
+    }
 
 	if (!appState.currentUser) {
 		layoutContainer.innerHTML += `
@@ -595,8 +588,6 @@ function renderProfile(profileData, isOwner) {
 	}
 
 	renderProfileActions(profileData);
-	renderSocialIcons(profileData.socials, profileData.socials_order);
-	renderSocialButtons(profileData.social_buttons);
 	
 	updateContainerVisibilityInDesignMode(profileData);
 
@@ -609,19 +600,23 @@ function renderProfile(profileData, isOwner) {
 
 function updateContainerVisibilityInDesignMode(profileData) {
 	if (!appState.isDesignModeActive) return;
-	const descriptionContainer = document.querySelector('[data-section="description"]');
+	
+    const isEmpty = (data) => !data || (Array.isArray(data) && data.length === 0) || (typeof data === 'object' && Object.keys(data).length === 0);
+
+    const descriptionContainer = document.querySelector('[data-section="description"]');
 	if (descriptionContainer) descriptionContainer.classList.toggle('is-empty', !profileData.description || profileData.description.trim() === '');
 	
-    // Lógica mejorada para botones y iconos
     const socialButtonsContainer = document.querySelector('[data-section="social-buttons"]');
-	if (socialButtonsContainer) socialButtonsContainer.classList.toggle('is-empty', !profileData.social_buttons || profileData.social_buttons.length === 0);
-	const socialsFooterContainer = document.querySelector('[data-section="socials"]');
-	if (socialsFooterContainer) socialsFooterContainer.classList.toggle('is-empty', !profileData.socials || Object.keys(profileData.socials).length === 0);
-
+	if (socialButtonsContainer) socialButtonsContainer.classList.toggle('is-empty', isEmpty(profileData.social_buttons));
+	
+    const socialsFooterContainer = document.querySelector('[data-section="socials"]');
+	if (socialsFooterContainer) socialsFooterContainer.classList.toggle('is-empty', isEmpty(profileData.socials));
+    
     const videoContainer = document.querySelector('[data-section="featured-video"]');
     if(videoContainer) videoContainer.classList.toggle('is-empty', !parseVideoUrl(profileData.featured_video_url));
+
     const galleryContainer = document.querySelector('[data-section="gallery"]');
-    if(galleryContainer) galleryContainer.classList.toggle('is-empty', !appState.galleryImages || appState.galleryImages.length === 0);
+    if(galleryContainer) galleryContainer.classList.toggle('is-empty', isEmpty(appState.galleryImages));
 }
 
 function renderLinksEditor(links) {
@@ -703,7 +698,7 @@ const socialIcons = {
 	soundcloud: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M7,19a1,1,0,0,1-1-1V8A1,1,0,0,1,8,8V18A1,1,0,0,1,7,19ZM3,18a1,1,0,0,1-1-1V11a1,1,0,0,1,2,0v6A1,1,0,0,1,3,18Z"></path><path d="M18.76,10.2A7,7,0,0,0,12,5a5.89,5.89,0,0,0-1.18.11,1,1,0,0,0-.82,1V18a1,1,0,0,0,1,1h6.5a4.49,4.49,0,0,0,1.26-8.8Z"></path></svg>`,
 	telegram: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M20.71 3.655s1.942 -0.757 1.78 1.082c-0.053 0.757 -0.539 3.409 -0.917 6.277l-1.295 8.495s-0.108 1.244 -1.079 1.461c-0.971 0.216 -2.428 -0.757 -2.698 -0.974 -0.216 -0.163 -4.047 -2.598 -5.396 -3.788 -0.378 -0.325 -0.81 -0.974 0.054 -1.732L16.825 9.065c0.647 -0.65 1.295 -2.165 -1.403 -0.325l-7.555 5.14s-0.864 0.541 -2.482 0.054l-3.508 -1.083s-1.295 -0.811 0.917 -1.623c5.396 -2.543 12.034 -5.14 17.916 -7.575"/></svg>`,
 };
-const largeSocialIcons = { ...socialIcons }; 
+const largeSocialIcons = { ...socialIcons }; // En este caso son los mismos, pero se mantiene la estructura por si se quiere cambiar en el futuro.
 
 const socialBaseUrls = {
 	instagram: 'https://instagram.com/', twitter: 'https://twitter.com/', github: 'https://github.com/', linkedin: 'https://linkedin.com/in/',
@@ -764,47 +759,50 @@ function getSocialIconForUrl(url) {
 }
 
 function renderSocialIcons(socials, socialsOrder) {
-	const footer = document.getElementById('socials-footer');
-	if (!footer) return;
+    const footer = document.getElementById('socials-footer');
+    if (!footer) return;
 
-	// Lógica mejorada: solo renderizar si hay datos
-	if (!socials || Object.keys(socials).length === 0) {
-		footer.innerHTML = '';
-		return;
-	}
+    footer.innerHTML = ''; 
+    const hasIcons = socials && Object.keys(socials).length > 0;
+    
+    if (!hasIcons) {
+        return; 
+    }
 
-	footer.innerHTML = '<div class="social-icons-wrapper"></div>';
-	const wrapper = footer.querySelector('.social-icons-wrapper');
-	
-	const order = socialsOrder && socialsOrder.length > 0 ? socialsOrder : SOCIAL_ICON_ORDER;
-	
-	order.forEach(key => {
-		const username = socials[key];
-		if (username && socialIcons[key]) {
-			const link = document.createElement('a');
-			link.href = `${socialBaseUrls[key]}${username}`;
-			link.target = '_blank';
-			link.rel = 'noopener noreferrer';
-			link.innerHTML = socialIcons[key];
-			link.className = 'opacity-70 hover:opacity-100 transition-opacity';
-			link.dataset.socialKey = key;
-			wrapper.appendChild(link);
-		}
-	});
+    const wrapper = document.createElement('div');
+    wrapper.className = 'social-icons-wrapper';
+    
+    const order = socialsOrder && socialsOrder.length > 0 ? socialsOrder : SOCIAL_ICON_ORDER;
+    
+    order.forEach(key => {
+        const username = socials[key];
+        if (username && socialIcons[key]) {
+            const link = document.createElement('a');
+            link.href = `${socialBaseUrls[key]}${username}`;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            link.innerHTML = socialIcons[key];
+            link.className = 'opacity-70 hover:opacity-100 transition-opacity';
+            link.dataset.socialKey = key;
+            wrapper.appendChild(link);
+        }
+    });
+
+    if (wrapper.children.length > 0) {
+        footer.appendChild(wrapper);
+    }
 }
 
 function renderSocialButtons(buttons) {
-	const section = document.getElementById('social-buttons-section');
-	if (!section) return;
+    const section = document.getElementById('social-buttons-section');
+    if (!section) return;
 
-	// Lógica mejorada: solo renderizar si hay datos
-	const buttonList = buttons || [];
-	if (buttonList.length === 0) {
-		section.innerHTML = '';
-		return;
-	}
+    section.innerHTML = '';
+    const buttonList = buttons || [];
 
-	section.innerHTML = '';
+    if (buttonList.length === 0) {
+        return;
+    }
 
 	buttonList.forEach(buttonData => {
 		const info = getSocialInfoForUrl(buttonData.url);
@@ -819,7 +817,9 @@ function renderSocialButtons(buttons) {
 		section.appendChild(buttonEl);
 	});
 
+	// --- Lógica de alineación inteligente ---
 	const buttonCount = buttonList.length;
+	// Resetea los estilos en línea para empezar de cero
 	section.style.justifyContent = '';
 	section.style.gap = '';
 
@@ -868,6 +868,7 @@ function renderProfileActions(profileData) {
 
 // --- 7. MANEJADORES DE EVENTOS ---
 
+// NUEVO: Lógica para el modal de registro
 function closeRegisterModal() {
     DOMElements.registerModal.classList.add('hidden');
     DOMElements.registerPasswordInput.value = '';
@@ -875,8 +876,10 @@ function closeRegisterModal() {
 }
 
 DOMElements.showRegisterModalBtn.addEventListener('click', () => {
+    // Transfiere los datos del formulario de login al modal
     DOMElements.registerEmailInput.value = document.getElementById('email-input').value;
     DOMElements.registerPasswordInput.value = document.getElementById('password-input').value;
+    // Muestra el modal
     DOMElements.registerModal.classList.remove('hidden');
 });
 
@@ -1193,7 +1196,6 @@ function openSettingsPanel() {
 
     renderSocialTabs(document.getElementById('social-buttons-inputs-container'), 'buttons', profile.social_buttons);
     renderSocialTabs(document.getElementById('socials-inputs-container'), 'icons', profile.socials);
-    renderGalleryEditor(appState.galleryImages); // NUEVO: Renderizar el editor de la galería
 
 	const contact = profile.contact_info || {};
 	document.querySelectorAll('#contact-inputs input').forEach(input => {
@@ -1286,7 +1288,7 @@ document.getElementById('save-changes-btn').addEventListener('click', async () =
 	const dataToSave = {
 		display_name: document.getElementById('display-name-input').value,
 		description: document.getElementById('description-input').value,
-        featured_video_url: DOMElements.featuredVideoUrlInput.value.trim(),
+        featured_video_url: DOMElements.featuredVideoUrlInput.value,
 		background_image_url: document.getElementById('background-image-url-input').value,
 		background_image_path: document.getElementById('background-image-path-input').value,
 		background_overlay_opacity: document.getElementById('background-opacity-slider').value,
@@ -1376,7 +1378,7 @@ function updateLivePreview() {
 		...appState.profile,
 		display_name: document.getElementById('display-name-input').value,
 		description: document.getElementById('description-input').value,
-        featured_video_url: DOMElements.featuredVideoUrlInput.value.trim(),
+        featured_video_url: DOMElements.featuredVideoUrlInput.value,
 		background_image_url: backgroundUrlInput.value,
 		background_overlay_opacity: opacitySlider.value,
 		theme: document.querySelector('.theme-option.selected')?.dataset.theme || 'negro',
@@ -1457,7 +1459,7 @@ function populateIconGrid() {
 
 	iconTags.forEach(tag => {
 		const button = document.createElement('button');
-		button.type = 'button'; 
+		button.type = 'button';
 		button.className = 'icon-option-btn';
 		button.dataset.iconValue = tag.value;
 		button.title = tag.label;
@@ -1502,7 +1504,7 @@ document.getElementById('add-update-link-btn').addEventListener('click', async (
 		if (error) {
 			showAlert(`Error al crear enlace: ${error.message}`);
 		} else {
-			const defaultLayout = ["profile-image", "display-name", "username", "description", "social-buttons", "socials"];
+			const defaultLayout = ["profile-image", "display-name", "username", "description", "featured-video", "gallery", "social-buttons", "socials"];
 			const currentLayout = appState.myProfile.layout_order && appState.myProfile.layout_order.length > 0 ? [...appState.myProfile.layout_order] : [...defaultLayout];
 			
 			const lastLinkIndex = currentLayout.map((item, index) => ({ item, index })).filter(obj => obj.item.startsWith('link_')).pop()?.index ?? -1;
@@ -2248,187 +2250,210 @@ document.getElementById('logout-for-deletion-btn').addEventListener('click', asy
 	await supabaseClient.auth.signOut();
 });
 
-// --- NUEVO: Lógica de la Galería ---
 
-// Renderiza las miniaturas en el panel de configuración
-function renderGalleryEditor(images) {
-    const editorList = DOMElements.galleryEditorList;
-    editorList.innerHTML = '';
-    if (!images) return;
+// --- 26. NUEVO: LÓGICA COMPLETA DE LA GALERÍA ---
 
-    images.forEach(img => {
-        const item = document.createElement('div');
-        item.className = 'gallery-editor-item relative aspect-square bg-gray-700 rounded-md overflow-hidden';
-        item.dataset.id = img.id;
-        item.dataset.path = img.image_path;
+function renderImmersiveGallery(images) {
+    const container = document.getElementById('gallery-container');
+    if (!container || !images || images.length === 0) return;
 
-        item.innerHTML = `
-            <img src="${img.image_url}" class="w-full h-full object-cover">
-            <div class="absolute inset-0 bg-black bg-opacity-50 flex flex-col p-1 opacity-0 hover:opacity-100 transition-opacity">
-                <button class="delete-gallery-image-btn self-end p-0.5 bg-red-600 rounded-full text-white"><i data-lucide="x" class="w-4 h-4"></i></button>
-                <textarea class="gallery-caption-input" placeholder="Pie de foto...">${img.caption || ''}</textarea>
+    container.innerHTML = `
+        <div class="immersive-gallery">
+            <div class="main-image-container">
+                <img src="${images[0].image_url}" class="main-image" id="gallery-main-image">
+                <p class="caption" id="gallery-caption">${images[0].caption || ''}</p>
             </div>
-        `;
-        editorList.appendChild(item);
+            <div class="thumbnail-strip" id="gallery-thumbnail-strip"></div>
+        </div>
+    `;
+
+    const thumbnailStrip = document.getElementById('gallery-thumbnail-strip');
+    images.forEach((image, index) => {
+        const thumb = document.createElement('img');
+        thumb.src = image.image_url;
+        thumb.className = `thumbnail ${index === 0 ? 'active' : ''}`;
+        thumb.dataset.index = index;
+        thumbnailStrip.appendChild(thumb);
     });
 
-    lucide.createIcons();
-
-    // Habilita arrastrar y soltar
-    if (appState.sortable.gallery) appState.sortable.gallery.destroy();
-    appState.sortable.gallery = new Sortable(editorList, {
-        animation: 150,
-        onEnd: handleGalleryOrderUpdate,
+    thumbnailStrip.addEventListener('click', (e) => {
+        if (e.target.classList.contains('thumbnail')) {
+            const index = parseInt(e.target.dataset.index, 10);
+            displayGalleryImage(images, index);
+        }
     });
 }
 
+function displayGalleryImage(images, index) {
+    const mainImage = document.getElementById('gallery-main-image');
+    const caption = document.getElementById('gallery-caption');
+    const thumbnails = document.querySelectorAll('#gallery-thumbnail-strip .thumbnail');
 
-// Maneja la subida de nuevas imágenes
-async function handleGalleryUpload(files) {
-    if (!appState.currentUser) return;
-    const currentImageCount = appState.galleryImages.length;
-    if (currentImageCount + files.length > GALLERY_IMAGE_LIMIT) {
-        return showAlert(`Puedes subir un máximo de ${GALLERY_IMAGE_LIMIT} imágenes. Ya tienes ${currentImageCount}.`);
+    mainImage.style.opacity = 0;
+    caption.style.opacity = 0;
+
+    setTimeout(() => {
+        mainImage.src = images[index].image_url;
+        caption.textContent = images[index].caption || '';
+        mainImage.style.opacity = 1;
+        caption.style.opacity = 1;
+    }, 300);
+
+    thumbnails.forEach((thumb, i) => {
+        thumb.classList.toggle('active', i === index);
+    });
+}
+
+function renderGalleryEditor() {
+    const listEl = DOMElements.galleryEditorList;
+    if (!listEl) return;
+    listEl.innerHTML = '';
+
+    appState.galleryImages.forEach(image => {
+        const item = document.createElement('div');
+        item.className = 'gallery-editor-item relative group';
+        item.dataset.id = image.id;
+        item.innerHTML = `
+            <img src="${image.image_url}" class="w-full h-24 object-cover rounded-lg">
+            <div class="absolute inset-0 bg-black bg-opacity-50 flex flex-col p-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                <button data-id="${image.id}" data-path="${image.image_path}" class="delete-gallery-image-btn self-end p-1 text-white bg-red-600 rounded-full absolute top-1 right-1">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+                <textarea class="gallery-caption-input mt-auto" data-id="${image.id}" placeholder="Pie de foto...">${image.caption || ''}</textarea>
+            </div>
+        `;
+        listEl.appendChild(item);
+    });
+    
+    lucide.createIcons();
+    updateAddImageButtonState();
+
+    if (appState.sortable.gallery) appState.sortable.gallery.destroy();
+    appState.sortable.gallery = new Sortable(listEl, {
+        animation: 150,
+        onEnd: async () => {
+            const updatedOrder = Array.from(listEl.children).map((item, index) => ({
+                id: item.dataset.id,
+                order_index: index,
+            }));
+
+            const { error } = await supabaseClient.from('gallery_images').upsert(updatedOrder);
+            if (error) {
+                showAlert("Error al reordenar la galería.");
+                console.error("Error reordering gallery:", error);
+            } else {
+                // Actualizar el estado local para mantener la consistencia
+                updatedOrder.forEach(item => {
+                    const img = appState.galleryImages.find(i => i.id === item.id);
+                    if (img) img.order_index = item.order_index;
+                });
+                appState.galleryImages.sort((a, b) => a.order_index - b.order_index);
+            }
+        },
+    });
+}
+
+function updateAddImageButtonState() {
+    const canUpload = appState.galleryImages.length < 6;
+    DOMElements.addGalleryImageBtn.disabled = !canUpload;
+    DOMElements.addGalleryImageBtn.textContent = canUpload ? `Añadir Imágenes (${appState.galleryImages.length}/6)` : 'Galería Llena (6/6)';
+}
+
+DOMElements.addGalleryImageBtn.addEventListener('click', () => {
+    DOMElements.galleryImageUploadInput.click();
+});
+
+DOMElements.galleryImageUploadInput.addEventListener('change', async (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
+
+    const remainingSlots = 6 - appState.galleryImages.length;
+    if (files.length > remainingSlots) {
+        showAlert(`Puedes subir ${remainingSlots} imagen(es) más. Has seleccionado ${files.length}.`);
+        return;
     }
+    
+    DOMElements.addGalleryImageBtn.disabled = true;
+    DOMElements.addGalleryImageBtn.innerHTML = `<div class="w-5 h-5 border-2 border-t-transparent border-white rounded-full animate-spin"></div>`;
 
-    const uploadBtn = DOMElements.addGalleryImageBtn;
-    uploadBtn.disabled = true;
-    uploadBtn.innerHTML = `<div class="w-5 h-5 border-2 border-t-transparent border-white rounded-full animate-spin"></div><span>Subiendo...</span>`;
-
-    try {
-        for (const file of files) {
-            const compressedFile = await imageCompression(file, { maxSizeMB: 0.8, maxWidthOrHeight: 1920, useWebWorker: true });
-            const filePath = `${appState.currentUser.id}/gallery/${Date.now()}-${compressedFile.name}`;
-
+    const uploadPromises = files.map(async (file, index) => {
+        try {
+            const compressedFile = await imageCompression(file, { maxSizeMB: 0.5, maxWidthOrHeight: 1920, useWebWorker: true });
+            const filePath = `${appState.currentUser.id}/${Date.now()}-${compressedFile.name}`;
+            
             const { error: uploadError } = await supabaseClient.storage.from('gallery-images').upload(filePath, compressedFile);
             if (uploadError) throw uploadError;
 
             const { data: { publicUrl } } = supabaseClient.storage.from('gallery-images').getPublicUrl(filePath);
+
+            const newOrderIndex = appState.galleryImages.length + index;
+            const { data: newImage, error: dbError } = await supabaseClient
+                .from('gallery_images')
+                .insert({
+                    user_id: appState.currentUser.id,
+                    image_url: publicUrl,
+                    image_path: filePath,
+                    order_index: newOrderIndex
+                })
+                .select()
+                .single();
             
-            const newImage = {
-                user_id: appState.currentUser.id,
-                image_url: publicUrl,
-                image_path: filePath,
-                caption: '',
-                order_index: appState.galleryImages.length,
-            };
-
-            const { data: insertedImage, error: insertError } = await supabaseClient.from('gallery_images').insert(newImage).select().single();
-            if (insertError) throw insertError;
-
-            appState.galleryImages.push(insertedImage);
-        }
-        renderGalleryEditor(appState.galleryImages);
-        updateLivePreview();
-    } catch (error) {
-        showAlert(`Error al subir imagen: ${error.message}`);
-    } finally {
-        uploadBtn.disabled = false;
-        uploadBtn.innerHTML = `<i data-lucide="plus-circle" class="w-5 h-5"></i> Añadir Imágenes`;
-        lucide.createIcons();
-    }
-}
-
-
-// Maneja la eliminación de una imagen
-async function handleDeleteGalleryImage(id, path) {
-    showConfirm("¿Estás seguro de que quieres eliminar esta imagen?", async (confirmed) => {
-        if (confirmed) {
-            // Eliminar de la base de datos
-            const { error: dbError } = await supabaseClient.from('gallery_images').delete().eq('id', id);
-            if (dbError) return showAlert(`Error al eliminar: ${dbError.message}`);
-
-            // Eliminar del almacenamiento
-            const { error: storageError } = await supabaseClient.storage.from('gallery-images').remove([path]);
-            if (storageError) console.error("Error al eliminar del storage:", storageError);
-
-            // Actualizar estado y UI
-            appState.galleryImages = appState.galleryImages.filter(img => img.id !== id);
-            renderGalleryEditor(appState.galleryImages);
-            updateLivePreview();
+            if (dbError) throw dbError;
+            return newImage;
+        } catch (error) {
+            console.error("Error uploading one image:", error);
+            return null; // Retornar null para filtrar después
         }
     });
-}
 
-// Actualiza el pie de foto
-const handleUpdateCaption = debounce(async (id, caption) => {
-    const { error } = await supabaseClient.from('gallery_images').update({ caption }).eq('id', id);
-    if (error) {
-        showAlert('No se pudo guardar el pie de foto.');
-    } else {
-        // Actualizar el estado local para la previsualización
-        const image = appState.galleryImages.find(img => img.id === id);
-        if (image) image.caption = caption;
-        updateLivePreview();
-    }
-}, 500);
+    const results = await Promise.all(uploadPromises);
+    const newImages = results.filter(Boolean); // Filtrar cualquier subida fallida
+    appState.galleryImages.push(...newImages);
 
-// Guarda el nuevo orden de la galería
-async function handleGalleryOrderUpdate() {
-    const items = DOMElements.galleryEditorList.querySelectorAll('.gallery-editor-item');
-    const updates = Array.from(items).map((item, index) => ({
-        id: item.dataset.id,
-        order_index: index,
-    }));
+    renderGalleryEditor();
+    updateLivePreview(); // Actualizar el perfil público
+    
+    DOMElements.galleryImageUploadInput.value = ''; // Limpiar el input
+});
 
-    const { error } = await supabaseClient.from('gallery_images').upsert(updates);
-    if (error) {
-        showAlert("No se pudo guardar el nuevo orden de la galería.");
-    } else {
-        // Actualizar el estado local para reflejar el nuevo orden
-        appState.galleryImages.sort((a, b) => {
-            const orderA = updates.find(u => u.id === a.id)?.order_index ?? Infinity;
-            const orderB = updates.find(u => u.id === b.id)?.order_index ?? Infinity;
-            return orderA - orderB;
-        });
-        updateLivePreview();
-    }
-}
-
-
-// Event listeners de la galería
-DOMElements.addGalleryImageBtn.addEventListener('click', () => DOMElements.galleryUploadInput.click());
-DOMElements.galleryUploadInput.addEventListener('change', (e) => handleGalleryUpload(Array.from(e.target.files)));
-
-// Event delegation para los botones y inputs dentro del editor de la galería
-DOMElements.galleryEditorList.addEventListener('click', (e) => {
+DOMElements.galleryEditorList.addEventListener('click', async (e) => {
     const deleteBtn = e.target.closest('.delete-gallery-image-btn');
     if (deleteBtn) {
-        const item = deleteBtn.closest('.gallery-editor-item');
-        handleDeleteGalleryImage(item.dataset.id, item.dataset.path);
-    }
-});
-DOMElements.galleryEditorList.addEventListener('input', (e) => {
-    if (e.target.classList.contains('gallery-caption-input')) {
-        const item = e.target.closest('.gallery-editor-item');
-        handleUpdateCaption(item.dataset.id, e.target.value);
-    }
-});
-
-// Event delegation para la galería pública
-DOMElements.profilePage.addEventListener('click', (e) => {
-    const thumbnail = e.target.closest('.thumbnail');
-    if (thumbnail) {
-        const gallery = thumbnail.closest('.immersive-gallery');
-        const mainImage = gallery.querySelector('.main-image');
-        const caption = gallery.querySelector('.caption');
-        const index = parseInt(thumbnail.dataset.index, 10);
-
-        gallery.querySelectorAll('.thumbnail').forEach(t => t.classList.remove('active'));
-        thumbnail.classList.add('active');
-
-        mainImage.style.opacity = 0;
-        caption.style.opacity = 0;
+        const id = deleteBtn.dataset.id;
+        const path = deleteBtn.dataset.path;
         
-        setTimeout(() => {
-            mainImage.src = appState.galleryImages[index].image_url;
-            mainImage.alt = appState.galleryImages[index].caption || `Imagen de la galería ${index + 1}`;
-            caption.textContent = appState.galleryImages[index].caption || '';
-            mainImage.style.opacity = 1;
-            caption.style.opacity = 1;
-        }, 200);
+        showConfirm("¿Estás seguro de que quieres eliminar esta imagen?", async (confirmed) => {
+            if (confirmed) {
+                const { error: dbError } = await supabaseClient.from('gallery_images').delete().eq('id', id);
+                if (dbError) return showAlert(`Error al eliminar: ${dbError.message}`);
+
+                const { error: storageError } = await supabaseClient.storage.from('gallery-images').remove([path]);
+                if (storageError) console.error("Could not delete storage object, but db entry was removed:", storageError);
+                
+                appState.galleryImages = appState.galleryImages.filter(img => img.id !== id);
+                renderGalleryEditor();
+                updateLivePreview();
+            }
+        });
     }
 });
+
+DOMElements.galleryEditorList.addEventListener('input', debounce(async (e) => {
+    const captionInput = e.target.closest('.gallery-caption-input');
+    if (captionInput) {
+        const id = captionInput.dataset.id;
+        const newCaption = captionInput.value;
+        const { error } = await supabaseClient.from('gallery_images').update({ caption: newCaption }).eq('id', id);
+        
+        if (error) {
+            showAlert("No se pudo guardar el pie de foto.");
+            console.error("Error updating caption:", error);
+        } else {
+            const img = appState.galleryImages.find(i => i.id === id);
+            if (img) img.caption = newCaption;
+        }
+    }
+}, 500));
 
 
 // --- INICIALIZACIÓN ---
