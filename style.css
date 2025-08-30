@@ -528,7 +528,10 @@
 .zoom-nav-btn.right-4 { right: 1rem; }
 
 /* CORRECCIÓN: z-index para modales */
-#thumbnail-cropper-modal, #gallery-edit-modal {
+#gallery-edit-modal {
     z-index: 60;
+}
+#thumbnail-cropper-modal {
+    z-index: 70; /* <-- Valor más alto para que aparezca al frente */
 }
 
