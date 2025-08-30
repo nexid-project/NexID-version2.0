@@ -2468,22 +2468,27 @@ function openGalleryEditModal(image) {
     previewImage.src = image.image_url;
     modal.querySelector('#gallery-edit-caption').value = image.caption || '';
     
+    // Usamos onload para asegurarnos de que las dimensiones de la imagen están disponibles
     previewImage.onload = () => {
         const containerHeight = previewContainer.offsetHeight;
-        const imageHeight = previewImage.offsetHeight;
+        // Cálculo robusto de la altura renderizada basado en el aspect ratio
+        const renderedImageHeight = previewContainer.offsetWidth * (previewImage.naturalHeight / previewImage.naturalWidth);
+        previewImage.style.height = `${renderedImageHeight}px`; // Aseguramos la altura
 
-        let initialTop = (containerHeight - imageHeight) / 2; // Default to center
+        let initialTop = (containerHeight - renderedImageHeight) / 2; // Default a centro
 
         if (image.focus_point) {
             const yPercent = parseFloat(image.focus_point.split(' ')[1]);
             if (!isNaN(yPercent)) {
-                initialTop = -((imageHeight - containerHeight) * (yPercent / 100));
+                // Usamos la altura calculada para consistencia
+                initialTop = -((renderedImageHeight - containerHeight) * (yPercent / 100));
             }
         }
         
         previewImage.style.top = `${initialTop}px`;
 
-        enableFocusDrag(previewContainer, previewImage, image);
+        // Pasamos la altura calculada a la función de arrastre
+        enableFocusDrag(previewContainer, previewImage, image, renderedImageHeight);
     };
 
     modal.classList.remove('hidden');
@@ -2495,7 +2500,7 @@ function closeGalleryEditModal() {
     appState.editingGalleryImageId = null;
 }
 
-function enableFocusDrag(container, image, galleryImageData) {
+function enableFocusDrag(container, image, galleryImageData, renderedImageHeight) {
     let isDragging = false;
     let startY = 0;
     let startTop = 0;
@@ -2516,10 +2521,16 @@ function enableFocusDrag(container, image, galleryImageData) {
 
         // Constrain movement
         const containerHeight = container.offsetHeight;
-        const imageHeight = image.offsetHeight;
+        const imageHeight = renderedImageHeight; // Usar la altura pre-calculada
         const minTop = containerHeight - imageHeight;
         const maxTop = 0;
-        newTop = Math.max(minTop, Math.min(newTop, maxTop));
+        
+        // Solo aplicar si la imagen es más alta que el contenedor
+        if (imageHeight > containerHeight) {
+            newTop = Math.max(minTop, Math.min(newTop, maxTop));
+        } else {
+            newTop = (containerHeight - imageHeight) / 2; // Mantener centrada si es más pequeña
+        }
         
         image.style.top = `${newTop}px`;
     };
@@ -2530,26 +2541,31 @@ function enableFocusDrag(container, image, galleryImageData) {
         container.style.cursor = 'grab';
 
         const containerHeight = container.offsetHeight;
-        const imageHeight = image.offsetHeight;
+        const imageHeight = renderedImageHeight; // Usar la altura pre-calculada
         const newTop = image.offsetTop;
         
-        // Calculate percentage
-        const focusPercent = (Math.abs(newTop) / (imageHeight - containerHeight)) * 100;
-        const newFocusPoint = `50% ${focusPercent.toFixed(2)}%`;
-        
-        // Update local state
-        galleryImageData.focus_point = newFocusPoint;
+        const draggableRange = imageHeight - containerHeight;
+        // Solo guardar si hay rango para arrastrar
+        if (draggableRange > 0) {
+            // Calculate percentage
+            const focusPercent = (Math.abs(newTop) / draggableRange) * 100;
+            const newFocusPoint = `50% ${focusPercent.toFixed(2)}%`;
+            
+            // Update local state and save to DB only if changed
+            if (galleryImageData.focus_point !== newFocusPoint) {
+                galleryImageData.focus_point = newFocusPoint;
 
-        // Save to DB
-        const { error } = await supabaseClient
-            .from('gallery_images')
-            .update({ focus_point: newFocusPoint })
-            .eq('id', galleryImageData.id);
+                const { error } = await supabaseClient
+                    .from('gallery_images')
+                    .update({ focus_point: newFocusPoint })
+                    .eq('id', galleryImageData.id);
 
-        if (error) {
-            showAlert("No se pudo guardar el punto de enfoque.");
-        } else {
-            updateLivePreview();
+                if (error) {
+                    showAlert("No se pudo guardar el punto de enfoque.");
+                } else {
+                    updateLivePreview();
+                }
+            }
         }
     };
 
@@ -2771,5 +2787,6 @@ window.onload = () => {
 	setupPasswordToggle('update-confirm-password-input', 'update-confirm-password-toggle');
 	setupPasswordToggle('delete-confirm-password-input', 'delete-confirm-password-toggle');
 };
+
 
 
