@@ -1582,10 +1582,14 @@ DOMElements.profilePage.addEventListener('click', (e) => {
 		}
 	}
 
+    const thumbnail = e.target.closest('.thumbnail');
     const mainImage = e.target.closest('.main-image');
     const profileImage = e.target.closest('#public-profile-img');
 
-    if (mainImage) {
+    if (thumbnail) {
+        const index = parseInt(thumbnail.dataset.index, 10);
+        displayGalleryImage(appState.galleryImages, index);
+    } else if (mainImage) {
         const currentIndex = appState.galleryImages.findIndex(img => img.image_url === mainImage.src);
         if (currentIndex !== -1) {
             openImageZoomModal(appState.galleryImages, currentIndex);
@@ -2639,7 +2643,6 @@ document.getElementById('thumbnail-cropper-save-btn').addEventListener('click', 
             DOMElements.thumbnailCropperModal.classList.add('hidden');
             if(appState.thumbnailCropper) appState.thumbnailCropper.destroy();
             appState.thumbnailCropper = null;
-            // No reseteamos editingGalleryImageId para que el modal de edición principal sepa qué imagen recargar.
         }
     }, 'image/webp');
 });
