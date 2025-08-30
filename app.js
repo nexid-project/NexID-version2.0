@@ -2544,10 +2544,16 @@ DOMElements.galleryEditModal.addEventListener('click', (e) => {
             DOMElements.thumbnailCropperImage.src = imageToCrop.image_url;
             DOMElements.thumbnailCropperModal.classList.remove('hidden');
             if (appState.thumbnailCropper) appState.thumbnailCropper.destroy();
+            
+            DOMElements.thumbnailCropperImage.style.opacity = 0;
+
             appState.thumbnailCropper = new Cropper(DOMElements.thumbnailCropperImage, {
                 aspectRatio: 1 / 1,
                 viewMode: 1,
                 background: false,
+                ready: function () {
+                    this.cropper.cropper.style.opacity = 1;
+                }
             });
         }
     } else if (deleteBtn) {
@@ -2594,7 +2600,6 @@ document.getElementById('thumbnail-cropper-cancel-btn').addEventListener('click'
     DOMElements.thumbnailCropperModal.classList.add('hidden');
     if(appState.thumbnailCropper) appState.thumbnailCropper.destroy();
     appState.thumbnailCropper = null;
-    appState.editingGalleryImageId = null;
 });
 
 document.getElementById('thumbnail-cropper-save-btn').addEventListener('click', () => {
