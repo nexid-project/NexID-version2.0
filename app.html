@@ -637,6 +637,19 @@
 				 </div>
 			</div>
 		</div>
+        <!-- NUEVO: Modal para Recortar Miniaturas de la Galería -->
+        <div id="thumbnail-cropper-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
+            <div id="thumbnail-cropper-modal-content" class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-lg flex flex-col max-h-[90vh]">
+                 <h3 class="text-2xl font-bold text-cyan-400 mb-4 text-center">Ajustar Miniatura (16:9)</h3>
+                 <div class="mb-4 flex-grow min-h-0">
+                     <img id="thumbnail-cropper-image" src="">
+                 </div>
+                 <div class="flex justify-center gap-4 mt-auto pt-4">
+                     <button id="thumbnail-cropper-cancel-btn" class="px-6 py-2 font-bold text-white bg-gray-600 rounded-md hover:bg-gray-500">Cancelar</button>
+                     <button id="thumbnail-cropper-save-btn" class="flex items-center justify-center gap-2 px-6 py-2 font-bold text-white bg-cyan-600 rounded-md hover:bg-cyan-500 disabled:bg-cyan-800">Guardar Miniatura</button>
+                 </div>
+            </div>
+        </div>
 		<div id="library-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
 			<div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-4xl flex flex-col max-h-[90vh]">
 				<div class="flex justify-between items-center mb-4">
