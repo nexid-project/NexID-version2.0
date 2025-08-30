@@ -407,6 +407,11 @@
     position: relative;
     width: 100%;
 }
+
+.video-wrapper {
+    aspect-ratio: 16 / 9; /* <-- AÑADIDO: Fija la proporción del video */
+}
+
 /* Capa invisible para el modo diseño */
 .design-mode .video-wrapper::after {
     content: '';
@@ -512,4 +517,5 @@
 .gallery-editor-item .delete-gallery-image-btn:hover {
     transform: scale(1.1);
 }
+
 
