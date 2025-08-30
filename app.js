@@ -2455,18 +2455,39 @@ function openGalleryEditModal(image) {
     const previewImage = modal.querySelector('#gallery-edit-preview');
     const previewContainer = modal.querySelector('#gallery-edit-preview-container');
     
+    // Limpiar listeners antiguos si existen
+    if (previewContainer.dragListeners) {
+        previewContainer.removeEventListener('mousedown', previewContainer.dragListeners.onMouseDown);
+        document.removeEventListener('mousemove', previewContainer.dragListeners.onMouseMove);
+        document.removeEventListener('mouseup', previewContainer.dragListeners.onMouseUp);
+        previewContainer.removeEventListener('touchstart', previewContainer.dragListeners.onMouseDown);
+        document.removeEventListener('touchmove', previewContainer.dragListeners.onMouseMove);
+        document.removeEventListener('touchend', previewContainer.dragListeners.onMouseUp);
+    }
+    
     previewImage.src = image.image_url;
     modal.querySelector('#gallery-edit-caption').value = image.caption || '';
     
-    // Set initial focus point
-    const focus = image.focus_point || 'center center';
-    previewImage.style.objectPosition = focus;
+    previewImage.onload = () => {
+        const containerHeight = previewContainer.offsetHeight;
+        const imageHeight = previewImage.offsetHeight;
+
+        let initialTop = (containerHeight - imageHeight) / 2; // Default to center
+
+        if (image.focus_point) {
+            const yPercent = parseFloat(image.focus_point.split(' ')[1]);
+            if (!isNaN(yPercent)) {
+                initialTop = -((imageHeight - containerHeight) * (yPercent / 100));
+            }
+        }
+        
+        previewImage.style.top = `${initialTop}px`;
+
+        enableFocusDrag(previewContainer, previewImage, image);
+    };
 
     modal.classList.remove('hidden');
     lucide.createIcons();
-
-    // Attach drag listeners
-    enableFocusDrag(previewContainer, previewImage, image);
 }
 
 function closeGalleryEditModal() {
@@ -2750,4 +2771,5 @@ window.onload = () => {
 	setupPasswordToggle('update-confirm-password-input', 'update-confirm-password-toggle');
 	setupPasswordToggle('delete-confirm-password-input', 'delete-confirm-password-toggle');
 };
+
 
