@@ -49,13 +49,15 @@ let appState = {
 	myProfile: null,
 	profile: null,
 	links: [],
-    galleryImages: [], // NUEVO: Estado para las imágenes de la galería
+    galleryImages: [],
 	socialButtons: [],
 	tempBackgroundImagePath: null,
 	tempLayoutOrder: null,
 	subscriptions: { auth: null, links: null },
-	sortable: { layout: null, gallery: null }, // Añadido gallery a sortable
+	sortable: { layout: null, gallery: null },
 	cropper: null,
+    thumbnailCropper: null, // Cropper para miniaturas
+    editingGalleryImageId: null, // ID de la imagen de galería que se está editando
 	isUsernameAvailable: false,
 	isSettingsDirty: false,
 	isDesignModeActive: false,
@@ -78,6 +80,8 @@ const DOMElements = {
 	imageUploadInput: document.getElementById('image-upload-input'),
 	cropperModal: document.getElementById('cropper-modal'),
 	cropperImage: document.getElementById('cropper-image'),
+    thumbnailCropperModal: document.getElementById('thumbnail-cropper-modal'),
+    thumbnailCropperImage: document.getElementById('thumbnail-cropper-image'),
 	geminiModal: document.getElementById('gemini-modal'),
 	uploadBackgroundBtn: document.getElementById('upload-background-btn'),
 	backgroundUploadInput: document.getElementById('background-upload-input'),
@@ -101,7 +105,6 @@ const DOMElements = {
 	fontSelectorLabel: document.getElementById('font-selector-label'),
 	fontSelectorOptions: document.getElementById('font-selector-options'),
 	fontFamilyValue: document.getElementById('font-family-value'),
-    // Referencias para el nuevo modal de registro
     registerModal: document.getElementById('register-modal'),
     showRegisterModalBtn: document.getElementById('show-register-modal-btn'),
     createAccountBtn: document.getElementById('create-account-btn'),
@@ -109,9 +112,7 @@ const DOMElements = {
     registerEmailInput: document.getElementById('register-email-input'),
     registerPasswordInput: document.getElementById('register-password-input'),
     registerConfirmPasswordInput: document.getElementById('register-confirm-password-input'),
-    // Referencia para el video
     featuredVideoUrlInput: document.getElementById('featured-video-url-input'),
-    // CORRECCIÓN: Referencias para el editor de la galería
     galleryEditorList: document.getElementById('gallery-editor-list'),
     addGalleryImageBtn: document.getElementById('add-gallery-image-btn'),
     galleryImageUploadInput: document.getElementById('gallery-image-upload-input'),
@@ -434,39 +435,25 @@ const profileSectionTemplates = {
 	'username': (profileData) => `<div data-section="username" class="text-center draggable-item p-2"><p id="public-username" class="text-lg opacity-80">${profileData.username || ''}</p></div>`,
 	'description': (profileData) => `<div data-section="description" class="text-center draggable-item p-2"><p id="public-description" class="opacity-90">${profileData.description || ''}</p></div>`,
     'featured-video': (profileData) => {
-        const embedUrl = parseVideoUrl(profileData.featured_video_url);
-        if (embedUrl) {
-            return `
-                <div data-section="featured-video" class="draggable-item p-2">
-                    <div class="video-wrapper">
-                        <iframe
-                            class="w-full h-full rounded-lg absolute inset-0"
-                            src="${embedUrl}"
-                            title="Video player"
-                            frameborder="0"
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                            allowfullscreen
-                        ></iframe>
-                    </div>
-                </div>
-            `;
+        if (parseVideoUrl(profileData.featured_video_url)) {
+            return `<div data-section="featured-video" class="draggable-item p-2"></div>`;
         }
         return '';
     },
-    'gallery': (profileData) => {
+    'gallery': () => {
         if (appState.galleryImages && appState.galleryImages.length > 0) {
             return `<div data-section="gallery" id="gallery-container" class="draggable-item p-2"></div>`;
         }
         return '';
     },
-	'social-buttons': (profileData) => {
-        if (profileData.social_buttons && profileData.social_buttons.length > 0) {
+	'social-buttons': () => {
+        if (appState.profile.social_buttons && appState.profile.social_buttons.length > 0) {
             return `<section id="social-buttons-section" data-section="social-buttons" class="draggable-item p-2"></section>`;
         }
         return '';
     },
-	'socials': (profileData) => {
-        if (profileData.socials && Object.keys(profileData.socials).length > 0) {
+	'socials': () => {
+        if (appState.profile.socials && Object.keys(appState.profile.socials).length > 0) {
             return `<footer id="socials-footer" data-section="socials" class="pt-4 pb-2 draggable-item p-2"></footer>`;
         }
         return '';
@@ -559,13 +546,27 @@ function renderProfile(profileData, isOwner) {
 	});
 
     // Post-render actions for dynamic content
-    if (layoutContainer.querySelector('#gallery-container')) {
+    const galleryContainer = layoutContainer.querySelector('#gallery-container');
+    if (galleryContainer) {
         renderImmersiveGallery(appState.galleryImages);
     }
-    if (layoutContainer.querySelector('#social-buttons-section')) {
+    const videoContainer = layoutContainer.querySelector('[data-section="featured-video"]');
+    if (videoContainer) {
+        const embedUrl = parseVideoUrl(profileData.featured_video_url);
+        if (embedUrl) {
+            videoContainer.innerHTML = `
+                <div class="video-wrapper">
+                    <iframe class="w-full h-full rounded-lg absolute inset-0" src="${embedUrl}" title="Video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                </div>
+            `;
+        }
+    }
+    const socialButtonsContainer = layoutContainer.querySelector('#social-buttons-section');
+    if (socialButtonsContainer) {
         renderSocialButtons(profileData.social_buttons);
     }
-    if (layoutContainer.querySelector('#socials-footer')) {
+    const socialsFooterContainer = layoutContainer.querySelector('#socials-footer');
+    if (socialsFooterContainer) {
         renderSocialIcons(profileData.socials, profileData.socials_order);
     }
 
@@ -733,7 +734,6 @@ const socialCategories = [
 ];
 
 const SOCIAL_ICON_ORDER = socialCategories.flatMap(category => category.socials);
-// --- FIN FASE 3 ---
 
 function getSocialInfoForUrl(url) {
 	if (!url) return null;
@@ -868,7 +868,6 @@ function renderProfileActions(profileData) {
 
 // --- 7. MANEJADORES DE EVENTOS ---
 
-// NUEVO: Lógica para el modal de registro
 function closeRegisterModal() {
     DOMElements.registerModal.classList.add('hidden');
     DOMElements.registerPasswordInput.value = '';
@@ -876,10 +875,8 @@ function closeRegisterModal() {
 }
 
 DOMElements.showRegisterModalBtn.addEventListener('click', () => {
-    // Transfiere los datos del formulario de login al modal
     DOMElements.registerEmailInput.value = document.getElementById('email-input').value;
     DOMElements.registerPasswordInput.value = document.getElementById('password-input').value;
-    // Muestra el modal
     DOMElements.registerModal.classList.remove('hidden');
 });
 
@@ -2251,7 +2248,7 @@ document.getElementById('logout-for-deletion-btn').addEventListener('click', asy
 });
 
 
-// --- 26. NUEVO: LÓGICA COMPLETA DE LA GALERÍA ---
+// --- 26. LÓGICA COMPLETA DE LA GALERÍA ---
 
 function renderImmersiveGallery(images) {
     const container = document.getElementById('gallery-container');
@@ -2270,11 +2267,15 @@ function renderImmersiveGallery(images) {
     const thumbnailStrip = document.getElementById('gallery-thumbnail-strip');
     images.forEach((image, index) => {
         const thumb = document.createElement('img');
-        thumb.src = image.image_url;
+        thumb.src = image.thumbnail_url || image.image_url; // Usa el thumbnail si existe
         thumb.className = `thumbnail ${index === 0 ? 'active' : ''}`;
         thumb.dataset.index = index;
         thumbnailStrip.appendChild(thumb);
     });
+
+    // CORRECCIÓN: Activar el zoom en la imagen principal
+    const mainImageEl = document.getElementById('gallery-main-image');
+    if(mainImageEl) mainImageEl.addEventListener('click', openImageZoomModal);
 
     thumbnailStrip.addEventListener('click', (e) => {
         if (e.target.classList.contains('thumbnail')) {
@@ -2314,11 +2315,16 @@ function renderGalleryEditor() {
         item.className = 'gallery-editor-item relative group';
         item.dataset.id = image.id;
         item.innerHTML = `
-            <img src="${image.image_url}" class="w-full h-24 object-cover rounded-lg">
+            <img src="${image.thumbnail_url || image.image_url}" class="w-full h-24 object-cover rounded-lg">
             <div class="absolute inset-0 bg-black bg-opacity-50 flex flex-col p-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
-                <button data-id="${image.id}" data-path="${image.image_path}" class="delete-gallery-image-btn self-end p-1 text-white bg-red-600 rounded-full absolute top-1 right-1">
-                    <i data-lucide="x" class="w-4 h-4"></i>
-                </button>
+                <div class="flex self-end gap-1">
+                    <button data-id="${image.id}" class="crop-thumbnail-btn p-1 text-white bg-blue-600 rounded-full">
+                        <i data-lucide="crop" class="w-4 h-4"></i>
+                    </button>
+                    <button data-id="${image.id}" data-path="${image.image_path}" data-thumbpath="${image.thumbnail_path || ''}" class="delete-gallery-image-btn p-1 text-white bg-red-600 rounded-full">
+                        <i data-lucide="x" class="w-4 h-4"></i>
+                    </button>
+                </div>
                 <textarea class="gallery-caption-input mt-auto" data-id="${image.id}" placeholder="Pie de foto...">${image.caption || ''}</textarea>
             </div>
         `;
@@ -2337,12 +2343,21 @@ function renderGalleryEditor() {
                 order_index: index,
             }));
 
-            const { error } = await supabaseClient.from('gallery_images').upsert(updatedOrder);
-            if (error) {
+            // CORRECCIÓN: Actualizar el orden individualmente
+            const updatePromises = updatedOrder.map(item =>
+                supabaseClient
+                    .from('gallery_images')
+                    .update({ order_index: item.order_index })
+                    .eq('id', item.id)
+            );
+            
+            const results = await Promise.all(updatePromises);
+            const hasError = results.some(result => result.error);
+
+            if (hasError) {
                 showAlert("Error al reordenar la galería.");
-                console.error("Error reordering gallery:", error);
+                console.error("Error reordering gallery:", results.find(r => r.error).error);
             } else {
-                // Actualizar el estado local para mantener la consistencia
                 updatedOrder.forEach(item => {
                     const img = appState.galleryImages.find(i => i.id === item.id);
                     if (img) img.order_index = item.order_index;
@@ -2370,6 +2385,7 @@ DOMElements.galleryImageUploadInput.addEventListener('change', async (e) => {
     const remainingSlots = 6 - appState.galleryImages.length;
     if (files.length > remainingSlots) {
         showAlert(`Puedes subir ${remainingSlots} imagen(es) más. Has seleccionado ${files.length}.`);
+        DOMElements.galleryImageUploadInput.value = '';
         return;
     }
     
@@ -2402,39 +2418,57 @@ DOMElements.galleryImageUploadInput.addEventListener('change', async (e) => {
             return newImage;
         } catch (error) {
             console.error("Error uploading one image:", error);
-            return null; // Retornar null para filtrar después
+            return null;
         }
     });
 
     const results = await Promise.all(uploadPromises);
-    const newImages = results.filter(Boolean); // Filtrar cualquier subida fallida
+    const newImages = results.filter(Boolean);
     appState.galleryImages.push(...newImages);
 
     renderGalleryEditor();
-    updateLivePreview(); // Actualizar el perfil público
+    updateLivePreview();
     
-    DOMElements.galleryImageUploadInput.value = ''; // Limpiar el input
+    DOMElements.galleryImageUploadInput.value = '';
 });
 
 DOMElements.galleryEditorList.addEventListener('click', async (e) => {
     const deleteBtn = e.target.closest('.delete-gallery-image-btn');
+    const cropBtn = e.target.closest('.crop-thumbnail-btn');
+
     if (deleteBtn) {
         const id = deleteBtn.dataset.id;
         const path = deleteBtn.dataset.path;
+        const thumbpath = deleteBtn.dataset.thumbpath;
         
         showConfirm("¿Estás seguro de que quieres eliminar esta imagen?", async (confirmed) => {
             if (confirmed) {
                 const { error: dbError } = await supabaseClient.from('gallery_images').delete().eq('id', id);
                 if (dbError) return showAlert(`Error al eliminar: ${dbError.message}`);
 
-                const { error: storageError } = await supabaseClient.storage.from('gallery-images').remove([path]);
-                if (storageError) console.error("Could not delete storage object, but db entry was removed:", storageError);
+                const pathsToDelete = [path];
+                if (thumbpath) pathsToDelete.push(thumbpath);
+                await supabaseClient.storage.from('gallery-images').remove(pathsToDelete);
                 
                 appState.galleryImages = appState.galleryImages.filter(img => img.id !== id);
                 renderGalleryEditor();
                 updateLivePreview();
             }
         });
+    } else if (cropBtn) {
+        const id = cropBtn.dataset.id;
+        const imageToCrop = appState.galleryImages.find(img => img.id === id);
+        if (imageToCrop) {
+            appState.editingGalleryImageId = id;
+            DOMElements.thumbnailCropperImage.src = imageToCrop.image_url;
+            DOMElements.thumbnailCropperModal.classList.remove('hidden');
+            if (appState.thumbnailCropper) appState.thumbnailCropper.destroy();
+            appState.thumbnailCropper = new Cropper(DOMElements.thumbnailCropperImage, {
+                aspectRatio: 16 / 9,
+                viewMode: 1,
+                background: false,
+            });
+        }
     }
 });
 
@@ -2451,9 +2485,69 @@ DOMElements.galleryEditorList.addEventListener('input', debounce(async (e) => {
         } else {
             const img = appState.galleryImages.find(i => i.id === id);
             if (img) img.caption = newCaption;
+            updateLivePreview();
         }
     }
 }, 500));
+
+// Lógica para el modal de recorte de miniaturas
+document.getElementById('thumbnail-cropper-cancel-btn').addEventListener('click', () => {
+    DOMElements.thumbnailCropperModal.classList.add('hidden');
+    if(appState.thumbnailCropper) appState.thumbnailCropper.destroy();
+    appState.thumbnailCropper = null;
+    appState.editingGalleryImageId = null;
+});
+
+document.getElementById('thumbnail-cropper-save-btn').addEventListener('click', () => {
+    if (!appState.thumbnailCropper || !appState.editingGalleryImageId) return;
+
+    const saveBtn = document.getElementById('thumbnail-cropper-save-btn');
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = `<div class="w-5 h-5 border-2 border-t-transparent border-white rounded-full animate-spin"></div><span>Procesando...</span>`;
+
+    appState.thumbnailCropper.getCroppedCanvas({ width: 1280, height: 720 }).toBlob(async (blob) => {
+        try {
+            const imageToUpdate = appState.galleryImages.find(img => img.id === appState.editingGalleryImageId);
+            if (!imageToUpdate) throw new Error("Image not found");
+
+            const compressedBlob = await imageCompression(blob, { maxSizeMB: 0.1, maxWidthOrHeight: 1280, useWebWorker: true });
+            
+            if (imageToUpdate.thumbnail_path) {
+                await supabaseClient.storage.from('gallery-images').remove([imageToUpdate.thumbnail_path]);
+            }
+
+            const thumbnailPath = `${appState.currentUser.id}/thumb-${Date.now()}.webp`;
+            const { error: uploadError } = await supabaseClient.storage.from('gallery-images').upload(thumbnailPath, compressedBlob, { contentType: 'image/webp' });
+            if (uploadError) throw uploadError;
+
+            const { data: { publicUrl } } = supabaseClient.storage.from('gallery-images').getPublicUrl(thumbnailPath);
+
+            const { data: updatedImage, error: dbError } = await supabaseClient
+                .from('gallery_images')
+                .update({ thumbnail_url: publicUrl, thumbnail_path: thumbnailPath })
+                .eq('id', appState.editingGalleryImageId)
+                .select()
+                .single();
+            if (dbError) throw dbError;
+            
+            const index = appState.galleryImages.findIndex(img => img.id === appState.editingGalleryImageId);
+            if (index !== -1) appState.galleryImages[index] = updatedImage;
+
+            renderGalleryEditor();
+            updateLivePreview();
+
+        } catch (error) {
+            showAlert(`Error al guardar la miniatura: ${error.message}`);
+        } finally {
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Guardar Miniatura';
+            DOMElements.thumbnailCropperModal.classList.add('hidden');
+            if(appState.thumbnailCropper) appState.thumbnailCropper.destroy();
+            appState.thumbnailCropper = null;
+            appState.editingGalleryImageId = null;
+        }
+    }, 'image/webp');
+});
 
 
 // --- INICIALIZACIÓN ---
