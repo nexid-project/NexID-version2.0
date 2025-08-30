@@ -430,6 +430,7 @@
     overflow: hidden;
     position: relative;
     background-color: #374151;
+    cursor: zoom-in;
 }
 
 .main-image {
@@ -527,11 +528,16 @@
 .zoom-nav-btn.left-4 { left: 1rem; }
 .zoom-nav-btn.right-4 { right: 1rem; }
 
-/* CORRECCIÓN: z-index para modales */
 #gallery-edit-modal {
     z-index: 60;
 }
 #thumbnail-cropper-modal {
-    z-index: 70; /* <-- Valor más alto para que aparezca al frente */
+    z-index: 70;
+}
+
+/* Suavizar aparición del cropper */
+#thumbnail-cropper-image + .cropper-container {
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
 }
 
