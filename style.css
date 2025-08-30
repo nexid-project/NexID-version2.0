@@ -466,9 +466,9 @@
 
 .thumbnail {
     width: 64px;
-    height: 36px;
+    height: 64px; /* <- CAMBIO: Vuelve a ser un cuadrado */
     object-fit: cover;
-    border-radius: 0.25rem;
+    border-radius: 0.5rem; /* <- AJUSTE: Radio de borde mejorado */
     cursor: pointer;
     border: 2px solid transparent;
     opacity: 0.6;
@@ -543,4 +543,5 @@
     max-width: 100%;
     display: block;
 }
+
 
