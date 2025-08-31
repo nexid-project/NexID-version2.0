@@ -62,7 +62,8 @@ let appState = {
 	isUsernameAvailable: false,
 	isSettingsDirty: false,
 	isDesignModeActive: false,
-	isRecoveringPassword: false
+	isRecoveringPassword: false,
+	currentGalleryIndex: 0,
 };
 
 // --- 3. REFERENCIAS A ELEMENTOS DEL DOM ---
@@ -281,6 +282,7 @@ async function handleAuthStateChange(session) {
         } else {
             document.getElementById('back-to-my-profile-btn').classList.add('hidden');
             appState.profile = myProfile;
+			appState.currentGalleryIndex = 0;
             const { data: links } = await supabaseClient.from('links').select('*').eq('user_id', appState.currentUser.id).order('order_index', { ascending: true });
             appState.links = links || [];
             appState.socialButtons = myProfile.social_buttons || [];
@@ -337,6 +339,7 @@ async function loadPublicProfile(username) {
 		appState.links = links || [];
         appState.galleryImages = galleryImages || [];
 		appState.socialButtons = profile.social_buttons || [];
+		appState.currentGalleryIndex = 0;
 		
 		const isOwner = appState.currentUser && appState.currentUser.id === profile.id;
 		renderProfile(profile, isOwner);
@@ -484,6 +487,17 @@ function renderSingleLink(linkData, profileData) {
 function renderProfile(profileData, isOwner) {
 	if (!profileData) return;
 	
+	// 1. Preserve video iframe if URL is unchanged to prevent reloading
+	const currentVideoContainer = document.querySelector('[data-section="featured-video"]');
+	let savedVideoIframe = null;
+	if (currentVideoContainer) {
+		const existingIframe = currentVideoContainer.querySelector('iframe');
+		const newEmbedUrl = parseVideoUrl(profileData.featured_video_url);
+		if (existingIframe && existingIframe.src === newEmbedUrl) {
+			savedVideoIframe = existingIframe;
+		}
+	}
+	
 	const theme = profileData.theme || 'grafito';
 	const font = profileData.font_family || 'font-inter';
 	
@@ -541,21 +555,35 @@ function renderProfile(profileData, isOwner) {
 		}
 	});
 
-    const galleryContainer = layoutContainer.querySelector('#gallery-container');
+    // 2. Restore video or render new one
+	const newVideoContainer = layoutContainer.querySelector('[data-section="featured-video"]');
+	if (newVideoContainer) {
+		if (savedVideoIframe) {
+			newVideoContainer.innerHTML = ''; 
+			newVideoContainer.appendChild(savedVideoIframe);
+		} else {
+			const embedUrl = parseVideoUrl(profileData.featured_video_url);
+			if (embedUrl) {
+				newVideoContainer.innerHTML = `
+					<div class="video-wrapper">
+						<iframe class="w-full h-full rounded-lg absolute inset-0" src="${embedUrl}" title="Video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+					</div>
+				`;
+			}
+		}
+	}
+
+	// 3. Render gallery and restore correct image selection
+	const galleryContainer = layoutContainer.querySelector('#gallery-container');
     if (galleryContainer) {
         renderImmersiveGallery(appState.galleryImages);
+        if(appState.currentGalleryIndex < appState.galleryImages.length) {
+			displayGalleryImage(appState.galleryImages, appState.currentGalleryIndex);
+		} else {
+			appState.currentGalleryIndex = 0;
+		}
     }
-    const videoContainer = layoutContainer.querySelector('[data-section="featured-video"]');
-    if (videoContainer) {
-        const embedUrl = parseVideoUrl(profileData.featured_video_url);
-        if (embedUrl) {
-            videoContainer.innerHTML = `
-                <div class="video-wrapper">
-                    <iframe class="w-full h-full rounded-lg absolute inset-0" src="${embedUrl}" title="Video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-                </div>
-            `;
-        }
-    }
+
     const socialButtonsContainer = layoutContainer.querySelector('#social-buttons-section');
     if (socialButtonsContainer) {
         renderSocialButtons(profileData.social_buttons);
@@ -1578,18 +1606,22 @@ DOMElements.profilePage.addEventListener('click', (e) => {
 	}
 
     const thumbnail = e.target.closest('.thumbnail');
-    const mainImage = e.target.closest('.main-image');
-    const profileImage = e.target.closest('#public-profile-img');
-
     if (thumbnail) {
         const index = parseInt(thumbnail.dataset.index, 10);
+		appState.currentGalleryIndex = index;
         displayGalleryImage(appState.galleryImages, index);
-    } else if (mainImage) {
+    } 
+    
+    const mainImage = e.target.closest('.main-image');
+    if (mainImage) {
         const currentIndex = appState.galleryImages.findIndex(img => img.image_url === mainImage.src);
         if (currentIndex !== -1) {
             openImageZoomModal(appState.galleryImages, currentIndex);
         }
-    } else if (profileImage && !e.target.closest('#edit-profile-img-btn')) {
+    }
+    
+    const profileImage = e.target.closest('#public-profile-img');
+    if (profileImage && !e.target.closest('#edit-profile-img-btn')) {
         openImageZoomModal([{ image_url: profileImage.src }], 0);
     }
 });
@@ -2777,3 +2809,4 @@ window.onload = () => {
 	setupPasswordToggle('update-confirm-password-input', 'update-confirm-password-toggle');
 	setupPasswordToggle('delete-confirm-password-input', 'delete-confirm-password-toggle');
 };
+
