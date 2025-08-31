@@ -213,37 +213,28 @@ function initializeApp() {
 			appState.isRecoveringPassword = true;
 			showPage('updatePassword');
 		} else {
-			handleAuthStateChange(session);
+			loadApp(session);
 		}
 	});
 }
 
-async function fetchUserProfileWithRetry(userId, retries = 3, delay = 500) {
-	for (let i = 0; i < retries; i++) {
-		const { data: profile, error } = await supabaseClient
-			.from('profiles')
-			.select('*')
-			.eq('id', userId)
-			.single();
-
-		if (profile) {
-			return { profile, error: null };
-		}
-		
-		if (error && error.code === 'PGRST116') {
-			await new Promise(res => setTimeout(res, delay));
-		} else {
-			return { profile: null, error };
-		}
-	}
-	return { profile: null, error: { message: "Profile not found after multiple attempts." } };
+async function fetchUserData(userId) {
+    try {
+        const { data: myProfile, error: myProfileError } = await fetchUserProfileWithRetry(userId);
+        if (myProfileError) throw myProfileError;
+        
+        const { data: links } = await supabaseClient.from('links').select('*').eq('user_id', userId).order('order_index', { ascending: true });
+        const { data: galleryImages } = await supabaseClient.from('gallery_images').select('*').eq('user_id', userId).order('order_index', { ascending: true });
+        
+        return { myProfile, links, galleryImages };
+    } catch (error) {
+        console.error("Error fetching user data:", error);
+        return { myProfile: null, links: [], galleryImages: [] };
+    }
 }
 
-async function handleAuthStateChange(session) {
-    if (appState.isRecoveringPassword) {
-        showPage('updatePassword');
-        return;
-    }
+async function loadApp(session) {
+    if (appState.isRecoveringPassword) return;
     
     // Si el panel de ajustes está abierto, no hacemos nada para evitar un re-renderizado
     if (appState.isSettingsDirty && DOMElements.settingsPanel.classList.contains('open')) {
@@ -258,16 +249,18 @@ async function handleAuthStateChange(session) {
         appState.currentUser = session.user;
         const mainHeader = document.getElementById('main-header');
         if (mainHeader) mainHeader.classList.remove('hidden');
+
+        const { myProfile, links, galleryImages } = await fetchUserData(appState.currentUser.id);
         
-        const { profile: myProfile, error: myProfileError } = await fetchUserProfileWithRetry(appState.currentUser.id);
-        
-        if (myProfileError) {
-            console.error("Error fetching my profile:", myProfileError);
+        if (!myProfile) {
             showAlert("No se pudo cargar tu perfil. Por favor, intenta recargar la página.");
             return showPage('auth');
         }
         
         appState.myProfile = myProfile;
+        appState.links = links || [];
+        appState.galleryImages = galleryImages || [];
+        appState.socialButtons = myProfile.social_buttons || [];
 
         if (myProfile.is_deactivated) {
             const deletionDate = new Date(myProfile.deletion_scheduled_at);
@@ -276,11 +269,6 @@ async function handleAuthStateChange(session) {
             return showPage('reactivateAccount');
         }
         
-        // Fetch gallery images
-        const { data: galleryImages } = await supabaseClient.from('gallery_images').select('*').eq('user_id', appState.currentUser.id).order('order_index', { ascending: true });
-        appState.galleryImages = galleryImages || [];
-
-        // Determine if we're viewing a public profile or our own
         const isViewingOtherPublicProfile = publicUsername && myProfile.username && myProfile.username.substring(1).toLowerCase() !== publicUsername.toLowerCase();
         
         if (isViewingOtherPublicProfile) {
@@ -296,10 +284,7 @@ async function handleAuthStateChange(session) {
             if (backBtn) backBtn.classList.add('hidden');
             
             appState.profile = myProfile;
-            const { data: links } = await supabaseClient.from('links').select('*').eq('user_id', appState.currentUser.id).order('order_index', { ascending: true });
-            appState.links = links || [];
-            appState.socialButtons = myProfile.social_buttons || [];
-            
+
             if (myProfile && myProfile.username_set) {
                 if (window.location.protocol !== 'blob:' && (!publicUsername || publicUsername.toLowerCase() !== myProfile.username.substring(1).toLowerCase())) {
                     const profileUrl = `${window.location.pathname}?user=${myProfile.username.substring(1)}`;
@@ -1303,7 +1288,7 @@ document.getElementById('save-changes-btn').addEventListener('click', async () =
 		background_overlay_opacity: document.getElementById('background-opacity-slider').value,
 		theme: document.querySelector('.theme-option.selected').dataset.theme,
 		button_style: document.querySelector('input[name="buttonStyle"]:checked').value,
-		button_shape_style: document.querySelector('input[name="buttonShape']:checked').value,
+		button_shape_style: document.querySelector('input[name="buttonShape"]:checked').value,
 		font_family: DOMElements.fontFamilyValue.value,
 		socials: newSocials,
 		socials_order: currentSocialsOrder,
@@ -2343,7 +2328,7 @@ document.getElementById('reactivate-account-btn').addEventListener('click', asyn
 		.eq('id', appState.currentUser.id);
 
 	if (error) {
-		showAlert(`Error al reactivar la cuenta: ${error.message}`);
+		showAlert(`Error al reactivar la cuenta: ${updateError.message}`);
 	} else {
 		showAlert('¡Tu cuenta ha sido reactivada con éxito!');
 		window.location.reload();
