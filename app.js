@@ -3,7 +3,7 @@ const { createClient } = supabase;
 // --- 1. CONFIGURACIÓN E INICIALIZACIÓN ---
 const SUPABASE_URL = 'https://ukowtlaytmqgdhjygulq.supabase.co';	
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVrb3d0bGF5dG1xZ2RoanlndWxxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM2NTEyMTgsImV4cCI6MjA2OTIyNzIxOH0.Kmg90Xdcu0RzAP55YwwuYfuRYj2U5LU90KAiKbEtLQg';
-const GEMINI_API_KEY = ""; // Replace with your Gemini API key
+const GEMINI_API_KEY = ""; // Reemplazar con tu clave de API de Gemini
 
 const backgroundLibraryUrls = [
 	'https://ukowtlaytmqgdhjygulq.supabase.co/storage/v1/object/public/library-backgrounds//wallpaperflare.com_wallpaper.jpg',
@@ -281,7 +281,7 @@ async function handleAuthStateChange(session) {
         appState.galleryImages = galleryImages || [];
 
         // Determine if we're viewing a public profile or our own
-        const isViewingOtherPublicProfile = publicUsername && myProfile.username && myProfile.username.substring(1) !== publicUsername.toLowerCase();
+        const isViewingOtherPublicProfile = publicUsername && myProfile.username && myProfile.username.substring(1).toLowerCase() !== publicUsername.toLowerCase();
         
         if (isViewingOtherPublicProfile) {
             const backBtn = document.getElementById('back-to-my-profile-btn');
@@ -1392,7 +1392,7 @@ function updateLivePreview() {
 		background_overlay_opacity: opacitySlider.value,
 		theme: document.querySelector('.theme-option.selected')?.dataset.theme || 'negro',
 		button_style: document.querySelector('input[name="buttonStyle"]:checked')?.value || 'filled',
-		button_shape_style: document.querySelector('input[name="buttonShape']:checked')?.value || 'rounded-lg',
+		button_shape_style: document.querySelector('input[name="buttonShape"]:checked')?.value || 'rounded-lg',
 		font_family: selectedFont,
 		socials: newSocials,
 		social_buttons: newSocialButtons,
