@@ -241,8 +241,6 @@ async function fetchUserProfileWithRetry(userId, retries = 3, delay = 500) {
 
 async function handleAuthStateChange(session) {
     if (appState.isRecoveringPassword) {
-        // Si el usuario está en un flujo de recuperación de contraseña,
-        // no hacemos nada más que mostrar la página de actualización.
         showPage('updatePassword');
         return;
     }
@@ -251,7 +249,6 @@ async function handleAuthStateChange(session) {
         appState.currentUser = session.user;
         document.getElementById('main-header').classList.remove('hidden');
 
-        // Intenta obtener el perfil del usuario.
         const { profile: myProfile, error: myProfileError } = await fetchUserProfileWithRetry(appState.currentUser.id);
 
         if (myProfileError) {
@@ -271,11 +268,9 @@ async function handleAuthStateChange(session) {
             return;
         }
         
-        // Carga datos adicionales del perfil
         const { data: galleryImages } = await supabaseClient.from('gallery_images').select('*').eq('user_id', appState.currentUser.id).order('order_index', { ascending: true });
         appState.galleryImages = galleryImages || [];
 
-        // Comprueba si se está viendo un perfil público diferente.
         const urlParams = new URLSearchParams(window.location.search);
         const publicUsername = urlParams.get('user');
         
@@ -284,7 +279,6 @@ async function handleAuthStateChange(session) {
             document.getElementById('back-to-my-profile-btn').href = `${window.location.pathname}?user=${myProfile.username.substring(1)}`;
             await loadPublicProfile(publicUsername);
         } else {
-            // El usuario está viendo su propio perfil.
             document.getElementById('back-to-my-profile-btn').classList.add('hidden');
             appState.profile = myProfile;
             const { data: links } = await supabaseClient.from('links').select('*').eq('user_id', appState.currentUser.id).order('order_index', { ascending: true });
@@ -309,16 +303,13 @@ async function handleAuthStateChange(session) {
             }
         }
     } else {
-        // No hay sesión activa.
         const urlParams = new URLSearchParams(window.location.search);
         const publicUsername = urlParams.get('user');
         
         document.getElementById('main-header').classList.add('hidden');
         if (publicUsername) {
-            // Se está intentando ver un perfil público sin estar logueado.
             await loadPublicProfile(publicUsername);
         } else {
-            // No hay sesión ni perfil público. Redirige a la página de autenticación.
             document.getElementById('email-input').value = '';
             document.getElementById('password-input').value = '';
             showPage('auth');
@@ -1184,8 +1175,8 @@ function openSettingsPanel() {
 	}
 
 	document.querySelectorAll('.theme-option').forEach(opt => opt.classList.toggle('selected', opt.dataset.theme === currentTheme));
-	document.querySelector(`input[name="buttonStyle"][value="${profile.button_style || 'filled'}"]`).checked = true;
-	document.querySelector(`input[name="buttonShape"][value="${profile.button_shape_style || 'rounded-lg'}"]`).checked = true;
+	document.querySelector(`input[name="buttonStyle"]:checked`).checked = true;
+	document.querySelector(`input[name="buttonShape"]:checked`).checked = true;
 	
 	const currentFont = profile.font_family || 'font-inter';
 	DOMElements.fontFamilyValue.value = currentFont;
@@ -1381,7 +1372,7 @@ function updateLivePreview() {
 		background_overlay_opacity: opacitySlider.value,
 		theme: document.querySelector('.theme-option.selected')?.dataset.theme || 'negro',
 		button_style: document.querySelector('input[name="buttonStyle"]:checked')?.value || 'filled',
-		button_shape_style: document.querySelector('input[name="buttonShape"]:checked')?.value || 'rounded-lg',
+		button_shape_style: document.querySelector('input[name="buttonShape']:checked')?.value || 'rounded-lg',
 		font_family: selectedFont,
 		socials: newSocials,
 		social_buttons: newSocialButtons,
@@ -2500,19 +2491,14 @@ function closeGalleryEditModal() {
 function enableFocusDrag(container, image, galleryImageData) {
     let isDragging = false;
     let startY = 0;
-    let startTop = 0;
+    let startFocusPercent = 0;
 
     const onMouseDown = (e) => {
         e.preventDefault();
         isDragging = true;
         startY = e.clientY || e.touches[0].clientY;
-        // Reiniciar la posición de la imagen al inicio del arrastre
-        const containerHeight = container.offsetHeight;
-        const imageHeight = image.offsetHeight;
-        const initialPosition = parseFloat(image.style.objectPosition.split(' ')[1]) / 100;
-        startTop = (imageHeight - containerHeight) * initialPosition * -1;
-        image.style.top = `${startTop}px`;
-
+        const currentFocusY = parseFloat(image.style.objectPosition.split(' ')[1]);
+        startFocusPercent = isNaN(currentFocusY) ? 50 : currentFocusY;
         container.style.cursor = 'grabbing';
     };
 
@@ -2520,15 +2506,20 @@ function enableFocusDrag(container, image, galleryImageData) {
         if (!isDragging) return;
         const currentY = e.clientY || e.touches[0].clientY;
         const deltaY = currentY - startY;
-        let newTop = startTop + deltaY;
-
+        
         const containerHeight = container.offsetHeight;
         const imageHeight = image.offsetHeight;
-        const minTop = containerHeight - imageHeight;
-        const maxTop = 0;
-        newTop = Math.max(minTop, Math.min(newTop, maxTop));
+
+        const maxDeltaY = imageHeight - containerHeight;
+        if (maxDeltaY <= 0) return;
+
+        const deltaPercent = (deltaY / maxDeltaY) * 100;
         
-        image.style.top = `${newTop}px`;
+        let newFocusPercent = startFocusPercent + deltaPercent;
+
+        newFocusPercent = Math.max(0, Math.min(100, newFocusPercent));
+        
+        image.style.objectPosition = `50% ${newFocusPercent}%`;
     };
 
     const onMouseUp = async () => {
@@ -2536,12 +2527,7 @@ function enableFocusDrag(container, image, galleryImageData) {
         isDragging = false;
         container.style.cursor = 'grab';
 
-        const containerHeight = container.offsetHeight;
-        const imageHeight = image.offsetHeight;
-        const newTop = image.offsetTop;
-        
-        const focusPercent = (Math.abs(newTop) / (imageHeight - containerHeight)) * 100;
-        const newFocusPoint = `50% ${focusPercent.toFixed(2)}%`;
+        const newFocusPoint = image.style.objectPosition;
         
         galleryImageData.focus_point = newFocusPoint;
 
@@ -2556,7 +2542,13 @@ function enableFocusDrag(container, image, galleryImageData) {
             updateLivePreview();
         }
     };
-
+    
+    const existingListeners = container.dragListeners || {};
+    Object.keys(existingListeners).forEach(event => {
+        container.removeEventListener(event, existingListeners[event]);
+        document.removeEventListener(event, existingListeners[event]);
+    });
+    
     container.addEventListener('mousedown', onMouseDown);
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
@@ -2564,7 +2556,7 @@ function enableFocusDrag(container, image, galleryImageData) {
     container.addEventListener('touchstart', onMouseDown, { passive: false });
     document.addEventListener('touchmove', onMouseMove, { passive: false });
     document.addEventListener('touchend', onMouseUp);
-
+    
     container.dragListeners = { onMouseDown, onMouseMove, onMouseUp };
 }
 
