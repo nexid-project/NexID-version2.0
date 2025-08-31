@@ -2349,7 +2349,7 @@ function renderImmersiveGallery(images) {
     container.innerHTML = `
         <div class="immersive-gallery">
             <div class="main-image-container">
-                <img src="${images[0].image_url}" class="main-image" id="gallery-main-image" style="object-position: ${images[0].focus_point || 'center'}">
+                <img src="${images[0].image_url}" class="main-image w-full h-full object-cover" id="gallery-main-image" style="object-position: ${images[0].focus_point || 'center'}">
                 <p class="caption" id="gallery-caption">${images[0].caption || ''}</p>
             </div>
             <div class="thumbnail-strip" id="gallery-thumbnail-strip"></div>
@@ -2792,5 +2792,6 @@ window.onload = () => { 
 	setupPasswordToggle('update-confirm-password-input', 'update-confirm-password-toggle');
 	setupPasswordToggle('delete-confirm-password-input', 'delete-confirm-password-toggle');
 };
+
 
 
