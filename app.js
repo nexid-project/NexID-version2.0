@@ -240,91 +240,94 @@ async function fetchUserProfileWithRetry(userId, retries = 3, delay = 500) {
 }
 
 async function handleAuthStateChange(session) {
-	if (appState.isRecoveringPassword) return;
+    if (appState.isRecoveringPassword) {
+        // Si el usuario está en un flujo de recuperación de contraseña,
+        // no hacemos nada más que mostrar la página de actualización.
+        showPage('updatePassword');
+        return;
+    }
 
-	if (appState.isSettingsDirty && DOMElements.settingsPanel.classList.contains('open')) {
-		return;
-	}
+    if (session?.user) {
+        appState.currentUser = session.user;
+        document.getElementById('main-header').classList.remove('hidden');
 
-	if (appState.subscriptions.links) appState.subscriptions.links.unsubscribe();
-	
-	appState.currentUser = null;
-	appState.myProfile = null;
+        // Intenta obtener el perfil del usuario.
+        const { profile: myProfile, error: myProfileError } = await fetchUserProfileWithRetry(appState.currentUser.id);
 
-	const urlParams = new URLSearchParams(window.location.search);
-	const publicUsername = urlParams.get('user');
-	
-	const mainHeader = document.getElementById('main-header');
+        if (myProfileError) {
+            console.error("Error fetching profile:", myProfileError);
+            showAlert("No se pudo cargar tu perfil. Por favor, intenta recargar la página.");
+            showPage('auth');
+            return;
+        }
 
-	if (session?.user) {
-		appState.currentUser = session.user;
-		mainHeader.classList.remove('hidden');
-		
-		const { profile: myProfile, error: myProfileError } = await fetchUserProfileWithRetry(appState.currentUser.id);
+        appState.myProfile = myProfile;
 
-		if (myProfileError) {
-			console.error("Error fetching profile:", myProfileError);
-			showAlert("No se pudo cargar tu perfil. Por favor, intenta recargar la página.");
-			showPage('auth');
-			return;
-		}
-		
-		appState.myProfile = myProfile;
-
-		if (myProfile.is_deactivated) {
-			const deletionDate = new Date(myProfile.deletion_scheduled_at);
-			deletionDate.setDate(deletionDate.getDate() + 30);
-			document.getElementById('deletion-date').textContent = deletionDate.toLocaleDateString();
-			showPage('reactivateAccount');
-			return;
-		}
-
+        if (myProfile.is_deactivated) {
+            const deletionDate = new Date(myProfile.deletion_scheduled_at);
+            deletionDate.setDate(deletionDate.getDate() + 30);
+            document.getElementById('deletion-date').textContent = deletionDate.toLocaleDateString();
+            showPage('reactivateAccount');
+            return;
+        }
+        
+        // Carga datos adicionales del perfil
         const { data: galleryImages } = await supabaseClient.from('gallery_images').select('*').eq('user_id', appState.currentUser.id).order('order_index', { ascending: true });
         appState.galleryImages = galleryImages || [];
 
-		if (publicUsername && myProfile.username && myProfile.username !== `@${publicUsername}`) {
-			const backBtn = document.getElementById('back-to-my-profile-btn');
-			backBtn.classList.remove('hidden');
-			backBtn.href = `${window.location.pathname}?user=${myProfile.username.substring(1)}`;
-			loadPublicProfile(publicUsername);
-		} else {
-			document.getElementById('back-to-my-profile-btn').classList.add('hidden');
-			appState.profile = myProfile;
-			const { data: links } = await supabaseClient.from('links').select('*').eq('user_id', appState.currentUser.id).order('order_index', { ascending: true });
-			appState.links = links || [];
-			appState.socialButtons = myProfile.social_buttons || [];
-			
-			if (myProfile && myProfile.username_set) {
-				if (window.location.protocol !== 'blob:') {
-					const profileUrl = `${window.location.pathname}?user=${myProfile.username.substring(1)}`;
-					history.replaceState(null, '', profileUrl);
-				}
-				renderProfile(myProfile, true);
-				renderLinksEditor(appState.links);
-                renderGalleryEditor();
-				listenToUserLinks(myProfile.id);
-				showPage('profile');
-			} else {
-				if (window.location.protocol !== 'blob:') {
-					history.replaceState(null, '', window.location.pathname);
-				}
-				showPage('welcome');
-			}
-		}
-	} else if (publicUsername) {
-		mainHeader.classList.add('hidden');
-		loadPublicProfile(publicUsername);
-	} else {
-		mainHeader.classList.add('hidden');
-		document.getElementById('email-input').value = '';
-		document.getElementById('password-input').value = '';
-		showPage('auth');
+        // Comprueba si se está viendo un perfil público diferente.
+        const urlParams = new URLSearchParams(window.location.search);
+        const publicUsername = urlParams.get('user');
         
-        const urlParamsOnLoad = new URLSearchParams(window.location.search);
-        if (urlParamsOnLoad.get('action') === 'register') {
-            DOMElements.registerModal.classList.remove('hidden');
+        if (publicUsername && myProfile.username && myProfile.username !== `@${publicUsername}`) {
+            document.getElementById('back-to-my-profile-btn').classList.remove('hidden');
+            document.getElementById('back-to-my-profile-btn').href = `${window.location.pathname}?user=${myProfile.username.substring(1)}`;
+            await loadPublicProfile(publicUsername);
+        } else {
+            // El usuario está viendo su propio perfil.
+            document.getElementById('back-to-my-profile-btn').classList.add('hidden');
+            appState.profile = myProfile;
+            const { data: links } = await supabaseClient.from('links').select('*').eq('user_id', appState.currentUser.id).order('order_index', { ascending: true });
+            appState.links = links || [];
+            appState.socialButtons = myProfile.social_buttons || [];
+
+            if (myProfile && myProfile.username_set) {
+                if (window.location.protocol !== 'blob:') {
+                    const profileUrl = `${window.location.pathname}?user=${myProfile.username.substring(1)}`;
+                    history.replaceState(null, '', profileUrl);
+                }
+                renderProfile(myProfile, true);
+                renderLinksEditor(appState.links);
+                renderGalleryEditor();
+                listenToUserLinks(myProfile.id);
+                showPage('profile');
+            } else {
+                if (window.location.protocol !== 'blob:') {
+                    history.replaceState(null, '', window.location.pathname);
+                }
+                showPage('welcome');
+            }
         }
-	}
+    } else {
+        // No hay sesión activa.
+        const urlParams = new URLSearchParams(window.location.search);
+        const publicUsername = urlParams.get('user');
+        
+        document.getElementById('main-header').classList.add('hidden');
+        if (publicUsername) {
+            // Se está intentando ver un perfil público sin estar logueado.
+            await loadPublicProfile(publicUsername);
+        } else {
+            // No hay sesión ni perfil público. Redirige a la página de autenticación.
+            document.getElementById('email-input').value = '';
+            document.getElementById('password-input').value = '';
+            showPage('auth');
+            
+            if (urlParams.get('action') === 'register') {
+                DOMElements.registerModal.classList.remove('hidden');
+            }
+        }
+    }
 }
 
 async function loadPublicProfile(username) {
@@ -691,7 +694,7 @@ const socialIcons = {
 	whatsapp: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor"><path d="M13.601 2.326A7.85 7.85 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.9 7.9 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.9 7.9 0 0 0 13.6 2.326zM7.994 14.521a6.6 6.6 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.56 6.56 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592m3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.31-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.73.73 0 0 0-.529.247c-.182.198-.691.677-.691 1.654s.71 1.916.81 2.049c.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232"/></svg>`, 
 	behance: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M20.07,6.35H15V7.76h5.09ZM19,16.05a2.23,2.23,0,0,1-1.3.37A2.23,2.23,0,0,1,16,15.88a2.49,2.49,0,0,1-.62-1.76H22a6.47,6.47,0,0,0-.17-2,5.08,5.08,0,0,0-.8-1.73,4.17,4.17,0,0,0-1.42-1.21,4.37,4.37,0,0,0-2-.45,4.88,4.88,0,0,0-1.9.37,4.51,4.51,0,0,0-1.47,1,4.4,4.4,0,0,0-.95,1.52,5.4,5.4,0,0,0-.33,1.91,5.52,5.52,0,0,0,.32,1.94A4.46,4.46,0,0,0,14.16,17a4,4,0,0,0,1.46,1,5.2,5.2,0,0,0,1.94.34,4.77,4.77,0,0,0,2.64-.7,4.21,4.21,0,0,0,1.63-2.35H19.62A1.54,1.54,0,0,1,19,16.05Zm-3.43-4.12a1.87,1.87,0,0,1,1-1.14,2.28,2.28,0,0,1,1-.2,1.73,1.73,0,0,1,1.36.49,2.91,2.91,0,0,1,.63,1.45H15.41A3,3,0,0,1,15.52,11.93Zm-5.29-.48a3.06,3.06,0,0,0,1.28-1,2.72,2.72,0,0,0,.43-1.58,3.28,3.28,0,0,0-.29-1.48,2.4,2.4,0,0,0-.82-1,3.24,3.24,0,0,0-1.27-.52,7.54,7.54,0,0,0-1.64-.16H2V18.29H8.1a6.55,6.55,0,0,0,1.65-.21,4.55,4.55,0,0,0,1.43-.65,3.13,3.13,0,0,0,1-1.14,3.41,3.41,0,0,0,.37-1.65,3.47,3.47,0,0,0-.57-2A3,3,0,0,0,10.23,11.45ZM4.77,7.86H7.36a4.17,4.17,0,0,1,.71.06,1.64,1.64,0,0,1,.61.22,1.05,1.05,0,0,1,.42.44,1.42,1.42,0,0,1,.16.72,1.36,1.36,0,0,1-.47,1.15,2,2,0,0,1-1.22.35H4.77ZM9.61,15.3a1.28,1.28,0,0,1-.45.5,2,2,0,0,1-.65.26,3.33,3.33,0,0,1-.78.08h-3V12.69h3a2.4,2.4,0,0,1,1.45.41,1.65,1.65,0,0,1,.54,1.39A1.77,1.77,0,0,1,9.61,15.3Z"/></svg>`,
 	pinterest: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12.018 0C5.381 0 0 5.368 0 11.988c0 5.078 3.166 9.416 7.637 11.16 -0.106 -0.948 -0.199 -2.402 0.041 -3.438 0.22 -0.936 1.41 -5.957 1.41 -5.957s-0.36 -0.72 -0.36 -1.781c0 -1.663 0.97 -2.911 2.173 -2.911 1.026 0 1.522 0.768 1.522 1.687 0 1.03 -0.654 2.568 -0.995 3.992 -0.286 1.193 0.602 2.165 1.78 2.165 2.134 0 3.778 -2.244 3.778 -5.486 0 -2.861 -2.068 -4.87 -5.021 -4.87 -3.418 0 -5.422 2.562 -5.422 5.2 0 1.032 0.395 2.143 0.89 2.741 0.1 0.12 0.113 0.226 0.085 0.346 -0.09 0.374 -0.293 1.199 -0.335 1.362 -0.053 0.226 -0.172 0.271 -0.402 0.166 -1.499 -0.69 -2.438 -2.878 -2.438 -4.646 0 -3.775 2.755 -7.252 7.939 -7.252 4.169 0 7.41 2.966 7.41 6.923 0 4.135 -2.614 7.462 -6.248 7.462 -1.217 0 -2.359 -0.629 -2.765 -1.379l-0.75 2.849c-0.27 1.044 -1.008 2.352 -1.502 3.145A12 12 0 0 0 11.986 24C18.61 24 24 18.636 24 12.012 24 5.392 18.608 0.028 11.986 0.028z"/></svg>`,
-	twitch: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M2.149 0l-2.149 4.773v16.454h5.741v2.773h3.223l2.773-2.773h5.292l6.219-6.219v-14.227h-21.099zm18.378 13.59l-3.223 3.223h-5.741l-2.773 2.773v-2.773h-4.654v-14.89h16.391v11.667zm-5.292-7.371v5.546h-2.149v-5.546h2.149zm-5.291 0v5.546h-2.149v-5.546h2.149z"/></svg>`,
+	twitch: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M2.149 0l-2.149 4.773v16.454h5.741v2.773h3.223l2.773-2.773h5.292l6.219-6.219v-14.227h-21.099zm18.378 13.59l-3.223 3.223h-5.741l-2.773 2.773v-2.773h-4.654v-14.89h16.391v11.667zm-5.292-7.371v5.546h-2.149v-5.546h2.149z"/></svg>`,
 	discord: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M15.0031,4 C15.74742,4 16.532444,4.2597504 17.2533144,4.5466496 L17.7803,4.76328 L17.7803,4.76328 C19.0402,5.29134 19.7484,6.39876 20.2975,7.61613 C21.1882,9.59078 21.8067,12.2238 22.0209,14.2256 C22.1227,15.1766 22.1483,16.1321 21.9647,16.7747 C21.76838,17.46166 21.0975,17.947788 20.4466008,18.3303128 L20.1251058,18.5133917 L20.1251058,18.5133917 L19.7907,18.6986 C19.61865,18.794725 19.442175,18.8900812 19.2660703,18.9830547 L18.7436625,19.2532125 L18.7436625,19.2532125 L18.0271553,19.610458 L18.0271553,19.610458 L17.4503,19.8944 L17.4503,19.8944 C16.9564,20.1414 16.3557,19.9412 16.1087,19.4472 C15.8617,18.9532 16.0619,18.3526 16.5559,18.1056 L17.3469,17.7158 L17.3469,17.7158 L16.7663,17.1071 C15.3765,17.6777 13.7389,18 12.0001,18 C10.2612,18 8.6236,17.6777 7.23378,17.1071 L6.65415,17.7148 L7.44727,18.1056 L7.44727,18.1056 C7.94124,18.3526 8.14147,18.9532 7.89448,19.4472 C7.64749,19.9412 7.04682,20.1414 6.55284,19.8944 L6.00922,19.6247 C5.60650667,19.4255667 5.20386444,19.2265222 4.80574963,19.0185 L3.87804989,18.5133917 L3.87804989,18.5133917 L3.55657432,18.3303128 C2.9057004,17.947788 2.234774,17.46166 2.03851,16.7747 C1.85493,16.1321 1.88051,15.1766 1.98227,14.2256 C2.19645,12.2238 2.81496,9.59078 3.70567,7.61613 C4.25479,6.39877 4.96296,5.29134 6.22289,4.76328 C7.05903,4.41284 8.07171,4 9.00004,4 C9.60303,4 10.0767,4.55523 9.98927,5.14727 C10.6366,5.05075 11.3099,5 12.0001,5 C12.6914,5 13.3657,5.05091 14.014,5.14774 C13.9263,4.55557 14.4,4 15.0031,4 Z M8.75006,10.5 C7.78356,10.5 7.00006,11.2835 7.00006,12.25 C7.00006,13.2165 7.78356,14 8.75006,14 C9.71656,14 10.5001,13.2165 10.5001,12.25 C10.5001,11.2835 9.71656,10.5 8.75006,10.5 Z M15.2501,10.5 C14.2836,10.5 13.5001,11.2835 13.5001,12.25 C13.5001,13.2165 14.2836,14 15.2501,14 C16.2166,14 17.0001,13.2165 17.0001,12.25 C17.0001,11.2835 16.2166,10.5 15.2501,10.5 Z"/></svg>`,
 	spotify: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.161 17.218c-.21.315-.576.42-.892.21-2.553-1.56-5.75-1.91-9.52-1.047-.36.084-.696-.134-.78-.494s.134-.696.494-.78c4.13-1.007 7.62-0.608 10.45 1.132.316.21.42.576.21.892zm1.201-2.73c-.255.38-.71.504-1.09.248-2.887-1.758-7.15-2.22-10.59-1.21-.434.12-.87-.135-.99-.565s.135-.87.565-.99c3.85-1.12 8.52-0.61 11.8 1.388.38.256.504.71.248 1.09zm.12-2.99c-3.48-2.03-9.21-2.22-12.32-1.21-.525.165-.99-.22-1.155-.745s.22-.99.745-1.155c3.62-1.12 10.02-.89 13.97 1.388.465.255.63.84.375 1.305-.255.465-.84.63-1.305.375z"/></svg>`,
 	soundcloud: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M7,19a1,1,0,0,1-1-1V8A1,1,0,0,1,8,8V18A1,1,0,0,1,7,19ZM3,18a1,1,0,0,1-1-1V11a1,1,0,0,1,2,0v6A1,1,0,0,1,3,18Z"></path><path d="M18.76,10.2A7,7,0,0,0,12,5a5.89,5.89,0,0,0-1.18.11,1,1,0,0,0-.82,1V18a1,1,0,0,0,1,1h6.5a4.49,4.49,0,0,0,1.26-8.8Z"></path></svg>`,
@@ -1378,7 +1381,7 @@ function updateLivePreview() {
 		background_overlay_opacity: opacitySlider.value,
 		theme: document.querySelector('.theme-option.selected')?.dataset.theme || 'negro',
 		button_style: document.querySelector('input[name="buttonStyle"]:checked')?.value || 'filled',
-		button_shape_style: document.querySelector('input[name="buttonShape']:checked')?.value || 'rounded-lg',
+		button_shape_style: document.querySelector('input[name="buttonShape"]:checked')?.value || 'rounded-lg',
 		font_family: selectedFont,
 		socials: newSocials,
 		social_buttons: newSocialButtons,
