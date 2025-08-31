@@ -1172,7 +1172,7 @@ function openSettingsPanel() {
 		opacityControls.classList.add('hidden');
 	}
 
-	const currentTheme = profile.theme || 'negro';
+	const currentTheme = profile.theme || 'grafito';
 	const themeOptionEl = document.querySelector(`.theme-option[data-theme="${currentTheme}"]`);
 	if (themeOptionEl) {
 		const tabContentEl = themeOptionEl.closest('.theme-tab-content');
@@ -1378,7 +1378,7 @@ function updateLivePreview() {
 		background_overlay_opacity: opacitySlider.value,
 		theme: document.querySelector('.theme-option.selected')?.dataset.theme || 'negro',
 		button_style: document.querySelector('input[name="buttonStyle"]:checked')?.value || 'filled',
-		button_shape_style: document.querySelector('input[name="buttonShape"]:checked')?.value || 'rounded-lg',
+		button_shape_style: document.querySelector('input[name="buttonShape']:checked')?.value || 'rounded-lg',
 		font_family: selectedFont,
 		socials: newSocials,
 		social_buttons: newSocialButtons,
@@ -2480,14 +2480,12 @@ function openGalleryEditModal(image) {
     previewImage.src = image.image_url;
     modal.querySelector('#gallery-edit-caption').value = image.caption || '';
     
-    // Set initial focus point
     const focus = image.focus_point || 'center center';
     previewImage.style.objectPosition = focus;
 
     modal.classList.remove('hidden');
     lucide.createIcons();
 
-    // Attach drag listeners
     enableFocusDrag(previewContainer, previewImage, image);
 }
 
@@ -2505,7 +2503,13 @@ function enableFocusDrag(container, image, galleryImageData) {
         e.preventDefault();
         isDragging = true;
         startY = e.clientY || e.touches[0].clientY;
-        startTop = image.offsetTop;
+        // Reiniciar la posición de la imagen al inicio del arrastre
+        const containerHeight = container.offsetHeight;
+        const imageHeight = image.offsetHeight;
+        const initialPosition = parseFloat(image.style.objectPosition.split(' ')[1]) / 100;
+        startTop = (imageHeight - containerHeight) * initialPosition * -1;
+        image.style.top = `${startTop}px`;
+
         container.style.cursor = 'grabbing';
     };
 
@@ -2515,7 +2519,6 @@ function enableFocusDrag(container, image, galleryImageData) {
         const deltaY = currentY - startY;
         let newTop = startTop + deltaY;
 
-        // Constrain movement
         const containerHeight = container.offsetHeight;
         const imageHeight = image.offsetHeight;
         const minTop = containerHeight - imageHeight;
@@ -2534,14 +2537,11 @@ function enableFocusDrag(container, image, galleryImageData) {
         const imageHeight = image.offsetHeight;
         const newTop = image.offsetTop;
         
-        // Calculate percentage
         const focusPercent = (Math.abs(newTop) / (imageHeight - containerHeight)) * 100;
         const newFocusPoint = `50% ${focusPercent.toFixed(2)}%`;
         
-        // Update local state
         galleryImageData.focus_point = newFocusPoint;
 
-        // Save to DB
         const { error } = await supabaseClient
             .from('gallery_images')
             .update({ focus_point: newFocusPoint })
@@ -2562,7 +2562,6 @@ function enableFocusDrag(container, image, galleryImageData) {
     document.addEventListener('touchmove', onMouseMove, { passive: false });
     document.addEventListener('touchend', onMouseUp);
 
-    // Store a reference to remove them later
     container.dragListeners = { onMouseDown, onMouseMove, onMouseUp };
 }
 
@@ -2671,9 +2670,14 @@ DOMElements.galleryEditModal.addEventListener('click', (e) => {
 
                     const pathsToDelete = [imageToDelete.image_path];
                     if (imageToDelete.thumbnail_path) pathsToDelete.push(imageToDelete.thumbnail_path);
-                    await supabaseClient.storage.from('gallery-images').remove(pathsToDelete);
                     
-                    appState.galleryImages = appState.galleryImages.filter(img => img.id === imageToDelete.id);
+                    const { error: storageError } = await supabaseClient.storage.from('gallery-images').remove(pathsToDelete);
+
+                    if (storageError) {
+                        console.error("Error al eliminar imagen(es) del storage:", storageError);
+                    }
+
+                    appState.galleryImages = appState.galleryImages.filter(img => img.id !== imageToDelete.id);
                     renderGalleryEditor();
                     updateLivePreview();
                     closeGalleryEditModal();
