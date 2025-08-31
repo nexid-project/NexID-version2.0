@@ -240,88 +240,85 @@ async function fetchUserProfileWithRetry(userId, retries = 3, delay = 500) {
 }
 
 async function handleAuthStateChange(session) {
-	const urlParams = new URLSearchParams(window.location.search);
-	const publicUsername = urlParams.get('user');
-
     if (appState.isRecoveringPassword) {
         showPage('updatePassword');
         return;
     }
 
-	// Caso 1: Usuario con sesión activa
-	if (session?.user) {
-		appState.currentUser = session.user;
-		document.getElementById('main-header').classList.remove('hidden');
+    if (session?.user) {
+        appState.currentUser = session.user;
+        document.getElementById('main-header').classList.remove('hidden');
 
-		const { profile: myProfile, error: myProfileError } = await fetchUserProfileWithRetry(appState.currentUser.id);
-		
-		if (myProfileError) {
-			console.error("Error fetching profile:", myProfileError);
-			showAlert("No se pudo cargar tu perfil. Por favor, intenta recargar la página.");
-			showPage('auth');
-			return;
-		}
+        const { profile: myProfile, error: myProfileError } = await fetchUserProfileWithRetry(appState.currentUser.id);
 
-		appState.myProfile = myProfile;
+        if (myProfileError) {
+            console.error("Error fetching profile:", myProfileError);
+            showAlert("No se pudo cargar tu perfil. Por favor, intenta recargar la página.");
+            showPage('auth');
+            return;
+        }
 
-		if (myProfile.is_deactivated) {
-			const deletionDate = new Date(myProfile.deletion_scheduled_at);
-			deletionDate.setDate(deletionDate.getDate() + 30);
-			document.getElementById('deletion-date').textContent = deletionDate.toLocaleDateString();
-			showPage('reactivateAccount');
-			return;
-		}
+        appState.myProfile = myProfile;
 
-		const { data: galleryImages } = await supabaseClient.from('gallery_images').select('*').eq('user_id', appState.currentUser.id).order('order_index', { ascending: true });
-		appState.galleryImages = galleryImages || [];
+        if (myProfile.is_deactivated) {
+            const deletionDate = new Date(myProfile.deletion_scheduled_at);
+            deletionDate.setDate(deletionDate.getDate() + 30);
+            document.getElementById('deletion-date').textContent = deletionDate.toLocaleDateString();
+            showPage('reactivateAccount');
+            return;
+        }
+        
+        const { data: galleryImages } = await supabaseClient.from('gallery_images').select('*').eq('user_id', appState.currentUser.id).order('order_index', { ascending: true });
+        appState.galleryImages = galleryImages || [];
 
-		// Caso 1.1: Viendo un perfil público diferente al propio
-		if (publicUsername && myProfile.username && myProfile.username.substring(1) !== publicUsername) {
-			document.getElementById('back-to-my-profile-btn').classList.remove('hidden');
-			document.getElementById('back-to-my-profile-btn').href = `${window.location.pathname}?user=${myProfile.username.substring(1)}`;
-			await loadPublicProfile(publicUsername);
-		} else {
-			// Caso 1.2: Viendo su propio perfil o entrando a la app sin parámetro
-			document.getElementById('back-to-my-profile-btn').classList.add('hidden');
-			appState.profile = myProfile;
-			const { data: links } = await supabaseClient.from('links').select('*').eq('user_id', appState.currentUser.id).order('order_index', { ascending: true });
-			appState.links = links || [];
-			appState.socialButtons = myProfile.social_buttons || [];
+        const urlParams = new URLSearchParams(window.location.search);
+        const publicUsername = urlParams.get('user');
+        
+        if (publicUsername && myProfile.username && myProfile.username !== `@${publicUsername}`) {
+            document.getElementById('back-to-my-profile-btn').classList.remove('hidden');
+            document.getElementById('back-to-my-profile-btn').href = `${window.location.pathname}?user=${myProfile.username.substring(1)}`;
+            await loadPublicProfile(publicUsername);
+        } else {
+            document.getElementById('back-to-my-profile-btn').classList.add('hidden');
+            appState.profile = myProfile;
+            const { data: links } = await supabaseClient.from('links').select('*').eq('user_id', appState.currentUser.id).order('order_index', { ascending: true });
+            appState.links = links || [];
+            appState.socialButtons = myProfile.social_buttons || [];
 
-			if (myProfile && myProfile.username_set) {
-				if (window.location.protocol !== 'blob:' && (!publicUsername || publicUsername !== myProfile.username.substring(1))) {
-					const profileUrl = `${window.location.pathname}?user=${myProfile.username.substring(1)}`;
-					history.replaceState(null, '', profileUrl);
-				}
-				renderProfile(myProfile, true);
-				renderLinksEditor(appState.links);
-				renderGalleryEditor();
-				listenToUserLinks(myProfile.id);
-				showPage('profile');
-			} else {
-				if (window.location.protocol !== 'blob:') {
-					history.replaceState(null, '', window.location.pathname);
-				}
-				showPage('welcome');
-			}
-		}
-	} else {
-		// Caso 2: No hay sesión activa
-		document.getElementById('main-header').classList.add('hidden');
-		// Caso 2.1: Intentando ver un perfil público
-		if (publicUsername) {
-			await loadPublicProfile(publicUsername);
-		} else {
-			// Caso 2.2: Sin sesión y sin perfil público, mostrar página de auth
-			document.getElementById('email-input').value = '';
-			document.getElementById('password-input').value = '';
-			showPage('auth');
-			
-			if (urlParams.get('action') === 'register') {
-				DOMElements.registerModal.classList.remove('hidden');
-			}
-		}
-	}
+            if (myProfile && myProfile.username_set) {
+                if (window.location.protocol !== 'blob:') {
+                    const profileUrl = `${window.location.pathname}?user=${myProfile.username.substring(1)}`;
+                    history.replaceState(null, '', profileUrl);
+                }
+                renderProfile(myProfile, true);
+                renderLinksEditor(appState.links);
+                renderGalleryEditor();
+                listenToUserLinks(myProfile.id);
+                showPage('profile');
+            } else {
+                if (window.location.protocol !== 'blob:') {
+                    history.replaceState(null, '', window.location.pathname);
+                }
+                showPage('welcome');
+            }
+        }
+    } else {
+        const urlParams = new URLSearchParams(window.location.search);
+        const publicUsername = urlParams.get('user');
+        
+        document.getElementById('main-header').classList.add('hidden');
+        if (publicUsername) {
+            await loadPublicProfile(publicUsername);
+        } else {
+            document.getElementById('email-input').value = '';
+            document.getElementById('password-input').value = '';
+            showPage('auth');
+            
+            if (urlParams.get('action') === 'register') {
+                DOMElements.registerModal.classList.remove('hidden');
+            }
+        }
+    }
 }
 
 async function loadPublicProfile(username) {
@@ -683,7 +680,7 @@ const socialIcons = {
 	github: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.166 6.839 9.49.5.092.682-.217.682-.482 0-.237-.009-.868-.014-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.031-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.378.203 2.398.1 2.651.64.7 1.03 1.595 1.03 2.688 0 3.848-2.338 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.577.688.482A10.001 10.001 0 0 0 22 12c0-5.523-4.477-10-10-10z"></path></svg>`,
 	linkedin: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"></path></svg>`,
 	tiktok: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" fill="currentColor"><path d="M448 209.9a210.1 210.1 0 0 1 -122.8-39.3V349.4A162.6 162.6 0 1 1 185 188.3V278.2a74.6 74.6 0 1 0 52.2 71.2V0l88 0a121.2 121.2 0 0 0 122.8 122.8V209.9z"/></svg>`,
-	youtube: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62-4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg>`,
+	youtube: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg>`,
 	facebook: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>`,
 	whatsapp: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor"><path d="M13.601 2.326A7.85 7.85 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.9 7.9 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.9 7.9 0 0 0 13.6 2.326zM7.994 14.521a6.6 6.6 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.56 6.56 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592m3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.31-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.73.73 0 0 0-.529.247c-.182.198-.691.677-.691 1.654s.71 1.916.81 2.049c.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232"/></svg>`, 
 	behance: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M20.07,6.35H15V7.76h5.09ZM19,16.05a2.23,2.23,0,0,1-1.3.37A2.23,2.23,0,0,1,16,15.88a2.49,2.49,0,0,1-.62-1.76H22a6.47,6.47,0,0,0-.17-2,5.08,5.08,0,0,0-.8-1.73,4.17,4.17,0,0,0-1.42-1.21,4.37,4.37,0,0,0-2-.45,4.88,4.88,0,0,0-1.9.37,4.51,4.51,0,0,0-1.47,1,4.4,4.4,0,0,0-.95,1.52,5.4,5.4,0,0,0-.33,1.91,5.52,5.52,0,0,0,.32,1.94A4.46,4.46,0,0,0,14.16,17a4,4,0,0,0,1.46,1,5.2,5.2,0,0,0,1.94.34,4.77,4.77,0,0,0,2.64-.7,4.21,4.21,0,0,0,1.63-2.35H19.62A1.54,1.54,0,0,1,19,16.05Zm-3.43-4.12a1.87,1.87,0,0,1,1-1.14,2.28,2.28,0,0,1,1-.2,1.73,1.73,0,0,1,1.36.49,2.91,2.91,0,0,1,.63,1.45H15.41A3,3,0,0,1,15.52,11.93Zm-5.29-.48a3.06,3.06,0,0,0,1.28-1,2.72,2.72,0,0,0,.43-1.58,3.28,3.28,0,0,0-.29-1.48,2.4,2.4,0,0,0-.82-1,3.24,3.24,0,0,0-1.27-.52,7.54,7.54,0,0,0-1.64-.16H2V18.29H8.1a6.55,6.55,0,0,0,1.65-.21,4.55,4.55,0,0,0,1.43-.65,3.13,3.13,0,0,0,1-1.14,3.41,3.41,0,0,0,.37-1.65,3.47,3.47,0,0,0-.57-2A3,3,0,0,0,10.23,11.45ZM4.77,7.86H7.36a4.17,4.17,0,0,1,.71.06,1.64,1.64,0,0,1,.61.22,1.05,1.05,0,0,1,.42.44,1.42,1.42,0,0,1,.16.72,1.36,1.36,0,0,1-.47,1.15,2,2,0,0,1-1.22.35H4.77ZM9.61,15.3a1.28,1.28,0,0,1-.45.5,2,2,0,0,1-.65.26,3.33,3.33,0,0,1-.78.08h-3V12.69h3a2.4,2.4,0,0,1,1.45.41,1.65,1.65,0,0,1,.54,1.39A1.77,1.77,0,0,1,9.61,15.3Z"/></svg>`,
@@ -1286,7 +1283,7 @@ document.getElementById('save-changes-btn').addEventListener('click', async () =
 		background_overlay_opacity: document.getElementById('background-opacity-slider').value,
 		theme: document.querySelector('.theme-option.selected').dataset.theme,
 		button_style: document.querySelector('input[name="buttonStyle"]:checked').value,
-		button_shape_style: document.querySelector('input[name="buttonShape']:checked').value,
+		button_shape_style: document.querySelector('input[name="buttonShape"]:checked').value,
 		font_family: DOMElements.fontFamilyValue.value,
 		socials: newSocials,
 		socials_order: currentSocialsOrder,
@@ -1375,7 +1372,7 @@ function updateLivePreview() {
 		background_overlay_opacity: opacitySlider.value,
 		theme: document.querySelector('.theme-option.selected')?.dataset.theme || 'negro',
 		button_style: document.querySelector('input[name="buttonStyle"]:checked')?.value || 'filled',
-		button_shape_style: document.querySelector('input[name="buttonShape"]:checked')?.value || 'rounded-lg',
+		button_shape_style: document.querySelector('input[name="buttonShape']:checked')?.value || 'rounded-lg',
 		font_family: selectedFont,
 		socials: newSocials,
 		social_buttons: newSocialButtons,
@@ -2497,6 +2494,8 @@ function enableFocusDrag(container, image, galleryImageData) {
     let isDragging = false;
     let startY = 0;
     let startTop = 0;
+    let maxTop = 0;
+    let minTop = 0;
     
     const onMouseDown = (e) => {
         e.preventDefault();
@@ -2506,21 +2505,18 @@ function enableFocusDrag(container, image, galleryImageData) {
         image.classList.remove('transition-all');
         container.style.cursor = 'grabbing';
         
-        // Use the original image dimensions to prevent jumpy behavior
+        const rect = image.getBoundingClientRect();
+        startTop = rect.top - container.getBoundingClientRect().top;
+        
         const containerHeight = container.offsetHeight;
-        const imageHeight = image.naturalHeight * (container.offsetWidth / image.naturalWidth);
-        const currentTop = parseFloat(image.style.top) || 0;
-        startTop = currentTop - (container.getBoundingClientRect().top - image.getBoundingClientRect().top);
-        
-        const maxTop = 0;
-        const minTop = -(imageHeight - containerHeight);
-        
-        container.dragInfo = { startY, startTop, minTop, maxTop, imageHeight, containerHeight };
+        const imageHeight = image.offsetHeight;
+
+        maxTop = 0;
+        minTop = -(imageHeight - containerHeight);
     };
 
     const onMouseMove = (e) => {
         if (!isDragging) return;
-        const { startY, startTop, minTop, maxTop } = container.dragInfo;
         const currentY = e.clientY || e.touches[0].clientY;
         const deltaY = currentY - startY;
         
@@ -2536,18 +2532,14 @@ function enableFocusDrag(container, image, galleryImageData) {
         container.style.cursor = 'grab';
         image.classList.add('transition-all');
 
-        const { imageHeight, containerHeight } = container.dragInfo;
+        const containerHeight = container.offsetHeight;
+        const imageHeight = image.offsetHeight;
         const newTop = image.offsetTop;
 
         const focusPercent = (Math.abs(newTop) / (imageHeight - containerHeight)) * 100;
         const newFocusPoint = `50% ${focusPercent.toFixed(2)}%`;
         
         galleryImageData.focus_point = newFocusPoint;
-        
-        // Align the image again using object-position
-        image.style.top = '50%';
-        image.style.transform = 'translateY(-50%)';
-        image.style.objectPosition = newFocusPoint;
 
         const { error } = await supabaseClient
             .from('gallery_images')
