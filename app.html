@@ -1,37 +1,37 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NexID | Aplicación</title>
-    
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Google Fonts (Carga Optimizada) -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <!-- Solo se carga la fuente por defecto inicialmente -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NexID | Aplicación</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts (Carga Optimizada) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <!-- Solo se carga la fuente por defecto inicialmente -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
 
-    <!-- Iconos (Lucide) -->
-    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <!-- Iconos (Lucide) -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 
-    <!-- SortableJS para Drag and Drop -->
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <!-- SortableJS para Drag and Drop -->
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
 
-    <!-- Supabase JS -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
-    <!-- Cropper.js -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
-    
-    <!-- Librería de Compresión de Imágenes -->
-    <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <!-- Cropper.js -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
+    
+    <!-- Librería de Compresión de Imágenes -->
+    <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
 
-    <!-- Tus Estilos Personalizados -->
-    <link rel="stylesheet" href="style.css">
+    <!-- Tus Estilos Personalizados -->
+    <link rel="stylesheet" href="style.css">
 </head>
 <body class="bg-gray-900 text-white min-h-screen overflow-x-hidden">
 	
@@ -44,43 +44,43 @@
 		</div>
 
 		<!-- PÁGINA DE AUTENTICACIÓN -->
-        <div id="auth-page" class="hidden p-4 sm:p-6">
-            <div class="flex flex-col items-center justify-center min-h-[90vh]">
-                <!-- VISTA DE INICIO DE SESIÓN -->
-                <div id="login-view" class="w-full max-w-md">
-                    <div class="p-8 space-y-6 bg-gray-800 rounded-xl shadow-lg">
-                        <h1 class="text-3xl font-bold text-center text-cyan-400">Crea tu Página de Enlaces</h1>
-                        <p class="text-center text-gray-300">Inicia sesión o regístrate para empezar.</p>
-                        <div class="space-y-4">
-                            <input id="email-input" type="email" placeholder="Correo electrónico" class="w-full px-4 py-2 text-gray-900 bg-gray-200 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500">
-                            <div class="relative w-full">
-                                <input id="password-input" type="password" placeholder="Contraseña" class="w-full px-4 pr-10 py-2 text-gray-900 bg-gray-200 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500">
-                                <button type="button" id="auth-password-toggle" class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-500">
-                                    <i data-lucide="eye" class="w-5 h-5"></i>
-                                </button>
-                            </div>
-                            <a href="#" id="forgot-password-link" class="text-sm text-cyan-400 hover:underline text-center block">¿Olvidaste tu contraseña?</a>
-                        </div>
-                        <div class="flex flex-col sm:flex-row gap-4">
-                            <button id="login-btn" class="w-full px-4 py-2 font-bold text-white bg-cyan-600 rounded-md hover:bg-cyan-500 transition-colors">Iniciar Sesión</button>
-                            <button id="show-register-modal-btn" class="w-full px-4 py-2 font-bold text-white bg-indigo-600 rounded-md hover:bg-indigo-500 transition-colors">Registrarse</button>
-                        </div>
-                        <div class="relative flex items-center py-2">
-                            <div class="flex-grow border-t border-gray-600"></div>
-                            <span class="flex-shrink mx-4 text-gray-400">o</span>
-                            <div class="flex-grow border-t border-gray-600"></div>
-                        </div>
-                        <button id="google-login-btn" class="w-full flex items-center justify-center gap-3 px-4 py-2 font-bold text-white bg-red-600 rounded-md hover:bg-red-500 transition-colors">
-                            <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039L38.802 9.92C34.553 6.08 29.613 4 24 4C12.955 4 4 12.955 4 24s8.955 20 20 20s20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"/><path fill="#FF3D00" d="M6.306 14.691c-1.336 2.65-2.095 5.623-2.095 8.81s.759 6.16 2.095 8.81l7.107-5.559C12.82 25.65 12 24.85 12 24s.82-1.65 1.413-2.932l-7.107-5.559z"/><path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-4.82c-1.865 1.25-4.252 1.992-6.946 1.992-5.212 0-9.64-3.428-11.284-8.048l-7.107 5.559C8.386 39.043 15.6 44 24 44z"/><path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303c-.792 2.447-2.274 4.488-4.386 5.958l6.19 4.82C41.383 35.398 44 30.168 44 24c0-1.341-.138-2.65-.389-3.917z"/></svg>
-                            Continuar con Google
-                        </button>
-                        <div class="text-center mt-4">
-                            <a href="index.html" class="text-sm text-cyan-400 hover:underline">Volver al inicio</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <div id="auth-page" class="hidden p-4 sm:p-6">
+            <div class="flex flex-col items-center justify-center min-h-[90vh]">
+                <!-- VISTA DE INICIO DE SESIÓN -->
+                <div id="login-view" class="w-full max-w-md">
+                    <div class="p-8 space-y-6 bg-gray-800 rounded-xl shadow-lg">
+                        <h1 class="text-3xl font-bold text-center text-cyan-400">Crea tu Página de Enlaces</h1>
+                        <p class="text-center text-gray-300">Inicia sesión o regístrate para empezar.</p>
+                        <div class="space-y-4">
+                            <input id="email-input" type="email" placeholder="Correo electrónico" class="w-full px-4 py-2 text-gray-900 bg-gray-200 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                            <div class="relative w-full">
+                                <input id="password-input" type="password" placeholder="Contraseña" class="w-full px-4 pr-10 py-2 text-gray-900 bg-gray-200 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                                <button type="button" id="auth-password-toggle" class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-500">
+                                    <i data-lucide="eye" class="w-5 h-5"></i>
+                                </button>
+                            </div>
+                            <a href="#" id="forgot-password-link" class="text-sm text-cyan-400 hover:underline text-center block">¿Olvidaste tu contraseña?</a>
+                        </div>
+                        <div class="flex flex-col sm:flex-row gap-4">
+                            <button id="login-btn" class="w-full px-4 py-2 font-bold text-white bg-cyan-600 rounded-md hover:bg-cyan-500 transition-colors">Iniciar Sesión</button>
+                            <button id="show-register-modal-btn" class="w-full px-4 py-2 font-bold text-white bg-indigo-600 rounded-md hover:bg-indigo-500 transition-colors">Registrarse</button>
+                        </div>
+                        <div class="relative flex items-center py-2">
+                            <div class="flex-grow border-t border-gray-600"></div>
+                            <span class="flex-shrink mx-4 text-gray-400">o</span>
+                            <div class="flex-grow border-t border-gray-600"></div>
+                        </div>
+                        <button id="google-login-btn" class="w-full flex items-center justify-center gap-3 px-4 py-2 font-bold text-white bg-red-600 rounded-md hover:bg-red-500 transition-colors">
+                            <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8c-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039L38.802 9.92C34.553 6.08 29.613 4 24 4C12.955 4 4 12.955 4 24s8.955 20 20 20s20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z"/><path fill="#FF3D00" d="M6.306 14.691c-1.336 2.65-2.095 5.623-2.095 8.81s.759 6.16 2.095 8.81l7.107-5.559C12.82 25.65 12 24.85 12 24s.82-1.65 1.413-2.932l-7.107-5.559z"/><path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-4.82c-1.865 1.25-4.252 1.992-6.946 1.992-5.212 0-9.64-3.428-11.284-8.048l-7.107 5.559C8.386 39.043 15.6 44 24 44z"/><path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303c-.792 2.447-2.274 4.488-4.386 5.958l6.19 4.82C41.383 35.398 44 30.168 44 24c0-1.341-.138-2.65-.389-3.917z"/></svg>
+                            Continuar con Google
+                        </button>
+                        <div class="text-center mt-4">
+                            <a href="index.html" class="text-sm text-cyan-400 hover:underline">Volver al inicio</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
 		<!-- NUEVO MODAL DE REGISTRO -->
 		<div id="register-modal" class="hidden fixed inset-0 bg-black bg-opacity-100 flex items-center justify-center z-50 p-4">
@@ -638,25 +638,25 @@
 			</div>
 		</div>
 		<!-- Modal para Recortar Miniaturas de la Galería -->
-        <div id="thumbnail-cropper-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
-            <div id="thumbnail-cropper-modal-content" class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-lg flex flex-col max-h-[90vh]">
-                 <h3 class="text-2xl font-bold text-cyan-400 mb-4 text-center">Ajustar Miniatura (16:9)</h3>
-                 <div class="mb-4 flex-grow min-h-0">
-                     <img id="thumbnail-cropper-image" src="">
-                 </div>
-                 <div class="flex justify-center gap-4 mt-auto pt-4">
-                     <button id="thumbnail-cropper-cancel-btn" class="px-6 py-2 font-bold text-white bg-gray-600 rounded-md hover:bg-gray-500">Cancelar</button>
-                     <button id="thumbnail-cropper-save-btn" class="flex items-center justify-center gap-2 px-6 py-2 font-bold text-white bg-cyan-600 rounded-md hover:bg-cyan-500 disabled:bg-cyan-800">Guardar Miniatura</button>
-                 </div>
-            </div>
-        </div>
+        <div id="thumbnail-cropper-modal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
+            <div id="thumbnail-cropper-modal-content" class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-lg flex flex-col max-h-[90vh]">
+                 <h3 class="text-2xl font-bold text-cyan-400 mb-4 text-center">Ajustar Miniatura (16:9)</h3>
+                 <div class="mb-4 flex-grow min-h-0">
+                     <img id="thumbnail-cropper-image" src="">
+                 </div>
+                 <div class="flex justify-center gap-4 mt-auto pt-4">
+                     <button id="thumbnail-cropper-cancel-btn" class="px-6 py-2 font-bold text-white bg-gray-600 rounded-md hover:bg-gray-500">Cancelar</button>
+                     <button id="thumbnail-cropper-save-btn" class="flex items-center justify-center gap-2 px-6 py-2 font-bold text-white bg-cyan-600 rounded-md hover:bg-cyan-500 disabled:bg-cyan-800">Guardar Miniatura</button>
+                 </div>
+            </div>
+        </div>
 
 		<!-- NUEVO: Modal para Editar Imagen de la Galería -->
 		<div id="gallery-edit-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
 			<div class="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-sm flex flex-col max-h-[90vh]">
 				<h3 class="text-xl font-bold text-cyan-400 mb-4 text-center">Editar Imagen</h3>
 				<div id="gallery-edit-preview-container" class="w-full aspect-video rounded-md overflow-hidden cursor-grab bg-gray-700 relative mb-4">
-					<img id="gallery-edit-preview" src="" class="absolute w-full h-auto">
+					<img id="gallery-edit-preview" src="" class="absolute w-full h-auto -translate-y-1/2" style="top: 50%;">
 				</div>
 				<textarea id="gallery-edit-caption" class="w-full px-4 py-2 text-gray-900 bg-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500" placeholder="Añade un pie de foto..."></textarea>
 				
@@ -753,4 +753,5 @@
 	<script type="module" src="app.js"></script>
 </body>
 </html>
+
 
