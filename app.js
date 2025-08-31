@@ -190,129 +190,110 @@ function extractUsername(input, socialKey) {
 // --- 5. LÓGICA PRINCIPAL DE LA APLICACIÓN ---
 
 function initializeApp() {
-	if (!SUPABASE_URL || !SUPABASE_ANON_KEY || SUPABASE_URL.includes('TU_SUPABASE_URL')) {
-		showAlert('CONFIGURACIÓN NECESARIA: Por favor, añade tus claves de API de Supabase en el código y sigue las instrucciones de la base de datos.');
-		showPage('auth');
-		return;
-	}
-	
-	supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-	populateIconGrid();
-	populateFontSelector();
-	
-	if (appState.subscriptions.auth) {
-		appState.subscriptions.auth.unsubscribe();
-	}
-
-	if (window.location.hash.includes('type=recovery')) {
-		appState.isRecoveringPassword = true;
-	}
-	
-	appState.subscriptions.auth = supabaseClient.auth.onAuthStateChange((event, session) => {
-		if (event === 'PASSWORD_RECOVERY') {
-			appState.isRecoveringPassword = true;
-			showPage('updatePassword');
-		} else {
-			loadApp(session);
-		}
-	});
-}
-
-async function fetchUserData(userId) {
-    try {
-        const { data: myProfile, error: myProfileError } = await fetchUserProfileWithRetry(userId);
-        if (myProfileError) throw myProfileError;
-        
-        const { data: links } = await supabaseClient.from('links').select('*').eq('user_id', userId).order('order_index', { ascending: true });
-        const { data: galleryImages } = await supabaseClient.from('gallery_images').select('*').eq('user_id', userId).order('order_index', { ascending: true });
-        
-        return { myProfile, links, galleryImages };
-    } catch (error) {
-        console.error("Error fetching user data:", error);
-        return { myProfile: null, links: [], galleryImages: [] };
-    }
-}
-
-async function loadApp(session) {
-    if (appState.isRecoveringPassword) return;
-    
-    // Si el panel de ajustes está abierto, no hacemos nada para evitar un re-renderizado
-    if (appState.isSettingsDirty && DOMElements.settingsPanel.classList.contains('open')) {
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY || SUPABASE_URL.includes('TU_SUPABASE_URL')) {
+        showAlert('CONFIGURACIÓN NECESARIA: Por favor, añade tus claves de API de Supabase en el código y sigue las instrucciones de la base de datos.');
+        showPage('auth');
         return;
     }
+    
+    supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    populateIconGrid();
+    populateFontSelector();
+    
+    // Configura el listener de autenticación para llamar a la función de carga
+    supabaseClient.auth.onAuthStateChange((event, session) => {
+        if (event === 'PASSWORD_RECOVERY') {
+            appState.isRecoveringPassword = true;
+            showPage('updatePassword');
+        } else {
+            loadApp(session);
+        }
+    });
+}
+
+// Nueva función central para cargar la aplicación
+async function loadApp(session) {
+    if (appState.isRecoveringPassword) return;
 
     const urlParams = new URLSearchParams(window.location.search);
     const publicUsername = urlParams.get('user');
 
     if (session?.user) {
-        // --- 1. Usuario autenticado ---
+        // --- 1. Usuario autenticado: Cargar perfil propio o público ---
         appState.currentUser = session.user;
         const mainHeader = document.getElementById('main-header');
         if (mainHeader) mainHeader.classList.remove('hidden');
 
-        const { myProfile, links, galleryImages } = await fetchUserData(appState.currentUser.id);
-        
-        if (!myProfile) {
+        try {
+            const { profile: myProfile, error } = await fetchUserProfileWithRetry(appState.currentUser.id);
+            if (error) throw error;
+            appState.myProfile = myProfile;
+
+            // Cargar datos adicionales del usuario
+            const { data: links } = await supabaseClient.from('links').select('*').eq('user_id', appState.currentUser.id).order('order_index', { ascending: true });
+            const { data: galleryImages } = await supabaseClient.from('gallery_images').select('*').eq('user_id', appState.currentUser.id).order('order_index', { ascending: true });
+            
+            appState.links = links || [];
+            appState.galleryImages = galleryImages || [];
+            appState.socialButtons = myProfile.social_buttons || [];
+
+            if (myProfile.is_deactivated) {
+                const deletionDate = new Date(myProfile.deletion_scheduled_at);
+                deletionDate.setDate(deletionDate.getDate() + 30);
+                document.getElementById('deletion-date').textContent = deletionDate.toLocaleDateString();
+                return showPage('reactivateAccount');
+            }
+            
+            const isViewingOtherPublicProfile = publicUsername && myProfile.username && myProfile.username.substring(1).toLowerCase() !== publicUsername.toLowerCase();
+            
+            if (isViewingOtherPublicProfile) {
+                const backBtn = document.getElementById('back-to-my-profile-btn');
+                if (backBtn) {
+                    backBtn.classList.remove('hidden');
+                    backBtn.href = `${window.location.pathname}?user=${myProfile.username.substring(1)}`;
+                }
+                return loadPublicProfile(publicUsername);
+            } else {
+                // Viendo nuestro propio perfil
+                const backBtn = document.getElementById('back-to-my-profile-btn');
+                if (backBtn) backBtn.classList.add('hidden');
+                
+                appState.profile = myProfile;
+
+                if (myProfile && myProfile.username_set) {
+                    if (window.location.protocol !== 'blob:' && (!publicUsername || publicUsername.toLowerCase() !== myProfile.username.substring(1).toLowerCase())) {
+                        const profileUrl = `${window.location.pathname}?user=${myProfile.username.substring(1)}`;
+                        history.replaceState(null, '', profileUrl);
+                    }
+                    renderProfile(myProfile, true);
+                    renderLinksEditor(appState.links);
+                    renderGalleryEditor();
+                    listenToUserLinks(myProfile.id);
+                    return showPage('profile');
+                } else {
+                    if (window.location.protocol !== 'blob:') {
+                        history.replaceState(null, '', window.location.pathname);
+                    }
+                    return showPage('welcome');
+                }
+            }
+
+        } catch (e) {
+            console.error("Error al cargar los datos del usuario:", e);
             showAlert("No se pudo cargar tu perfil. Por favor, intenta recargar la página.");
             return showPage('auth');
         }
-        
-        appState.myProfile = myProfile;
-        appState.links = links || [];
-        appState.galleryImages = galleryImages || [];
-        appState.socialButtons = myProfile.social_buttons || [];
-
-        if (myProfile.is_deactivated) {
-            const deletionDate = new Date(myProfile.deletion_scheduled_at);
-            deletionDate.setDate(deletionDate.getDate() + 30);
-            document.getElementById('deletion-date').textContent = deletionDate.toLocaleDateString();
-            return showPage('reactivateAccount');
-        }
-        
-        const isViewingOtherPublicProfile = publicUsername && myProfile.username && myProfile.username.substring(1).toLowerCase() !== publicUsername.toLowerCase();
-        
-        if (isViewingOtherPublicProfile) {
-            const backBtn = document.getElementById('back-to-my-profile-btn');
-            if (backBtn) {
-                backBtn.classList.remove('hidden');
-                backBtn.href = `${window.location.pathname}?user=${myProfile.username.substring(1)}`;
-            }
-            return loadPublicProfile(publicUsername);
-        } else {
-            // Viewing our own profile
-            const backBtn = document.getElementById('back-to-my-profile-btn');
-            if (backBtn) backBtn.classList.add('hidden');
-            
-            appState.profile = myProfile;
-
-            if (myProfile && myProfile.username_set) {
-                if (window.location.protocol !== 'blob:' && (!publicUsername || publicUsername.toLowerCase() !== myProfile.username.substring(1).toLowerCase())) {
-                    const profileUrl = `${window.location.pathname}?user=${myProfile.username.substring(1)}`;
-                    history.replaceState(null, '', profileUrl);
-                }
-                renderProfile(myProfile, true);
-                renderLinksEditor(appState.links);
-                renderGalleryEditor();
-                listenToUserLinks(myProfile.id);
-                return showPage('profile');
-            } else {
-                if (window.location.protocol !== 'blob:') {
-                    history.replaceState(null, '', window.location.pathname);
-                }
-                return showPage('welcome');
-            }
-        }
 
     } else {
-        // --- 2. No autenticado ---
+        // --- 2. No autenticado: Cargar perfil público o la página de autenticación ---
         const mainHeader = document.getElementById('main-header');
         if (mainHeader) mainHeader.classList.add('hidden');
         
         if (publicUsername) {
-            // Viewing a public profile as a non-authenticated user
+            // Viendo un perfil público sin estar autenticado
             return loadPublicProfile(publicUsername);
         } else {
-            // Not authenticated and not trying to view a specific public profile
+            // No autenticado y no intentando ver un perfil público
             document.getElementById('email-input').value = '';
             document.getElementById('password-input').value = '';
             showPage('auth');
@@ -325,6 +306,27 @@ async function loadApp(session) {
     }
 }
 
+
+async function fetchUserProfileWithRetry(userId, retries = 3, delay = 500) {
+	for (let i = 0; i < retries; i++) {
+		const { data: profile, error } = await supabaseClient
+			.from('profiles')
+			.select('*')
+			.eq('id', userId)
+			.single();
+
+		if (profile) {
+			return { profile, error: null };
+		}
+		
+		if (error && error.code === 'PGRST116') {
+			await new Promise(res => setTimeout(res, delay));
+		} else {
+			return { profile: null, error };
+		}
+	}
+	return { profile: null, error: { message: "Profile not found after multiple attempts." } };
+}
 
 async function loadPublicProfile(username) {
 	try {
@@ -1288,7 +1290,7 @@ document.getElementById('save-changes-btn').addEventListener('click', async () =
 		background_overlay_opacity: document.getElementById('background-opacity-slider').value,
 		theme: document.querySelector('.theme-option.selected').dataset.theme,
 		button_style: document.querySelector('input[name="buttonStyle"]:checked').value,
-		button_shape_style: document.querySelector('input[name="buttonShape"]:checked').value,
+		button_shape_style: document.querySelector('input[name="buttonShape']:checked').value,
 		font_family: DOMElements.fontFamilyValue.value,
 		socials: newSocials,
 		socials_order: currentSocialsOrder,
@@ -2478,7 +2480,7 @@ function enableFocusDrag(container, image, galleryImageData) {
     let isDragging = false;
     let startY = 0;
     let startFocusPercent = 0;
-	let lastFocusPercent = 0;
+    let lastFocusPercent = 0;
 
     const onMouseDown = (e) => {
         e.preventDefault();
