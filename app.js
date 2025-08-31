@@ -240,9 +240,6 @@ async function fetchUserProfileWithRetry(userId, retries = 3, delay = 500) {
 }
 
 async function handleAuthStateChange(session) {
-	const urlParams = new URLSearchParams(window.location.search);
-	const publicUsername = urlParams.get('user');
-
     if (appState.isRecoveringPassword) {
         showPage('updatePassword');
         return;
@@ -253,12 +250,15 @@ async function handleAuthStateChange(session) {
         return;
     }
 
+    const urlParams = new URLSearchParams(window.location.search);
+    const publicUsername = urlParams.get('user');
+
     if (session?.user) {
         // --- 1. Usuario autenticado ---
         appState.currentUser = session.user;
         const mainHeader = document.getElementById('main-header');
         if (mainHeader) mainHeader.classList.remove('hidden');
-
+        
         const { profile: myProfile, error: myProfileError } = await fetchUserProfileWithRetry(appState.currentUser.id);
         
         if (myProfileError) {
@@ -281,7 +281,7 @@ async function handleAuthStateChange(session) {
         appState.galleryImages = galleryImages || [];
 
         // Determine if we're viewing a public profile or our own
-        const isViewingOtherPublicProfile = publicUsername && myProfile.username && myProfile.username.substring(1) !== publicUsername;
+        const isViewingOtherPublicProfile = publicUsername && myProfile.username && myProfile.username.substring(1) !== publicUsername.toLowerCase();
         
         if (isViewingOtherPublicProfile) {
             const backBtn = document.getElementById('back-to-my-profile-btn');
@@ -301,7 +301,7 @@ async function handleAuthStateChange(session) {
             appState.socialButtons = myProfile.social_buttons || [];
             
             if (myProfile && myProfile.username_set) {
-                if (window.location.protocol !== 'blob:' && (!publicUsername || publicUsername !== myProfile.username.substring(1))) {
+                if (window.location.protocol !== 'blob:' && (!publicUsername || publicUsername.toLowerCase() !== myProfile.username.substring(1).toLowerCase())) {
                     const profileUrl = `${window.location.pathname}?user=${myProfile.username.substring(1)}`;
                     history.replaceState(null, '', profileUrl);
                 }
@@ -1303,7 +1303,7 @@ document.getElementById('save-changes-btn').addEventListener('click', async () =
 		background_overlay_opacity: document.getElementById('background-opacity-slider').value,
 		theme: document.querySelector('.theme-option.selected').dataset.theme,
 		button_style: document.querySelector('input[name="buttonStyle"]:checked').value,
-		button_shape_style: document.querySelector('input[name="buttonShape"]:checked').value,
+		button_shape_style: document.querySelector('input[name="buttonShape']:checked').value,
 		font_family: DOMElements.fontFamilyValue.value,
 		socials: newSocials,
 		socials_order: currentSocialsOrder,
@@ -1392,7 +1392,7 @@ function updateLivePreview() {
 		background_overlay_opacity: opacitySlider.value,
 		theme: document.querySelector('.theme-option.selected')?.dataset.theme || 'negro',
 		button_style: document.querySelector('input[name="buttonStyle"]:checked')?.value || 'filled',
-		button_shape_style: document.querySelector('input[name="buttonShape"]:checked')?.value || 'rounded-lg',
+		button_shape_style: document.querySelector('input[name="buttonShape']:checked')?.value || 'rounded-lg',
 		font_family: selectedFont,
 		socials: newSocials,
 		social_buttons: newSocialButtons,
