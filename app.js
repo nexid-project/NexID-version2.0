@@ -3,6 +3,7 @@ const { createClient } = supabase;
 // --- 1. CONFIGURACIÓN E INICIALIZACIÓN ---
 const SUPABASE_URL = 'https://ukowtlaytmqgdhjygulq.supabase.co';	
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVrb3d0bGF5dG1xZ2RoanlndWxxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM2NTEyMTgsImV4cCI6MjA2OTIyNzIxOH0.Kmg90Xdcu0RzAP55YwwuYfuRYj2U5LU90KAiKbEtLQg';
+const GEMINI_API_KEY = ""; // Replace with your Gemini API key
 
 const backgroundLibraryUrls = [
 	'https://ukowtlaytmqgdhjygulq.supabase.co/storage/v1/object/public/library-backgrounds//wallpaperflare.com_wallpaper.jpg',
@@ -1761,9 +1762,30 @@ document.getElementById('gemini-generate-btn').addEventListener('click', async (
 		};
 		const apiKey = "";
 		const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+		
+		const fetchWithRetry = async (url, options, retries = 3) => {
+			for (let i = 0; i < retries; i++) {
+				try {
+					const response = await fetch(url, options);
+					if (response.status === 429) {
+						const delay = Math.pow(2, i) * 1000;
+						await new Promise(res => setTimeout(res, delay));
+						continue;
+					}
+					if (!response.ok) throw new Error(`Error de la API: ${response.statusText}`);
+					return response;
+				} catch (error) {
+					if (i < retries - 1) {
+						const delay = Math.pow(2, i) * 1000;
+						await new Promise(res => setTimeout(res, delay));
+					} else {
+						throw error;
+					}
+				}
+			}
+		};
 
-		const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-		if (!response.ok) throw new Error(`Error de la API: ${response.statusText}`);
+		const response = await fetchWithRetry(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
 		const result = await response.json();
 		
 		if (result.candidates && result.candidates.length > 0) {
@@ -2651,7 +2673,7 @@ DOMElements.galleryEditModal.addEventListener('click', (e) => {
                     if (imageToDelete.thumbnail_path) pathsToDelete.push(imageToDelete.thumbnail_path);
                     await supabaseClient.storage.from('gallery-images').remove(pathsToDelete);
                     
-                    appState.galleryImages = appState.galleryImages.filter(img => img.id !== imageToDelete.id);
+                    appState.galleryImages = appState.galleryImages.filter(img => img.id === imageToDelete.id);
                     renderGalleryEditor();
                     updateLivePreview();
                     closeGalleryEditModal();
