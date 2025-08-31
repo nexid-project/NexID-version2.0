@@ -1372,7 +1372,7 @@ function updateLivePreview() {
 		background_overlay_opacity: opacitySlider.value,
 		theme: document.querySelector('.theme-option.selected')?.dataset.theme || 'negro',
 		button_style: document.querySelector('input[name="buttonStyle"]:checked')?.value || 'filled',
-		button_shape_style: document.querySelector('input[name="buttonShape"]:checked')?.value || 'rounded-lg',
+		button_shape_style: document.querySelector('input[name="buttonShape']:checked')?.value || 'rounded-lg',
 		font_family: selectedFont,
 		socials: newSocials,
 		social_buttons: newSocialButtons,
@@ -2476,6 +2476,8 @@ function openGalleryEditModal(image) {
     
     const focus = image.focus_point || 'center center';
     previewImage.style.objectPosition = focus;
+    previewImage.style.top = '50%';
+    previewImage.style.transform = 'translateY(-50%)';
 
     modal.classList.remove('hidden');
     lucide.createIcons();
@@ -2491,18 +2493,26 @@ function closeGalleryEditModal() {
 function enableFocusDrag(container, image, galleryImageData) {
     let isDragging = false;
     let startY = 0;
-    let startFocusPercent = 0;
-	let lastFocusPercent = 0;
-
+    let startTop = 0;
+    let maxTop = 0;
+    let minTop = 0;
+    
     const onMouseDown = (e) => {
         e.preventDefault();
         isDragging = true;
         startY = e.clientY || e.touches[0].clientY;
-        const currentFocusY = parseFloat(image.style.objectPosition.split(' ')[1]);
-        startFocusPercent = isNaN(currentFocusY) ? 50 : currentFocusY;
-		lastFocusPercent = startFocusPercent;
+        
+        image.classList.remove('transition-all');
         container.style.cursor = 'grabbing';
-		image.classList.remove('transition-all');
+        
+        const rect = image.getBoundingClientRect();
+        startTop = rect.top - container.getBoundingClientRect().top;
+        
+        const containerHeight = container.offsetHeight;
+        const imageHeight = image.offsetHeight;
+
+        maxTop = 0;
+        minTop = -(imageHeight - containerHeight);
     };
 
     const onMouseMove = (e) => {
@@ -2510,30 +2520,24 @@ function enableFocusDrag(container, image, galleryImageData) {
         const currentY = e.clientY || e.touches[0].clientY;
         const deltaY = currentY - startY;
         
-        const containerHeight = container.offsetHeight;
-        const imageHeight = image.naturalHeight * (container.offsetWidth / image.naturalWidth);
-		
-		if (imageHeight <= containerHeight) return;
-
-        const maxDeltaY = imageHeight - containerHeight;
-		
-        const deltaPercent = (deltaY / maxDeltaY) * 100;
+        let newTop = startTop + deltaY;
+        newTop = Math.max(minTop, Math.min(newTop, maxTop));
         
-        let newFocusPercent = startFocusPercent - deltaPercent;
-
-        newFocusPercent = Math.max(0, Math.min(100, newFocusPercent));
-        
-        image.style.objectPosition = `50% ${newFocusPercent}%`;
-		lastFocusPercent = newFocusPercent;
+        image.style.top = `${newTop}px`;
     };
 
     const onMouseUp = async () => {
         if (!isDragging) return;
         isDragging = false;
         container.style.cursor = 'grab';
-		image.classList.add('transition-all');
+        image.classList.add('transition-all');
 
-        const newFocusPoint = `50% ${lastFocusPercent}%`;
+        const containerHeight = container.offsetHeight;
+        const imageHeight = image.offsetHeight;
+        const newTop = image.offsetTop;
+
+        const focusPercent = (Math.abs(newTop) / (imageHeight - containerHeight)) * 100;
+        const newFocusPoint = `50% ${focusPercent.toFixed(2)}%`;
         
         galleryImageData.focus_point = newFocusPoint;
 
