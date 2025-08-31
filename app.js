@@ -1894,7 +1894,7 @@ document.getElementById('save-layout-btn').addEventListener('click', saveDesignC
 document.getElementById('cancel-layout-btn').addEventListener('click', () => exitDesignMode(true));
 
 
-// --- 13. LÓGICA DE SUBIDA DE IMAGEN DE FONDO ---
+// --- 13. LÓGICA de SUBIDA DE IMAGEN de FONDO ---
 DOMElements.uploadBackgroundBtn.addEventListener('click', () => DOMElements.backgroundUploadInput.click());
 
 DOMElements.backgroundUploadInput.addEventListener('change', async (e) => {
@@ -2492,6 +2492,7 @@ function enableFocusDrag(container, image, galleryImageData) {
     let isDragging = false;
     let startY = 0;
     let startFocusPercent = 0;
+	let lastFocusPercent = 0;
 
     const onMouseDown = (e) => {
         e.preventDefault();
@@ -2499,7 +2500,9 @@ function enableFocusDrag(container, image, galleryImageData) {
         startY = e.clientY || e.touches[0].clientY;
         const currentFocusY = parseFloat(image.style.objectPosition.split(' ')[1]);
         startFocusPercent = isNaN(currentFocusY) ? 50 : currentFocusY;
+		lastFocusPercent = startFocusPercent;
         container.style.cursor = 'grabbing';
+		image.classList.remove('transition-all');
     };
 
     const onMouseMove = (e) => {
@@ -2508,26 +2511,29 @@ function enableFocusDrag(container, image, galleryImageData) {
         const deltaY = currentY - startY;
         
         const containerHeight = container.offsetHeight;
-        const imageHeight = image.offsetHeight;
+        const imageHeight = image.naturalHeight * (container.offsetWidth / image.naturalWidth);
+		
+		if (imageHeight <= containerHeight) return;
 
         const maxDeltaY = imageHeight - containerHeight;
-        if (maxDeltaY <= 0) return;
-
+		
         const deltaPercent = (deltaY / maxDeltaY) * 100;
         
-        let newFocusPercent = startFocusPercent + deltaPercent;
+        let newFocusPercent = startFocusPercent - deltaPercent;
 
         newFocusPercent = Math.max(0, Math.min(100, newFocusPercent));
         
         image.style.objectPosition = `50% ${newFocusPercent}%`;
+		lastFocusPercent = newFocusPercent;
     };
 
     const onMouseUp = async () => {
         if (!isDragging) return;
         isDragging = false;
         container.style.cursor = 'grab';
+		image.classList.add('transition-all');
 
-        const newFocusPoint = image.style.objectPosition;
+        const newFocusPoint = `50% ${lastFocusPercent}%`;
         
         galleryImageData.focus_point = newFocusPoint;
 
