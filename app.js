@@ -2455,6 +2455,7 @@ function openGalleryEditModal(image) {
     const previewImage = modal.querySelector('#gallery-edit-preview');
     const previewContainer = modal.querySelector('#gallery-focus-adjuster');
     
+    // Limpiar listeners antiguos si existen
     if (previewContainer.dragListeners) {
         previewContainer.removeEventListener('mousedown', previewContainer.dragListeners.onMouseDown);
         document.removeEventListener('mousemove', previewContainer.dragListeners.onMouseMove);
@@ -2467,23 +2468,27 @@ function openGalleryEditModal(image) {
     previewImage.src = image.image_url;
     modal.querySelector('#gallery-edit-caption').value = image.caption || '';
     
+    // Usamos onload para asegurarnos de que las dimensiones de la imagen están disponibles
     previewImage.onload = () => {
         const containerHeight = previewContainer.offsetHeight;
+        // Cálculo robusto de la altura renderizada basado en el aspect ratio
         const renderedImageHeight = previewContainer.offsetWidth * (previewImage.naturalHeight / previewImage.naturalWidth);
-        previewImage.style.height = `${renderedImageHeight}px`;
+        previewImage.style.height = `${renderedImageHeight}px`; // Aseguramos la altura
 
-        let initialTop = (containerHeight - renderedImageHeight) / 2; 
+        let initialTop = (containerHeight - renderedImageHeight) / 2; // Default a centro
 
         if (image.focus_point) {
             const yPercent = parseFloat(image.focus_point.split(' ')[1]);
             if (!isNaN(yPercent)) {
+                // Usamos la altura calculada para consistencia
                 initialTop = -((renderedImageHeight - containerHeight) * (yPercent / 100));
             }
         }
         
         previewImage.style.top = `${initialTop}px`;
-        
-        enableFocusDrag(previewContainer, previewImage, image, renderedImageHeight, initialTop);
+
+        // Pasamos la altura calculada a la función de arrastre
+        enableFocusDrag(previewContainer, previewImage, image, renderedImageHeight);
     };
 
     modal.classList.remove('hidden');
@@ -2504,15 +2509,16 @@ function closeGalleryEditModal() {
     appState.editingGalleryImageId = null;
 }
 
-function enableFocusDrag(container, image, galleryImageData, renderedImageHeight, initialTop) {
+function enableFocusDrag(container, image, galleryImageData, renderedImageHeight) {
     let isDragging = false;
     let startY = 0;
-    let currentTop = initialTop; 
+    let startTop = 0; // Usaremos startTop para la posición inicial del arrastre
 
     const onMouseDown = (e) => {
         e.preventDefault();
         isDragging = true;
         startY = e.clientY || e.touches[0].clientY;
+        startTop = image.offsetTop; // Capturamos la posición al iniciar el arrastre
         container.style.cursor = 'grabbing';
     };
 
@@ -2520,8 +2526,9 @@ function enableFocusDrag(container, image, galleryImageData, renderedImageHeight
         if (!isDragging) return;
         const currentY = e.clientY || e.touches[0].clientY;
         const deltaY = currentY - startY;
-        let newTop = currentTop + deltaY;
+        let newTop = startTop + deltaY; // Calculamos desde la posición inicial del arrastre
 
+        // Constrain movement
         const containerHeight = container.offsetHeight;
         const imageHeight = renderedImageHeight;
         const minTop = containerHeight - imageHeight;
@@ -2541,7 +2548,7 @@ function enableFocusDrag(container, image, galleryImageData, renderedImageHeight
         isDragging = false;
         container.style.cursor = 'grab';
         
-        currentTop = image.offsetTop;
+        const currentTop = image.offsetTop;
 
         const containerHeight = container.offsetHeight;
         const imageHeight = renderedImageHeight;
@@ -2786,4 +2793,5 @@ window.onload = () => {
 	setupPasswordToggle('update-confirm-password-input', 'update-confirm-password-toggle');
 	setupPasswordToggle('delete-confirm-password-input', 'delete-confirm-password-toggle');
 };
+
 
