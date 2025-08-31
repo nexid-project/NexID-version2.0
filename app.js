@@ -1175,8 +1175,8 @@ function openSettingsPanel() {
 	}
 
 	document.querySelectorAll('.theme-option').forEach(opt => opt.classList.toggle('selected', opt.dataset.theme === currentTheme));
-	document.querySelector(`input[name="buttonStyle"]:checked`).checked = true;
-	document.querySelector(`input[name="buttonShape"]:checked`).checked = true;
+	document.querySelector(`input[name="buttonStyle"][value="${profile.button_style || 'filled'}"]`).checked = true;
+	document.querySelector(`input[name="buttonShape"][value="${profile.button_shape_style || 'rounded-lg'}"]`).checked = true;
 	
 	const currentFont = profile.font_family || 'font-inter';
 	DOMElements.fontFamilyValue.value = currentFont;
@@ -1372,7 +1372,7 @@ function updateLivePreview() {
 		background_overlay_opacity: opacitySlider.value,
 		theme: document.querySelector('.theme-option.selected')?.dataset.theme || 'negro',
 		button_style: document.querySelector('input[name="buttonStyle"]:checked')?.value || 'filled',
-		button_shape_style: document.querySelector('input[name="buttonShape']:checked')?.value || 'rounded-lg',
+		button_shape_style: document.querySelector('input[name="buttonShape"]:checked')?.value || 'rounded-lg',
 		font_family: selectedFont,
 		socials: newSocials,
 		social_buttons: newSocialButtons,
