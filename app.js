@@ -2643,18 +2643,18 @@ DOMElements.galleryImageUploadInput.addEventListener('change', async (e) => {
     renderGalleryEditor();
     updateLivePreview();
     
-    DOMElements.galleryImageUploadInput.value = '';
+    DOMElements.galleryImageUploadInput.value = '';
 });
 
 DOMElements.galleryEditorList.addEventListener('click', (e) => {
-    const item = e.target.closest('.gallery-editor-item');
-    if (item) {
-        const imageId = item.dataset.id;
-        const image = appState.galleryImages.find(img => img.id === imageId);
-        if (image) {
-            openGalleryEditModal(image);
-        }
-    }
+    const item = e.target.closest('.gallery-editor-item');
+    if (item) {
+        const imageId = item.dataset.id;
+        const image = appState.galleryImages.find(img => String(img.id) === imageId);
+        if (image) {
+            openGalleryEditModal(image);
+        }
+    }
 });
 
 DOMElements.galleryEditModal.addEventListener('click', (e) => {
@@ -2686,20 +2686,20 @@ DOMElements.galleryEditModal.addEventListener('click', (e) => {
         const imageToDelete = appState.galleryImages.find(img => img.id === appState.editingGalleryImageId);
         if (imageToDelete) {
              showConfirm("¿Estás seguro de que quieres eliminar esta imagen?", async (confirmed) => {
-                if (confirmed) {
-                    const { error: dbError } = await supabaseClient.from('gallery_images').delete().eq('id', imageToDelete.id);
-                    if (dbError) return showAlert(`Error al eliminar: ${dbError.message}`);
+                 if (confirmed) {
+                     const { error: dbError } = await supabaseClient.from('gallery_images').delete().eq('id', imageToDelete.id);
+                     if (dbError) return showAlert(`Error al eliminar: ${dbError.message}`);
 
-                    const pathsToDelete = [imageToDelete.image_path];
-                    if (imageToDelete.thumbnail_path) pathsToDelete.push(imageToDelete.thumbnail_path);
-                    await supabaseClient.storage.from('gallery-images').remove(pathsToDelete);
-                    
-                    appState.galleryImages = appState.galleryImages.filter(img => img.id !== imageToDelete.id);
-                    renderGalleryEditor();
-                    updateLivePreview();
-                    closeGalleryEditModal();
-                }
-            });
+                     const pathsToDelete = [imageToDelete.image_path];
+                     if (imageToDelete.thumbnail_path) pathsToDelete.push(imageToDelete.thumbnail_path);
+                     await supabaseClient.storage.from('gallery-images').remove(pathsToDelete);
+                     
+                     appState.galleryImages = appState.galleryImages.filter(img => img.id !== imageToDelete.id);
+                     renderGalleryEditor();
+                     updateLivePreview();
+                     closeGalleryEditModal();
+                 }
+             });
         }
     }
 });
@@ -2793,5 +2793,4 @@ window.onload = () => {
 	setupPasswordToggle('update-confirm-password-input', 'update-confirm-password-toggle');
 	setupPasswordToggle('delete-confirm-password-input', 'delete-confirm-password-toggle');
 };
-
 
