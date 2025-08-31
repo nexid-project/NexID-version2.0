@@ -2643,18 +2643,25 @@ DOMElements.galleryImageUploadInput.addEventListener('change', async (e) => {
     renderGalleryEditor();
     updateLivePreview();
     
-    DOMElements.galleryImageUploadInput.value = '';
+    DOMElements.galleryImageUploadInput.value = '';
 });
 
 DOMElements.galleryEditorList.addEventListener('click', (e) => {
-    const item = e.target.closest('.gallery-editor-item');
-    if (item) {
-        const imageId = item.dataset.id;
-        const image = appState.galleryImages.find(img => String(img.id) === imageId);
-        if (image) {
-            openGalleryEditModal(image);
-        }
-    }
+    const item = e.target.closest('.gallery-editor-item');
+    if (item) {
+        console.log("Se hizo clic en un elemento de la galería:", item); // Log para depuración
+        const imageId = parseInt(item.dataset.id, 10);
+        console.log("ID de imagen extraído (como número):", imageId); // Log para depuración
+        
+        const image = appState.galleryImages.find(img => img.id === imageId);
+        console.log("Imagen encontrada en el estado:", image); // Log para depuración
+
+        if (image) {
+            openGalleryEditModal(image);
+        } else {
+            console.error("No se encontró la imagen en el estado de la aplicación. Estado actual:", appState.galleryImages);
+        }
+    }
 });
 
 DOMElements.galleryEditModal.addEventListener('click', (e) => {
@@ -2793,4 +2800,7 @@ window.onload = () => {
 	setupPasswordToggle('update-confirm-password-input', 'update-confirm-password-toggle');
 	setupPasswordToggle('delete-confirm-password-input', 'delete-confirm-password-toggle');
 };
+
+
+
 
