@@ -2453,72 +2453,37 @@ function openGalleryEditModal(image) {
     appState.editingGalleryImageId = image.id;
     const modal = DOMElements.galleryEditModal;
     const previewImage = modal.querySelector('#gallery-edit-preview');
-    const previewContainer = modal.querySelector('#gallery-focus-adjuster');
-    
-    // Limpiar listeners antiguos si existen
-    if (previewContainer.dragListeners) {
-        previewContainer.removeEventListener('mousedown', previewContainer.dragListeners.onMouseDown);
-        document.removeEventListener('mousemove', previewContainer.dragListeners.onMouseMove);
-        document.removeEventListener('mouseup', previewContainer.dragListeners.onMouseUp);
-        previewContainer.removeEventListener('touchstart', previewContainer.dragListeners.onMouseDown);
-        document.removeEventListener('touchmove', previewContainer.dragListeners.onMouseMove);
-        document.removeEventListener('touchend', previewContainer.dragListeners.onMouseUp);
-    }
+    const previewContainer = modal.querySelector('#gallery-edit-preview-container');
     
     previewImage.src = image.image_url;
     modal.querySelector('#gallery-edit-caption').value = image.caption || '';
     
-    // Usamos onload para asegurarnos de que las dimensiones de la imagen están disponibles
-    previewImage.onload = () => {
-        const containerHeight = previewContainer.offsetHeight;
-        // Cálculo robusto de la altura renderizada basado en el aspect ratio
-        const renderedImageHeight = previewContainer.offsetWidth * (previewImage.naturalHeight / previewImage.naturalWidth);
-        previewImage.style.height = `${renderedImageHeight}px`; // Aseguramos la altura
-
-        let initialTop = (containerHeight - renderedImageHeight) / 2; // Default a centro
-
-        if (image.focus_point) {
-            const yPercent = parseFloat(image.focus_point.split(' ')[1]);
-            if (!isNaN(yPercent)) {
-                // Usamos la altura calculada para consistencia
-                initialTop = -((renderedImageHeight - containerHeight) * (yPercent / 100));
-            }
-        }
-        
-        previewImage.style.top = `${initialTop}px`;
-
-        // Pasamos la altura calculada a la función de arrastre
-        enableFocusDrag(previewContainer, previewImage, image, renderedImageHeight);
-    };
+    // Set initial focus point
+    const focus = image.focus_point || 'center center';
+    previewImage.style.objectPosition = focus;
 
     modal.classList.remove('hidden');
     lucide.createIcons();
+
+    // Attach drag listeners
+    enableFocusDrag(previewContainer, previewImage, image);
 }
 
 function closeGalleryEditModal() {
     DOMElements.galleryEditModal.classList.add('hidden');
-    const previewContainer = DOMElements.galleryEditModal.querySelector('#gallery-focus-adjuster');
-    if (previewContainer.dragListeners) {
-        previewContainer.removeEventListener('mousedown', previewContainer.dragListeners.onMouseDown);
-        document.removeEventListener('mousemove', previewContainer.dragListeners.onMouseMove);
-        document.removeEventListener('mouseup', previewContainer.dragListeners.onMouseUp);
-        previewContainer.removeEventListener('touchstart', previewContainer.dragListeners.onMouseDown);
-        document.removeEventListener('touchmove', previewContainer.dragListeners.onMouseMove);
-        document.removeEventListener('touchend', previewContainer.dragListeners.onMouseUp);
-    }
     appState.editingGalleryImageId = null;
 }
 
-function enableFocusDrag(container, image, galleryImageData, renderedImageHeight) {
+function enableFocusDrag(container, image, galleryImageData) {
     let isDragging = false;
     let startY = 0;
-    let startTop = 0; // Usaremos startTop para la posición inicial del arrastre
+    let startTop = 0;
 
     const onMouseDown = (e) => {
         e.preventDefault();
         isDragging = true;
         startY = e.clientY || e.touches[0].clientY;
-        startTop = image.offsetTop; // Capturamos la posición al iniciar el arrastre
+        startTop = image.offsetTop;
         container.style.cursor = 'grabbing';
     };
 
@@ -2526,19 +2491,14 @@ function enableFocusDrag(container, image, galleryImageData, renderedImageHeight
         if (!isDragging) return;
         const currentY = e.clientY || e.touches[0].clientY;
         const deltaY = currentY - startY;
-        let newTop = startTop + deltaY; // Calculamos desde la posición inicial del arrastre
+        let newTop = startTop + deltaY;
 
         // Constrain movement
         const containerHeight = container.offsetHeight;
-        const imageHeight = renderedImageHeight;
+        const imageHeight = image.offsetHeight;
         const minTop = containerHeight - imageHeight;
         const maxTop = 0;
-        
-        if (imageHeight > containerHeight) {
-            newTop = Math.max(minTop, Math.min(newTop, maxTop));
-        } else {
-            newTop = (containerHeight - imageHeight) / 2;
-        }
+        newTop = Math.max(minTop, Math.min(newTop, maxTop));
         
         image.style.top = `${newTop}px`;
     };
@@ -2547,32 +2507,28 @@ function enableFocusDrag(container, image, galleryImageData, renderedImageHeight
         if (!isDragging) return;
         isDragging = false;
         container.style.cursor = 'grab';
-        
-        const currentTop = image.offsetTop;
 
         const containerHeight = container.offsetHeight;
-        const imageHeight = renderedImageHeight;
+        const imageHeight = image.offsetHeight;
+        const newTop = image.offsetTop;
         
-        const draggableRange = imageHeight - containerHeight;
+        // Calculate percentage
+        const focusPercent = (Math.abs(newTop) / (imageHeight - containerHeight)) * 100;
+        const newFocusPoint = `50% ${focusPercent.toFixed(2)}%`;
         
-        if (draggableRange > 0) {
-            const focusPercent = (Math.abs(currentTop) / draggableRange) * 100;
-            const newFocusPoint = `50% ${focusPercent.toFixed(2)}%`;
-            
-            if (galleryImageData.focus_point !== newFocusPoint) {
-                galleryImageData.focus_point = newFocusPoint;
+        // Update local state
+        galleryImageData.focus_point = newFocusPoint;
 
-                const { error } = await supabaseClient
-                    .from('gallery_images')
-                    .update({ focus_point: newFocusPoint })
-                    .eq('id', galleryImageData.id);
+        // Save to DB
+        const { error } = await supabaseClient
+            .from('gallery_images')
+            .update({ focus_point: newFocusPoint })
+            .eq('id', galleryImageData.id);
 
-                if (error) {
-                    showAlert("No se pudo guardar el punto de enfoque.");
-                } else {
-                    updateLivePreview();
-                }
-            }
+        if (error) {
+            showAlert("No se pudo guardar el punto de enfoque.");
+        } else {
+            updateLivePreview();
         }
     };
 
@@ -2584,6 +2540,7 @@ function enableFocusDrag(container, image, galleryImageData, renderedImageHeight
     document.addEventListener('touchmove', onMouseMove, { passive: false });
     document.addEventListener('touchend', onMouseUp);
 
+    // Store a reference to remove them later
     container.dragListeners = { onMouseDown, onMouseMove, onMouseUp };
 }
 
@@ -2649,13 +2606,10 @@ DOMElements.galleryImageUploadInput.addEventListener('change', async (e) => {
 DOMElements.galleryEditorList.addEventListener('click', (e) => {
     const item = e.target.closest('.gallery-editor-item');
     if (item) {
-        const imageId = item.dataset.id; // Obtenemos el ID como texto (UUID)
-        const image = appState.galleryImages.find(img => img.id === imageId); // Comparamos texto con texto
-
+        const imageId = item.dataset.id;
+        const image = appState.galleryImages.find(img => img.id === imageId);
         if (image) {
             openGalleryEditModal(image);
-        } else {
-            console.error("No se encontró la imagen en el estado de la aplicación. ID buscado:", imageId, "Estado actual:", appState.galleryImages);
         }
     }
 });
@@ -2689,20 +2643,20 @@ DOMElements.galleryEditModal.addEventListener('click', (e) => {
         const imageToDelete = appState.galleryImages.find(img => img.id === appState.editingGalleryImageId);
         if (imageToDelete) {
              showConfirm("¿Estás seguro de que quieres eliminar esta imagen?", async (confirmed) => {
-                 if (confirmed) {
-                     const { error: dbError } = await supabaseClient.from('gallery_images').delete().eq('id', imageToDelete.id);
-                     if (dbError) return showAlert(`Error al eliminar: ${dbError.message}`);
+                if (confirmed) {
+                    const { error: dbError } = await supabaseClient.from('gallery_images').delete().eq('id', imageToDelete.id);
+                    if (dbError) return showAlert(`Error al eliminar: ${dbError.message}`);
 
-                     const pathsToDelete = [imageToDelete.image_path];
-                     if (imageToDelete.thumbnail_path) pathsToDelete.push(imageToDelete.thumbnail_path);
-                     await supabaseClient.storage.from('gallery-images').remove(pathsToDelete);
-                     
-                     appState.galleryImages = appState.galleryImages.filter(img => img.id !== imageToDelete.id);
-                     renderGalleryEditor();
-                     updateLivePreview();
-                     closeGalleryEditModal();
-                 }
-             });
+                    const pathsToDelete = [imageToDelete.image_path];
+                    if (imageToDelete.thumbnail_path) pathsToDelete.push(imageToDelete.thumbnail_path);
+                    await supabaseClient.storage.from('gallery-images').remove(pathsToDelete);
+                    
+                    appState.galleryImages = appState.galleryImages.filter(img => img.id !== imageToDelete.id);
+                    renderGalleryEditor();
+                    updateLivePreview();
+                    closeGalleryEditModal();
+                }
+            });
         }
     }
 });
@@ -2796,4 +2750,3 @@ window.onload = () => {
 	setupPasswordToggle('update-confirm-password-input', 'update-confirm-password-toggle');
 	setupPasswordToggle('delete-confirm-password-input', 'delete-confirm-password-toggle');
 };
-
