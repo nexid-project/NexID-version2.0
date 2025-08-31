@@ -49,15 +49,15 @@ let appState = {
 	myProfile: null,
 	profile: null,
 	links: [],
-    galleryImages: [],
+    galleryImages: [],
 	socialButtons: [],
 	tempBackgroundImagePath: null,
 	tempLayoutOrder: null,
 	subscriptions: { auth: null, links: null },
 	sortable: { layout: null, gallery: null },
 	cropper: null,
-    thumbnailCropper: null,
-    editingGalleryImageId: null,
+    thumbnailCropper: null,
+    editingGalleryImageId: null,
 	isUsernameAvailable: false,
 	isSettingsDirty: false,
 	isDesignModeActive: false,
@@ -80,9 +80,9 @@ const DOMElements = {
 	imageUploadInput: document.getElementById('image-upload-input'),
 	cropperModal: document.getElementById('cropper-modal'),
 	cropperImage: document.getElementById('cropper-image'),
-    thumbnailCropperModal: document.getElementById('thumbnail-cropper-modal'),
-    thumbnailCropperImage: document.getElementById('thumbnail-cropper-image'),
-    galleryEditModal: document.getElementById('gallery-edit-modal'),
+    thumbnailCropperModal: document.getElementById('thumbnail-cropper-modal'),
+    thumbnailCropperImage: document.getElementById('thumbnail-cropper-image'),
+    galleryEditModal: document.getElementById('gallery-edit-modal'),
 	geminiModal: document.getElementById('gemini-modal'),
 	uploadBackgroundBtn: document.getElementById('upload-background-btn'),
 	backgroundUploadInput: document.getElementById('background-upload-input'),
@@ -106,17 +106,17 @@ const DOMElements = {
 	fontSelectorLabel: document.getElementById('font-selector-label'),
 	fontSelectorOptions: document.getElementById('font-selector-options'),
 	fontFamilyValue: document.getElementById('font-family-value'),
-    registerModal: document.getElementById('register-modal'),
-    showRegisterModalBtn: document.getElementById('show-register-modal-btn'),
-    createAccountBtn: document.getElementById('create-account-btn'),
-    backToLoginLink: document.getElementById('back-to-login-link'),
-    registerEmailInput: document.getElementById('register-email-input'),
-    registerPasswordInput: document.getElementById('register-password-input'),
-    registerConfirmPasswordInput: document.getElementById('register-confirm-password-input'),
-    featuredVideoUrlInput: document.getElementById('featured-video-url-input'),
-    galleryEditorList: document.getElementById('gallery-editor-list'),
-    addGalleryImageBtn: document.getElementById('add-gallery-image-btn'),
-    galleryImageUploadInput: document.getElementById('gallery-image-upload-input'),
+    registerModal: document.getElementById('register-modal'),
+    showRegisterModalBtn: document.getElementById('show-register-modal-btn'),
+    createAccountBtn: document.getElementById('create-account-btn'),
+    backToLoginLink: document.getElementById('back-to-login-link'),
+    registerEmailInput: document.getElementById('register-email-input'),
+    registerPasswordInput: document.getElementById('register-password-input'),
+    registerConfirmPasswordInput: document.getElementById('register-confirm-password-input'),
+    featuredVideoUrlInput: document.getElementById('featured-video-url-input'),
+    galleryEditorList: document.getElementById('gallery-editor-list'),
+    addGalleryImageBtn: document.getElementById('add-gallery-image-btn'),
+    galleryImageUploadInput: document.getElementById('gallery-image-upload-input'),
 };
 
 // --- 4. FUNCIONES DE UTILIDAD (MODALES, ETC.) ---
@@ -169,21 +169,21 @@ function isValidUrl(string) {
 }
 
 function extractUsername(input, socialKey) {
-    if (!input) return '';
-    let username = input.trim();
-    if (socialKey === 'whatsapp') {
-        return input.replace(/\D/g, '');
-    }
-    try {
-        const url = new URL(username.startsWith('http') ? username : `https://${username}`);
-        const pathParts = url.pathname.split('/').filter(part => part && part !== 'in' && part !== 'c');
-        if (pathParts.length > 0) {
-            username = pathParts[pathParts.length - 1];
-        }
-    } catch (e) {
-        // Not a URL, it's a username
-    }
-    return username.split('?')[0].replace(/[/]/g, '').replace('@', '');
+    if (!input) return '';
+    let username = input.trim();
+    if (socialKey === 'whatsapp') {
+        return input.replace(/\D/g, '');
+    }
+    try {
+        const url = new URL(username.startsWith('http') ? username : `https://${username}`);
+        const pathParts = url.pathname.split('/').filter(part => part && part !== 'in' && part !== 'c');
+        if (pathParts.length > 0) {
+            username = pathParts[pathParts.length - 1];
+        }
+    } catch (e) {
+        // Not a URL, it's a username
+    }
+    return username.split('?')[0].replace(/[/]/g, '').replace('@', '');
 }
 
 // --- 5. LÓGICA PRINCIPAL DE LA APLICACIÓN ---
@@ -278,8 +278,8 @@ async function handleAuthStateChange(session) {
 			return;
 		}
 
-        const { data: galleryImages } = await supabaseClient.from('gallery_images').select('*').eq('user_id', appState.currentUser.id).order('order_index', { ascending: true });
-        appState.galleryImages = galleryImages || [];
+        const { data: galleryImages } = await supabaseClient.from('gallery_images').select('*').eq('user_id', appState.currentUser.id).order('order_index', { ascending: true });
+        appState.galleryImages = galleryImages || [];
 
 		if (publicUsername && myProfile.username && myProfile.username !== `@${publicUsername}`) {
 			const backBtn = document.getElementById('back-to-my-profile-btn');
@@ -300,7 +300,7 @@ async function handleAuthStateChange(session) {
 				}
 				renderProfile(myProfile, true);
 				renderLinksEditor(appState.links);
-                renderGalleryEditor();
+                renderGalleryEditor();
 				listenToUserLinks(myProfile.id);
 				showPage('profile');
 			} else {
@@ -318,11 +318,11 @@ async function handleAuthStateChange(session) {
 		document.getElementById('email-input').value = '';
 		document.getElementById('password-input').value = '';
 		showPage('auth');
-        
-        const urlParamsOnLoad = new URLSearchParams(window.location.search);
-        if (urlParamsOnLoad.get('action') === 'register') {
-            DOMElements.registerModal.classList.remove('hidden');
-        }
+        
+        const urlParamsOnLoad = new URLSearchParams(window.location.search);
+        if (urlParamsOnLoad.get('action') === 'register') {
+            DOMElements.registerModal.classList.remove('hidden');
+        }
 	}
 }
 
@@ -336,11 +336,11 @@ async function loadPublicProfile(username) {
 		}
 		
 		const { data: links } = await supabaseClient.from('links').select('*').eq('user_id', profile.id).order('order_index', { ascending: true });
-        const { data: galleryImages } = await supabaseClient.from('gallery_images').select('*').eq('user_id', profile.id).order('order_index', { ascending: true });
+        const { data: galleryImages } = await supabaseClient.from('gallery_images').select('*').eq('user_id', profile.id).order('order_index', { ascending: true });
 
 		appState.profile = profile;
 		appState.links = links || [];
-        appState.galleryImages = galleryImages || [];
+        appState.galleryImages = galleryImages || [];
 		appState.socialButtons = profile.social_buttons || [];
 		
 		const isOwner = appState.currentUser && appState.currentUser.id === profile.id;
@@ -361,14 +361,14 @@ async function refreshLinks() {
 		.order('order_index', { ascending: true });
 
 	if (linksError) {
-        console.error("Error refreshing links:", linksError);
-        return;
-    }
+        console.error("Error refreshing links:", linksError);
+        return;
+    }
 	
 	appState.links = linksData || [];
 	
 	renderLinksEditor(appState.links);
-    updateLivePreview();
+    updateLivePreview();
 }
 
 function listenToUserLinks(userId) {
@@ -394,28 +394,28 @@ function showPage(pageName) {
 }
 
 function parseVideoUrl(url) {
-    if (!url) return null;
-    let embedUrl = null;
-    try {
-        const fullUrl = url.startsWith('http') ? url : `https://${url}`;
-        const urlObj = new URL(fullUrl);
+    if (!url) return null;
+    let embedUrl = null;
+    try {
+        const fullUrl = url.startsWith('http') ? url : `https://${url}`;
+        const urlObj = new URL(fullUrl);
 
-        if (urlObj.hostname.includes('youtube.com') || urlObj.hostname.includes('youtu.be')) {
-            const videoId = urlObj.hostname.includes('youtu.be')
-                ? urlObj.pathname.slice(1)
-                : urlObj.searchParams.get('v');
-            if (videoId) embedUrl = `https://www.youtube.com/embed/${videoId}`;
-        } else if (urlObj.hostname.includes('vimeo.com')) {
-            const videoId = urlObj.pathname.split('/').pop();
-            if (videoId && /^\d+$/.test(videoId)) {
-                 embedUrl = `https://player.vimeo.com/video/${videoId}`;
-            }
-        }
-    } catch (error) {
-        console.error("Invalid video URL:", error);
-        return null;
-    }
-    return embedUrl;
+        if (urlObj.hostname.includes('youtube.com') || urlObj.hostname.includes('youtu.be')) {
+            const videoId = urlObj.hostname.includes('youtu.be')
+                ? urlObj.pathname.slice(1)
+                : urlObj.searchParams.get('v');
+            if (videoId) embedUrl = `https://www.youtube.com/embed/${videoId}`;
+        } else if (urlObj.hostname.includes('vimeo.com')) {
+            const videoId = urlObj.pathname.split('/').pop();
+            if (videoId && /^\d+$/.test(videoId)) {
+                 embedUrl = `https://player.vimeo.com/video/${videoId}`;
+            }
+        }
+    } catch (error) {
+        console.error("Invalid video URL:", error);
+        return null;
+    }
+    return embedUrl;
 }
 
 const profileSectionTemplates = {
@@ -435,30 +435,30 @@ const profileSectionTemplates = {
 	},
 	'username': (profileData) => `<div data-section="username" class="text-center draggable-item p-2"><p id="public-username" class="text-lg opacity-80">${profileData.username || ''}</p></div>`,
 	'description': (profileData) => `<div data-section="description" class="text-center draggable-item p-2"><p id="public-description" class="opacity-90">${profileData.description || ''}</p></div>`,
-    'featured-video': (profileData) => {
-        if (parseVideoUrl(profileData.featured_video_url)) {
-            return `<div data-section="featured-video" class="draggable-item p-2"></div>`;
-        }
-        return '';
-    },
-    'gallery': () => {
-        if (appState.galleryImages && appState.galleryImages.length > 0) {
-            return `<div data-section="gallery" id="gallery-container" class="draggable-item p-2"></div>`;
-        }
-        return '';
-    },
+    'featured-video': (profileData) => {
+        if (parseVideoUrl(profileData.featured_video_url)) {
+            return `<div data-section="featured-video" class="draggable-item p-2"></div>`;
+        }
+        return '';
+    },
+    'gallery': () => {
+        if (appState.galleryImages && appState.galleryImages.length > 0) {
+            return `<div data-section="gallery" id="gallery-container" class="draggable-item p-2"></div>`;
+        }
+        return '';
+    },
 	'social-buttons': () => {
-        if (appState.profile.social_buttons && appState.profile.social_buttons.length > 0) {
-            return `<section id="social-buttons-section" data-section="social-buttons" class="draggable-item p-2"></section>`;
-        }
-        return '';
-    },
+        if (appState.profile.social_buttons && appState.profile.social_buttons.length > 0) {
+            return `<section id="social-buttons-section" data-section="social-buttons" class="draggable-item p-2"></section>`;
+        }
+        return '';
+    },
 	'socials': () => {
-        if (appState.profile.socials && Object.keys(appState.profile.socials).length > 0) {
-            return `<footer id="socials-footer" data-section="socials" class="pt-4 pb-2 draggable-item p-2"></footer>`;
-        }
-        return '';
-    }
+        if (appState.profile.socials && Object.keys(appState.profile.socials).length > 0) {
+            return `<footer id="socials-footer" data-section="socials" class="pt-4 pb-2 draggable-item p-2"></footer>`;
+        }
+        return '';
+    }
 };
 
 function renderSingleLink(linkData, profileData) {
@@ -477,7 +477,7 @@ function renderSingleLink(linkData, profileData) {
 	if (buttonShape !== 'underline') linkClasses.push(`btn-${buttonStyle}`);
 	linkClasses.push(buttonShape);
 	
-	const linkContent = iconHtml 
+	const linkContent = iconHtml 
 		? `<span class="w-6 h-6">${iconHtml}</span><span class="flex-grow text-center">${linkData.title}</span><span class="w-6 h-6"></span>`
 		: `<span class="flex-grow text-center">${linkData.title}</span>`;
 
@@ -517,16 +517,16 @@ function renderProfile(profileData, isOwner) {
 	const allSections = ["profile-image", "display-name", "username", "description", "featured-video", "gallery", "social-buttons", "socials"];
 	let layoutOrder = appState.tempLayoutOrder || profileData.layout_order || [...allSections];
 
-    allSections.forEach(section => {
-        if (!layoutOrder.includes(section)) {
-            const socialsIndex = layoutOrder.indexOf('socials');
-            if (socialsIndex !== -1) {
-                layoutOrder.splice(socialsIndex, 0, section);
-            } else {
-                layoutOrder.push(section);
-            }
-        }
-    });
+    allSections.forEach(section => {
+        if (!layoutOrder.includes(section)) {
+            const socialsIndex = layoutOrder.indexOf('socials');
+            if (socialsIndex !== -1) {
+                layoutOrder.splice(socialsIndex, 0, section);
+            } else {
+                layoutOrder.push(section);
+            }
+        }
+    });
 
 	const linksIndex = layoutOrder.indexOf('links');
 	if (linksIndex !== -1) {
@@ -546,29 +546,29 @@ function renderProfile(profileData, isOwner) {
 		}
 	});
 
-    const galleryContainer = layoutContainer.querySelector('#gallery-container');
-    if (galleryContainer) {
-        renderImmersiveGallery(appState.galleryImages);
-    }
-    const videoContainer = layoutContainer.querySelector('[data-section="featured-video"]');
-    if (videoContainer) {
-        const embedUrl = parseVideoUrl(profileData.featured_video_url);
-        if (embedUrl) {
-            videoContainer.innerHTML = `
-                <div class="video-wrapper">
-                    <iframe class="w-full h-full rounded-lg absolute inset-0" src="${embedUrl}" title="Video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-                </div>
-            `;
-        }
-    }
-    const socialButtonsContainer = layoutContainer.querySelector('#social-buttons-section');
-    if (socialButtonsContainer) {
-        renderSocialButtons(profileData.social_buttons);
-    }
-    const socialsFooterContainer = layoutContainer.querySelector('#socials-footer');
-    if (socialsFooterContainer) {
-        renderSocialIcons(profileData.socials, profileData.socials_order);
-    }
+    const galleryContainer = layoutContainer.querySelector('#gallery-container');
+    if (galleryContainer) {
+        renderImmersiveGallery(appState.galleryImages);
+    }
+    const videoContainer = layoutContainer.querySelector('[data-section="featured-video"]');
+    if (videoContainer) {
+        const embedUrl = parseVideoUrl(profileData.featured_video_url);
+        if (embedUrl) {
+            videoContainer.innerHTML = `
+                <div class="video-wrapper">
+                    <iframe class="w-full h-full rounded-lg absolute inset-0" src="${embedUrl}" title="Video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                </div>
+            `;
+        }
+    }
+    const socialButtonsContainer = layoutContainer.querySelector('#social-buttons-section');
+    if (socialButtonsContainer) {
+        renderSocialButtons(profileData.social_buttons);
+    }
+    const socialsFooterContainer = layoutContainer.querySelector('#socials-footer');
+    if (socialsFooterContainer) {
+        renderSocialIcons(profileData.socials, profileData.socials_order);
+    }
 
 	if (!appState.currentUser) {
 		layoutContainer.innerHTML += `
@@ -599,22 +599,22 @@ function renderProfile(profileData, isOwner) {
 function updateContainerVisibilityInDesignMode(profileData) {
 	if (!appState.isDesignModeActive) return;
 	
-    const isEmpty = (data) => !data || (Array.isArray(data) && data.length === 0) || (typeof data === 'object' && Object.keys(data).length === 0);
+    const isEmpty = (data) => !data || (Array.isArray(data) && data.length === 0) || (typeof data === 'object' && Object.keys(data).length === 0);
 
-    const descriptionContainer = document.querySelector('[data-section="description"]');
+    const descriptionContainer = document.querySelector('[data-section="description"]');
 	if (descriptionContainer) descriptionContainer.classList.toggle('is-empty', !profileData.description || profileData.description.trim() === '');
 	
-    const socialButtonsContainer = document.querySelector('[data-section="social-buttons"]');
+    const socialButtonsContainer = document.querySelector('[data-section="social-buttons"]');
 	if (socialButtonsContainer) socialButtonsContainer.classList.toggle('is-empty', isEmpty(profileData.social_buttons));
 	
-    const socialsFooterContainer = document.querySelector('[data-section="socials"]');
+    const socialsFooterContainer = document.querySelector('[data-section="socials"]');
 	if (socialsFooterContainer) socialsFooterContainer.classList.toggle('is-empty', isEmpty(profileData.socials));
-    
-    const videoContainer = document.querySelector('[data-section="featured-video"]');
-    if(videoContainer) videoContainer.classList.toggle('is-empty', !parseVideoUrl(profileData.featured_video_url));
+    
+    const videoContainer = document.querySelector('[data-section="featured-video"]');
+    if(videoContainer) videoContainer.classList.toggle('is-empty', !parseVideoUrl(profileData.featured_video_url));
 
-    const galleryContainer = document.querySelector('[data-section="gallery"]');
-    if(galleryContainer) galleryContainer.classList.toggle('is-empty', isEmpty(appState.galleryImages));
+    const galleryContainer = document.querySelector('[data-section="gallery"]');
+    if(galleryContainer) galleryContainer.classList.toggle('is-empty', isEmpty(appState.galleryImages));
 }
 
 function renderLinksEditor(links) {
@@ -687,7 +687,7 @@ const socialIcons = {
 	tiktok: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" fill="currentColor"><path d="M448 209.9a210.1 210.1 0 0 1 -122.8-39.3V349.4A162.6 162.6 0 1 1 185 188.3V278.2a74.6 74.6 0 1 0 52.2 71.2V0l88 0a121.2 121.2 0 0 0 122.8 122.8V209.9z"/></svg>`,
 	youtube: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg>`,
 	facebook: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>`,
-	whatsapp: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor"><path d="M13.601 2.326A7.85 7.85 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.9 7.9 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.9 7.9 0 0 0 13.6 2.326zM7.994 14.521a6.6 6.6 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.56 6.56 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592m3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.31-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.73.73 0 0 0-.529.247c-.182.198-.691.677-.691 1.654s.71 1.916.81 2.049c.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232"/></svg>`, 
+	whatsapp: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor"><path d="M13.601 2.326A7.85 7.85 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.9 7.9 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.9 7.9 0 0 0 13.6 2.326zM7.994 14.521a6.6 6.6 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.56 6.56 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592m3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.31-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.73.73 0 0 0-.529.247c-.182.198-.691.677-.691 1.654s.71 1.916.81 2.049c.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232"/></svg>`,	
 	behance: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M20.07,6.35H15V7.76h5.09ZM19,16.05a2.23,2.23,0,0,1-1.3.37A2.23,2.23,0,0,1,16,15.88a2.49,2.49,0,0,1-.62-1.76H22a6.47,6.47,0,0,0-.17-2,5.08,5.08,0,0,0-.8-1.73,4.17,4.17,0,0,0-1.42-1.21,4.37,4.37,0,0,0-2-.45,4.88,4.88,0,0,0-1.9.37,4.51,4.51,0,0,0-1.47,1,4.4,4.4,0,0,0-.95,1.52,5.4,5.4,0,0,0-.33,1.91,5.52,5.52,0,0,0,.32,1.94A4.46,4.46,0,0,0,14.16,17a4,4,0,0,0,1.46,1,5.2,5.2,0,0,0,1.94.34,4.77,4.77,0,0,0,2.64-.7,4.21,4.21,0,0,0,1.63-2.35H19.62A1.54,1.54,0,0,1,19,16.05Zm-3.43-4.12a1.87,1.87,0,0,1,1-1.14,2.28,2.28,0,0,1,1-.2,1.73,1.73,0,0,1,1.36.49,2.91,2.91,0,0,1,.63,1.45H15.41A3,3,0,0,1,15.52,11.93Zm-5.29-.48a3.06,3.06,0,0,0,1.28-1,2.72,2.72,0,0,0,.43-1.58,3.28,3.28,0,0,0-.29-1.48,2.4,2.4,0,0,0-.82-1,3.24,3.24,0,0,0-1.27-.52,7.54,7.54,0,0,0-1.64-.16H2V18.29H8.1a6.55,6.55,0,0,0,1.65-.21,4.55,4.55,0,0,0,1.43-.65,3.13,3.13,0,0,0,1-1.14,3.41,3.41,0,0,0,.37-1.65,3.47,3.47,0,0,0-.57-2A3,3,0,0,0,10.23,11.45ZM4.77,7.86H7.36a4.17,4.17,0,0,1,.71.06,1.64,1.64,0,0,1,.61.22,1.05,1.05,0,0,1,.42.44,1.42,1.42,0,0,1,.16.72,1.36,1.36,0,0,1-.47,1.15,2,2,0,0,1-1.22.35H4.77ZM9.61,15.3a1.28,1.28,0,0,1-.45.5,2,2,0,0,1-.65.26,3.33,3.33,0,0,1-.78.08h-3V12.69h3a2.4,2.4,0,0,1,1.45.41,1.65,1.65,0,0,1,.54,1.39A1.77,1.77,0,0,1,9.61,15.3Z"/></svg>`,
 	pinterest: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12.018 0C5.381 0 0 5.368 0 11.988c0 5.078 3.166 9.416 7.637 11.16 -0.106 -0.948 -0.199 -2.402 0.041 -3.438 0.22 -0.936 1.41 -5.957 1.41 -5.957s-0.36 -0.72 -0.36 -1.781c0 -1.663 0.97 -2.911 2.173 -2.911 1.026 0 1.522 0.768 1.522 1.687 0 1.03 -0.654 2.568 -0.995 3.992 -0.286 1.193 0.602 2.165 1.78 2.165 2.134 0 3.778 -2.244 3.778 -5.486 0 -2.861 -2.068 -4.87 -5.021 -4.87 -3.418 0 -5.422 2.562 -5.422 5.2 0 1.032 0.395 2.143 0.89 2.741 0.1 0.12 0.113 0.226 0.085 0.346 -0.09 0.374 -0.293 1.199 -0.335 1.362 -0.053 0.226 -0.172 0.271 -0.402 0.166 -1.499 -0.69 -2.438 -2.878 -2.438 -4.646 0 -3.775 2.755 -7.252 7.939 -7.252 4.169 0 7.41 2.966 7.41 6.923 0 4.135 -2.614 7.462 -6.248 7.462 -1.217 0 -2.359 -0.629 -2.765 -1.379l-0.75 2.849c-0.27 1.044 -1.008 2.352 -1.502 3.145A12 12 0 0 0 11.986 24C18.61 24 24 18.636 24 12.012 24 5.392 18.608 0.028 11.986 0.028z"/></svg>`,
 	twitch: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M2.149 0l-2.149 4.773v16.454h5.741v2.773h3.223l2.773-2.773h5.292l6.219-6.219v-14.227h-21.099zm18.378 13.59l-3.223 3.223h-5.741l-2.773 2.773v-2.773h-4.654v-14.89h16.391v11.667zm-5.292-7.371v5.546h-2.149v-5.546h2.149zm-5.291 0v5.546h-2.149v-5.546h2.149z"/></svg>`,
@@ -724,10 +724,10 @@ const socialButtonStyles = {
 };
 
 const socialCategories = [
-    { id: 'popular', name: 'Populares', icon: 'star', socials: ['instagram', 'facebook', 'twitter', 'tiktok', 'pinterest'] },
-    { id: 'comunicacion', name: 'Comunicación', icon: 'messages-square', socials: ['whatsapp', 'telegram', 'discord'] },
-    { id: 'profesional', name: 'Profesional', icon: 'briefcase', socials: ['linkedin', 'github', 'behance'] },
-    { id: 'contenido', name: 'Contenido', icon: 'play-circle', socials: ['youtube', 'twitch', 'spotify', 'soundcloud'] }
+    { id: 'popular', name: 'Populares', icon: 'star', socials: ['instagram', 'facebook', 'twitter', 'tiktok', 'pinterest'] },
+    { id: 'comunicacion', name: 'Comunicación', icon: 'messages-square', socials: ['whatsapp', 'telegram', 'discord'] },
+    { id: 'profesional', name: 'Profesional', icon: 'briefcase', socials: ['linkedin', 'github', 'behance'] },
+    { id: 'contenido', name: 'Contenido', icon: 'play-circle', socials: ['youtube', 'twitch', 'spotify', 'soundcloud'] }
 ];
 
 const SOCIAL_ICON_ORDER = socialCategories.flatMap(category => category.socials);
@@ -756,50 +756,50 @@ function getSocialIconForUrl(url) {
 }
 
 function renderSocialIcons(socials, socialsOrder) {
-    const footer = document.getElementById('socials-footer');
-    if (!footer) return;
+    const footer = document.getElementById('socials-footer');
+    if (!footer) return;
 
-    footer.innerHTML = ''; 
-    const hasIcons = socials && Object.keys(socials).length > 0;
-    
-    if (!hasIcons) {
-        return; 
-    }
+    footer.innerHTML = ''; 
+    const hasIcons = socials && Object.keys(socials).length > 0;
+    
+    if (!hasIcons) {
+        return; 
+    }
 
-    const wrapper = document.createElement('div');
-    wrapper.className = 'social-icons-wrapper';
-    
-    const order = socialsOrder && socialsOrder.length > 0 ? socialsOrder : SOCIAL_ICON_ORDER;
-    
-    order.forEach(key => {
-        const username = socials[key];
-        if (username && socialIcons[key]) {
-            const link = document.createElement('a');
-            link.href = `${socialBaseUrls[key]}${username}`;
-            link.target = '_blank';
-            link.rel = 'noopener noreferrer';
-            link.innerHTML = socialIcons[key];
-            link.className = 'opacity-70 hover:opacity-100 transition-opacity';
-            link.dataset.socialKey = key;
-            wrapper.appendChild(link);
-        }
-    });
+    const wrapper = document.createElement('div');
+    wrapper.className = 'social-icons-wrapper';
+    
+    const order = socialsOrder && socialsOrder.length > 0 ? socialsOrder : SOCIAL_ICON_ORDER;
+    
+    order.forEach(key => {
+        const username = socials[key];
+        if (username && socialIcons[key]) {
+            const link = document.createElement('a');
+            link.href = `${socialBaseUrls[key]}${username}`;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            link.innerHTML = socialIcons[key];
+            link.className = 'opacity-70 hover:opacity-100 transition-opacity';
+            link.dataset.socialKey = key;
+            wrapper.appendChild(link);
+        }
+    });
 
-    if (wrapper.children.length > 0) {
-        footer.appendChild(wrapper);
-    }
+    if (wrapper.children.length > 0) {
+        footer.appendChild(wrapper);
+    }
 }
 
 function renderSocialButtons(buttons) {
-    const section = document.getElementById('social-buttons-section');
-    if (!section) return;
+    const section = document.getElementById('social-buttons-section');
+    if (!section) return;
 
-    section.innerHTML = '';
-    const buttonList = buttons || [];
+    section.innerHTML = '';
+    const buttonList = buttons || [];
 
-    if (buttonList.length === 0) {
-        return;
-    }
+    if (buttonList.length === 0) {
+        return;
+    }
 
 	buttonList.forEach(buttonData => {
 		const info = getSocialInfoForUrl(buttonData.url);
@@ -866,52 +866,52 @@ function renderProfileActions(profileData) {
 // --- 7. MANEJADORES DE EVENTOS ---
 
 function closeRegisterModal() {
-    DOMElements.registerModal.classList.add('hidden');
-    DOMElements.registerPasswordInput.value = '';
-    DOMElements.registerConfirmPasswordInput.value = '';
+    DOMElements.registerModal.classList.add('hidden');
+    DOMElements.registerPasswordInput.value = '';
+    DOMElements.registerConfirmPasswordInput.value = '';
 }
 
 DOMElements.showRegisterModalBtn.addEventListener('click', () => {
-    DOMElements.registerEmailInput.value = document.getElementById('email-input').value;
-    DOMElements.registerPasswordInput.value = document.getElementById('password-input').value;
-    DOMElements.registerModal.classList.remove('hidden');
+    DOMElements.registerEmailInput.value = document.getElementById('email-input').value;
+    DOMElements.registerPasswordInput.value = document.getElementById('password-input').value;
+    DOMElements.registerModal.classList.remove('hidden');
 });
 
 DOMElements.backToLoginLink.addEventListener('click', (e) => {
-    e.preventDefault();
-    closeRegisterModal();
+    e.preventDefault();
+    closeRegisterModal();
 });
 
 DOMElements.createAccountBtn.addEventListener('click', async () => {
-    const email = DOMElements.registerEmailInput.value;
-    const password = DOMElements.registerPasswordInput.value;
-    const confirmPassword = DOMElements.registerConfirmPasswordInput.value;
+    const email = DOMElements.registerEmailInput.value;
+    const password = DOMElements.registerPasswordInput.value;
+    const confirmPassword = DOMElements.registerConfirmPasswordInput.value;
 
-    if (!email || !password || !confirmPassword) {
-        return showAlert("Por favor, completa todos los campos.");
-    }
-    if (password !== confirmPassword) {
-        return showAlert("Las contraseñas no coinciden.");
-    }
+    if (!email || !password || !confirmPassword) {
+        return showAlert("Por favor, completa todos los campos.");
+    }
+    if (password !== confirmPassword) {
+        return showAlert("Las contraseñas no coinciden.");
+    }
 
-    const { data, error } = await supabaseClient.auth.signUp({
-        email,
-        password,
-        options: {
-            emailRedirectTo: `${window.location.origin}${window.location.pathname}`
-        }
-    });
+    const { data, error } = await supabaseClient.auth.signUp({
+        email,
+        password,
+        options: {
+            emailRedirectTo: `${window.location.origin}${window.location.pathname}`
+        }
+    });
 
-    if (error) {
-        if (error.message.toLowerCase().includes('user already registered')) {
-            showAlert('Ya existe una cuenta con este correo. Por favor, inicia sesión.');
-        } else {
-            showAlert(`Error al registrar: ${error.message}`);
-        }
-    } else if (data.user) {
-        showAlert("¡Registro exitoso! Revisa tu correo para confirmar tu cuenta.");
-        closeRegisterModal();
-    }
+    if (error) {
+        if (error.message.toLowerCase().includes('user already registered')) {
+            showAlert('Ya existe una cuenta con este correo. Por favor, inicia sesión.');
+        } else {
+            showAlert(`Error al registrar: ${error.message}`);
+        }
+    } else if (data.user) {
+        showAlert("¡Registro exitoso! Revisa tu correo para confirmar tu cuenta.");
+        closeRegisterModal();
+    }
 });
 
 
@@ -932,7 +932,7 @@ document.getElementById('login-btn').addEventListener('click', async () => {
 });
 
 document.getElementById('google-login-btn').addEventListener('click', async () => {
-	const { error } = await supabaseClient.auth.signInWithOAuth({ 
+	const { error } = await supabaseClient.auth.signInWithOAuth({ 
 		provider: 'google',
 		options: {
 			redirectTo: `${window.location.origin}${window.location.pathname}`
@@ -1081,67 +1081,67 @@ function markSettingsAsDirty() {
 }
 
 function renderSocialTabs(container, mode, data) {
-    container.innerHTML = `
-        <div class="social-tabs-container">
-            <nav class="social-tabs-nav"></nav>
-            <div class="social-tabs-content"></div>
-        </div>
-    `;
+    container.innerHTML = `
+        <div class="social-tabs-container">
+            <nav class="social-tabs-nav"></nav>
+            <div class="social-tabs-content"></div>
+        </div>
+    `;
 
-    const nav = container.querySelector('.social-tabs-nav');
-    const content = container.querySelector('.social-tabs-content');
+    const nav = container.querySelector('.social-tabs-nav');
+    const content = container.querySelector('.social-tabs-content');
 
-    socialCategories.forEach((category, index) => {
-        const button = document.createElement('button');
-        button.className = `social-tab-button ${index === 0 ? 'active' : ''}`;
-        button.dataset.tab = category.id;
-        button.title = category.name;
-        button.innerHTML = `<i data-lucide="${category.icon}" class="w-5 h-5"></i>`;
-        nav.appendChild(button);
+    socialCategories.forEach((category, index) => {
+        const button = document.createElement('button');
+        button.className = `social-tab-button ${index === 0 ? 'active' : ''}`;
+        button.dataset.tab = category.id;
+        button.title = category.name;
+        button.innerHTML = `<i data-lucide="${category.icon}" class="w-5 h-5"></i>`;
+        nav.appendChild(button);
 
-        const pane = document.createElement('div');
-        pane.className = `social-tab-pane ${index === 0 ? 'active' : ''}`;
-        pane.id = `${mode}-${category.id}`;
-        content.appendChild(pane);
+        const pane = document.createElement('div');
+        pane.className = `social-tab-pane ${index === 0 ? 'active' : ''}`;
+        pane.id = `${mode}-${category.id}`;
+        content.appendChild(pane);
 
-        category.socials.forEach(key => {
-            const item = document.createElement('div');
-            const info = socialButtonStyles[key];
-            
-            if (mode === 'icons') {
-                const value = data?.[key] || '';
-                item.className = 'flex items-center bg-gray-200 rounded-md focus-within:ring-2 focus-within:ring-cyan-500 w-full';
-                item.innerHTML = `
-                    <span class="pl-3 pr-2 text-gray-500">${socialIcons[key]}</span>
-                    <input type="text" data-social="${key}" placeholder="${info.name}" class="w-full p-2 text-gray-900 bg-transparent focus:outline-none" value="${value}">
-                `;
-            } else { // mode === 'buttons'
-                const existingButton = (data || []).find(btn => getSocialInfoForUrl(btn.url)?.key === key);
-                const value = existingButton ? existingButton.url : '';
-                item.className = 'flex items-center gap-3';
-                const preview = `<div class="social-button flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-lg ${info.bg} ${info.color}">${info.icon.replace(/width="32"/g, 'width="20"').replace(/height="32"/g, 'height="20"')}</div>`;
-                const input = `<div class="flex-grow flex items-center bg-gray-200 rounded-md focus-within:ring-2 focus-within:ring-cyan-500 w-full"><input type="text" data-social-button="${key}" placeholder="${info.name}" class="w-full p-2 text-gray-900 bg-transparent focus:outline-none" value="${value}"></div>`;
-                item.innerHTML = preview + input;
-            }
-            pane.appendChild(item);
-        });
-    });
-    lucide.createIcons();
+        category.socials.forEach(key => {
+            const item = document.createElement('div');
+            const info = socialButtonStyles[key];
+            
+            if (mode === 'icons') {
+                const value = data?.[key] || '';
+                item.className = 'flex items-center bg-gray-200 rounded-md focus-within:ring-2 focus-within:ring-cyan-500 w-full';
+                item.innerHTML = `
+                    <span class="pl-3 pr-2 text-gray-500">${socialIcons[key]}</span>
+                    <input type="text" data-social="${key}" placeholder="${info.name}" class="w-full p-2 text-gray-900 bg-transparent focus:outline-none" value="${value}">
+                `;
+            } else { // mode === 'buttons'
+                const existingButton = (data || []).find(btn => getSocialInfoForUrl(btn.url)?.key === key);
+                const value = existingButton ? existingButton.url : '';
+                item.className = 'flex items-center gap-3';
+                const preview = `<div class="social-button flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-lg ${info.bg} ${info.color}">${info.icon.replace(/width="32"/g, 'width="20"').replace(/height="32"/g, 'height="20"')}</div>`;
+                const input = `<div class="flex-grow flex items-center bg-gray-200 rounded-md focus-within:ring-2 focus-within:ring-cyan-500 w-full"><input type="text" data-social-button="${key}" placeholder="${info.name}" class="w-full p-2 text-gray-900 bg-transparent focus:outline-none" value="${value}"></div>`;
+                item.innerHTML = preview + input;
+            }
+            pane.appendChild(item);
+        });
+    });
+    lucide.createIcons();
 }
 
 DOMElements.settingsPanel.addEventListener('click', (e) => {
-    const tabButton = e.target.closest('.social-tab-button');
-    if (tabButton) {
-        const container = tabButton.closest('.social-tabs-container');
-        const tabId = tabButton.dataset.tab;
+    const tabButton = e.target.closest('.social-tab-button');
+    if (tabButton) {
+        const container = tabButton.closest('.social-tabs-container');
+        const tabId = tabButton.dataset.tab;
 
-        container.querySelectorAll('.social-tab-button').forEach(btn => btn.classList.remove('active'));
-        container.querySelectorAll('.social-tab-pane').forEach(pane => pane.classList.remove('active'));
+        container.querySelectorAll('.social-tab-button').forEach(btn => btn.classList.remove('active'));
+        container.querySelectorAll('.social-tab-pane').forEach(pane => pane.classList.remove('active'));
 
-        tabButton.classList.add('active');
-        const activePane = container.querySelector(`.social-tab-pane[id$="-${tabId}"]`);
-        if(activePane) activePane.classList.add('active');
-    }
+        tabButton.classList.add('active');
+        const activePane = container.querySelector(`.social-tab-pane[id$="-${tabId}"]`);
+        if(activePane) activePane.classList.add('active');
+    }
 });
 
 
@@ -1154,7 +1154,7 @@ function openSettingsPanel() {
 	document.getElementById('display-name-input').value = profile.display_name || '';
 	document.getElementById('username-input').value = profile.username ? profile.username.substring(1) : '';
 	document.getElementById('description-input').value = profile.description || '';
-    DOMElements.featuredVideoUrlInput.value = profile.featured_video_url || '';
+    DOMElements.featuredVideoUrlInput.value = profile.featured_video_url || '';
 	
 	setTimeout(() => autoResizeTextarea(DOMElements.descriptionInput), 50);
 
@@ -1188,8 +1188,8 @@ function openSettingsPanel() {
 	DOMElements.fontSelectorLabel.textContent = fontMap[currentFont].name;
 	DOMElements.fontSelectorLabel.className = currentFont;
 
-    renderSocialTabs(document.getElementById('social-buttons-inputs-container'), 'buttons', profile.social_buttons);
-    renderSocialTabs(document.getElementById('socials-inputs-container'), 'icons', profile.socials);
+    renderSocialTabs(document.getElementById('social-buttons-inputs-container'), 'buttons', profile.social_buttons);
+    renderSocialTabs(document.getElementById('socials-inputs-container'), 'icons', profile.socials);
 
 	const contact = profile.contact_info || {};
 	document.querySelectorAll('#contact-inputs input').forEach(input => {
@@ -1282,7 +1282,7 @@ document.getElementById('save-changes-btn').addEventListener('click', async () =
 	const dataToSave = {
 		display_name: document.getElementById('display-name-input').value,
 		description: document.getElementById('description-input').value,
-        featured_video_url: DOMElements.featuredVideoUrlInput.value,
+        featured_video_url: DOMElements.featuredVideoUrlInput.value,
 		background_image_url: document.getElementById('background-image-url-input').value,
 		background_image_path: document.getElementById('background-image-path-input').value,
 		background_overlay_opacity: document.getElementById('background-opacity-slider').value,
@@ -1351,8 +1351,8 @@ function updateLivePreview() {
 		}
 	});
 
-    const newSocials = {};
-    document.querySelectorAll('#socials-inputs-container input[data-social]').forEach(input => {
+    const newSocials = {};
+    document.querySelectorAll('#socials-inputs-container input[data-social]').forEach(input => {
 		if (input.value.trim() !== '') newSocials[input.dataset.social] = input.value.trim();
 	});
 
@@ -1372,7 +1372,7 @@ function updateLivePreview() {
 		...appState.profile,
 		display_name: document.getElementById('display-name-input').value,
 		description: document.getElementById('description-input').value,
-        featured_video_url: DOMElements.featuredVideoUrlInput.value,
+        featured_video_url: DOMElements.featuredVideoUrlInput.value,
 		background_image_url: backgroundUrlInput.value,
 		background_overlay_opacity: opacitySlider.value,
 		theme: document.querySelector('.theme-option.selected')?.dataset.theme || 'negro',
@@ -1449,7 +1449,7 @@ function populateIconGrid() {
 	const gridContainer = document.getElementById('icon-grid-container');
 	if (!gridContainer) return;
 
-	gridContainer.innerHTML = ''; 
+	gridContainer.innerHTML = ''; 
 
 	iconTags.forEach(tag => {
 		const button = document.createElement('button');
@@ -1582,21 +1582,21 @@ DOMElements.profilePage.addEventListener('click', (e) => {
 		}
 	}
 
-    const thumbnail = e.target.closest('.thumbnail');
-    const mainImage = e.target.closest('.main-image');
-    const profileImage = e.target.closest('#public-profile-img');
+    const thumbnail = e.target.closest('.thumbnail');
+    const mainImage = e.target.closest('.main-image');
+    const profileImage = e.target.closest('#public-profile-img');
 
-    if (thumbnail) {
-        const index = parseInt(thumbnail.dataset.index, 10);
-        displayGalleryImage(appState.galleryImages, index);
-    } else if (mainImage) {
-        const currentIndex = appState.galleryImages.findIndex(img => img.image_url === mainImage.src);
-        if (currentIndex !== -1) {
-            openImageZoomModal(appState.galleryImages, currentIndex);
-        }
-    } else if (profileImage && !e.target.closest('#edit-profile-img-btn')) {
-        openImageZoomModal([{ image_url: profileImage.src }], 0);
-    }
+    if (thumbnail) {
+        const index = parseInt(thumbnail.dataset.index, 10);
+        displayGalleryImage(appState.galleryImages, index);
+    } else if (mainImage) {
+        const currentIndex = appState.galleryImages.findIndex(img => img.image_url === mainImage.src);
+        if (currentIndex !== -1) {
+            openImageZoomModal(appState.galleryImages, currentIndex);
+        }
+    } else if (profileImage && !e.target.closest('#edit-profile-img-btn')) {
+        openImageZoomModal([{ image_url: profileImage.src }], 0);
+    }
 });
 
 
@@ -1947,95 +1947,95 @@ DOMElements.libraryGrid.addEventListener('click', (e) => {
 
 // --- 15. LÓGICA DEL ZOOM DE IMAGEN DE PERFIL Y GALERÍA ---
 function openImageZoomModal(images, startIndex) {
-    if (!images || images.length === 0) return;
+    if (!images || images.length === 0) return;
 
-    let currentIndex = startIndex;
+    let currentIndex = startIndex;
 
-    const modal = document.createElement('div');
-    modal.className = 'fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4';
-    modal.innerHTML = `
-        <div class="relative w-full h-full flex items-center justify-center" id="zoom-content-wrapper">
-            <img src="" class="max-w-full max-h-full rounded-lg shadow-2xl transition-opacity duration-300" id="zoomed-image">
-            <button class="zoom-nav-btn left-4" id="zoom-prev-btn"><i data-lucide="chevron-left" class="w-8 h-8"></i></button>
-            <button class="zoom-nav-btn right-4" id="zoom-next-btn"><i data-lucide="chevron-right" class="w-8 h-8"></i></button>
-            <button class="absolute top-4 right-4 text-white" id="zoom-close-btn"><i data-lucide="x" class="w-8 h-8"></i></button>
-        </div>
-    `;
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4';
+    modal.innerHTML = `
+        <div class="relative w-full h-full flex items-center justify-center" id="zoom-content-wrapper">
+            <img src="" class="max-w-full max-h-full rounded-lg shadow-2xl transition-opacity duration-300" id="zoomed-image">
+            <button class="zoom-nav-btn left-4" id="zoom-prev-btn"><i data-lucide="chevron-left" class="w-8 h-8"></i></button>
+            <button class="zoom-nav-btn right-4" id="zoom-next-btn"><i data-lucide="chevron-right" class="w-8 h-8"></i></button>
+            <button class="absolute top-4 right-4 text-white" id="zoom-close-btn"><i data-lucide="x" class="w-8 h-8"></i></button>
+        </div>
+    `;
 
-    document.body.appendChild(modal);
-    lucide.createIcons();
+    document.body.appendChild(modal);
+    lucide.createIcons();
 
-    const imgEl = modal.querySelector('#zoomed-image');
-    const prevBtn = modal.querySelector('#zoom-prev-btn');
-    const nextBtn = modal.querySelector('#zoom-next-btn');
-    const closeBtn = modal.querySelector('#zoom-close-btn');
-    const contentWrapper = modal.querySelector('#zoom-content-wrapper');
+    const imgEl = modal.querySelector('#zoomed-image');
+    const prevBtn = modal.querySelector('#zoom-prev-btn');
+    const nextBtn = modal.querySelector('#zoom-next-btn');
+    const closeBtn = modal.querySelector('#zoom-close-btn');
+    const contentWrapper = modal.querySelector('#zoom-content-wrapper');
 
-    function updateZoomedImage() {
-        imgEl.style.opacity = 0;
-        setTimeout(() => {
-            imgEl.src = images[currentIndex].image_url;
-            imgEl.style.opacity = 1;
-        }, 150);
+    function updateZoomedImage() {
+        imgEl.style.opacity = 0;
+        setTimeout(() => {
+            imgEl.src = images[currentIndex].image_url;
+            imgEl.style.opacity = 1;
+        }, 150);
 
-        const isMobile = window.innerWidth < 768;
-        prevBtn.style.display = images.length > 1 && !isMobile ? 'flex' : 'none';
-        nextBtn.style.display = images.length > 1 && !isMobile ? 'flex' : 'none';
-        prevBtn.disabled = currentIndex === 0;
-        nextBtn.disabled = currentIndex === images.length - 1;
-    }
+        const isMobile = window.innerWidth < 768;
+        prevBtn.style.display = images.length > 1 && !isMobile ? 'flex' : 'none';
+        nextBtn.style.display = images.length > 1 && !isMobile ? 'flex' : 'none';
+        prevBtn.disabled = currentIndex === 0;
+        nextBtn.disabled = currentIndex === images.length - 1;
+    }
 
-    function closeModal() {
-        modal.remove();
-        document.removeEventListener('keydown', handleKeyDown);
-    }
-    
-    function nextImage() {
-        if (currentIndex < images.length - 1) {
-            currentIndex++;
-            updateZoomedImage();
-        }
-    }
-    
-    function prevImage() {
-        if (currentIndex > 0) {
-            currentIndex--;
-            updateZoomedImage();
-        }
-    }
+    function closeModal() {
+        modal.remove();
+        document.removeEventListener('keydown', handleKeyDown);
+    }
+    
+    function nextImage() {
+        if (currentIndex < images.length - 1) {
+            currentIndex++;
+            updateZoomedImage();
+        }
+    }
+    
+    function prevImage() {
+        if (currentIndex > 0) {
+            currentIndex--;
+            updateZoomedImage();
+        }
+    }
 
-    function handleKeyDown(e) {
-        if (e.key === 'ArrowLeft') { e.preventDefault(); prevImage(); }
-        else if (e.key === 'ArrowRight') { e.preventDefault(); nextImage(); }
-        else if (e.key === 'Escape') { closeModal(); }
-    }
+    function handleKeyDown(e) {
+        if (e.key === 'ArrowLeft') { e.preventDefault(); prevImage(); }
+        else if (e.key === 'ArrowRight') { e.preventDefault(); nextImage(); }
+        else if (e.key === 'Escape') { closeModal(); }
+    }
 
-    let touchStartX = 0;
-    let touchEndX = 0;
+    let touchStartX = 0;
+    let touchEndX = 0;
 
-    contentWrapper.addEventListener('touchstart', (e) => {
-        touchStartX = e.changedTouches[0].screenX;
-    }, { passive: true });
+    contentWrapper.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+    }, { passive: true });
 
-    contentWrapper.addEventListener('touchend', (e) => {
-        touchEndX = e.changedTouches[0].screenX;
-        handleSwipe();
-    }, { passive: true });
+    contentWrapper.addEventListener('touchend', (e) => {
+        touchEndX = e.changedTouches[0].screenX;
+        handleSwipe();
+    }, { passive: true });
 
-    function handleSwipe() {
-        const swipeThreshold = 50;
-        if (touchEndX < touchStartX - swipeThreshold) nextImage();
-        if (touchEndX > touchStartX + swipeThreshold) prevImage();
-    }
+    function handleSwipe() {
+        const swipeThreshold = 50;
+        if (touchEndX < touchStartX - swipeThreshold) nextImage();
+        if (touchEndX > touchStartX + swipeThreshold) prevImage();
+    }
 
 
-    prevBtn.addEventListener('click', (e) => { e.stopPropagation(); prevImage(); });
-    nextBtn.addEventListener('click', (e) => { e.stopPropagation(); nextImage(); });
-    closeBtn.addEventListener('click', (e) => { e.stopPropagation(); closeModal(); });
-    modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
-    document.addEventListener('keydown', handleKeyDown);
+    prevBtn.addEventListener('click', (e) => { e.stopPropagation(); prevImage(); });
+    nextBtn.addEventListener('click', (e) => { e.stopPropagation(); nextImage(); });
+    closeBtn.addEventListener('click', (e) => { e.stopPropagation(); closeModal(); });
+    modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+    document.addEventListener('keydown', handleKeyDown);
 
-    updateZoomedImage();
+    updateZoomedImage();
 }
 
 
@@ -2306,9 +2306,9 @@ document.getElementById('delete-account-confirm-btn').addEventListener('click', 
 	
 	const { error: updateError } = await supabaseClient
 		.from('profiles')
-		.update({ 
-			is_deactivated: true, 
-			deletion_scheduled_at: new Date().toISOString() 
+		.update({ 
+			is_deactivated: true, 
+			deletion_scheduled_at: new Date().toISOString() 
 		})
 		.eq('id', appState.currentUser.id);
 
@@ -2343,406 +2343,448 @@ document.getElementById('logout-for-deletion-btn').addEventListener('click', asy
 // --- 26. LÓGICA COMPLETA DE LA GALERÍA ---
 
 function renderImmersiveGallery(images) {
-    const container = document.getElementById('gallery-container');
-    if (!container || !images || images.length === 0) return;
+    const container = document.getElementById('gallery-container');
+    if (!container || !images || images.length === 0) return;
 
-    container.innerHTML = `
-        <div class="immersive-gallery">
-            <div class="main-image-container">
-                <img src="${images[0].image_url}" class="main-image" id="gallery-main-image" style="object-position: ${images[0].focus_point || 'center'}">
-                <p class="caption" id="gallery-caption">${images[0].caption || ''}</p>
-            </div>
-            <div class="thumbnail-strip" id="gallery-thumbnail-strip"></div>
-        </div>
-    `;
+    container.innerHTML = `
+        <div class="immersive-gallery">
+            <div class="main-image-container">
+                <img src="${images[0].image_url}" class="main-image" id="gallery-main-image" style="object-position: ${images[0].focus_point || 'center'}">
+                <p class="caption" id="gallery-caption">${images[0].caption || ''}</p>
+            </div>
+            <div class="thumbnail-strip" id="gallery-thumbnail-strip"></div>
+        </div>
+    `;
 
-    const thumbnailStrip = document.getElementById('gallery-thumbnail-strip');
-    images.forEach((image, index) => {
-        const thumb = document.createElement('img');
-        thumb.src = image.thumbnail_url || image.image_url;
-        thumb.className = `thumbnail ${index === 0 ? 'active' : ''}`;
-        thumb.dataset.index = index;
-        thumbnailStrip.appendChild(thumb);
-    });
+    const thumbnailStrip = document.getElementById('gallery-thumbnail-strip');
+    images.forEach((image, index) => {
+        const thumb = document.createElement('img');
+        thumb.src = image.thumbnail_url || image.image_url;
+        thumb.className = `thumbnail ${index === 0 ? 'active' : ''}`;
+        thumb.dataset.index = index;
+        thumbnailStrip.appendChild(thumb);
+    });
 }
 
 function displayGalleryImage(images, index) {
-    const mainImage = document.getElementById('gallery-main-image');
-    const caption = document.getElementById('gallery-caption');
-    const thumbnails = document.querySelectorAll('#gallery-thumbnail-strip .thumbnail');
+    const mainImage = document.getElementById('gallery-main-image');
+    const caption = document.getElementById('gallery-caption');
+    const thumbnails = document.querySelectorAll('#gallery-thumbnail-strip .thumbnail');
 
-    if (!mainImage || !caption || !thumbnails) return;
+    if (!mainImage || !caption || !thumbnails) return;
 
-    mainImage.style.opacity = 0;
-    caption.style.opacity = 0;
+    mainImage.style.opacity = 0;
+    caption.style.opacity = 0;
 
-    setTimeout(() => {
-        mainImage.src = images[index].image_url;
-        mainImage.style.objectPosition = images[index].focus_point || 'center';
-        caption.textContent = images[index].caption || '';
-        mainImage.style.opacity = 1;
-        caption.style.opacity = 1;
-    }, 300);
+    setTimeout(() => {
+        mainImage.src = images[index].image_url;
+        mainImage.style.objectPosition = images[index].focus_point || 'center';
+        caption.textContent = images[index].caption || '';
+        mainImage.style.opacity = 1;
+        caption.style.opacity = 1;
+    }, 300);
 
-    thumbnails.forEach((thumb, i) => {
-        thumb.classList.toggle('active', i === index);
-    });
+    thumbnails.forEach((thumb, i) => {
+        thumb.classList.toggle('active', i === index);
+    });
 }
 
 function renderGalleryEditor() {
-    const listEl = DOMElements.galleryEditorList;
-    if (!listEl) return;
-    listEl.innerHTML = '';
+    const listEl = DOMElements.galleryEditorList;
+    if (!listEl) return;
+    listEl.innerHTML = '';
 
-    appState.galleryImages.forEach(image => {
-        const item = document.createElement('div');
-        item.className = 'gallery-editor-item relative group cursor-pointer';
-        item.dataset.id = image.id;
-        item.innerHTML = `
-            <img src="${image.thumbnail_url || image.image_url}" class="w-full h-full object-cover rounded-lg pointer-events-none">
-            <div class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                <i data-lucide="edit" class="w-8 h-8 text-white"></i>
-            </div>
-        `;
-        listEl.appendChild(item);
-    });
-    
-    lucide.createIcons();
-    updateAddImageButtonState();
+    appState.galleryImages.forEach(image => {
+        const item = document.createElement('div');
+        item.className = 'gallery-editor-item relative group cursor-pointer';
+        item.dataset.id = image.id;
+        item.innerHTML = `
+            <img src="${image.thumbnail_url || image.image_url}" class="w-full h-full object-cover rounded-lg pointer-events-none">
+            <div class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                <i data-lucide="edit" class="w-8 h-8 text-white"></i>
+            </div>
+        `;
+        listEl.appendChild(item);
+    });
+    
+    lucide.createIcons();
+    updateAddImageButtonState();
 
-    if (appState.sortable.gallery) appState.sortable.gallery.destroy();
-    appState.sortable.gallery = new Sortable(listEl, {
-        animation: 150,
-        onEnd: async () => {
-            const updatedOrder = Array.from(listEl.children).map((item, index) => ({
-                id: item.dataset.id,
-                order_index: index,
-            }));
+    if (appState.sortable.gallery) appState.sortable.gallery.destroy();
+    appState.sortable.gallery = new Sortable(listEl, {
+        animation: 150,
+        onEnd: async () => {
+            const updatedOrder = Array.from(listEl.children).map((item, index) => ({
+                id: item.dataset.id,
+                order_index: index,
+            }));
 
-            const updatePromises = updatedOrder.map(item =>
-                supabaseClient
-                    .from('gallery_images')
-                    .update({ order_index: item.order_index })
-                    .eq('id', item.id)
-            );
-            
-            const results = await Promise.all(updatePromises);
-            const hasError = results.some(result => result.error);
+            const updatePromises = updatedOrder.map(item =>
+                supabaseClient
+                    .from('gallery_images')
+                    .update({ order_index: item.order_index })
+                    .eq('id', item.id)
+            );
+            
+            const results = await Promise.all(updatePromises);
+            const hasError = results.some(result => result.error);
 
-            if (hasError) {
-                showAlert("Error al reordenar la galería.");
-                console.error("Error reordering gallery:", results.find(r => r.error).error);
-            } else {
-                updatedOrder.forEach(item => {
-                    const img = appState.galleryImages.find(i => i.id === item.id);
-                    if (img) img.order_index = item.order_index;
-                });
-                appState.galleryImages.sort((a, b) => a.order_index - b.order_index);
-            }
-        },
-    });
+            if (hasError) {
+                showAlert("Error al reordenar la galería.");
+                console.error("Error reordering gallery:", results.find(r => r.error).error);
+            } else {
+                updatedOrder.forEach(item => {
+                    const img = appState.galleryImages.find(i => i.id === item.id);
+                    if (img) img.order_index = item.order_index;
+                });
+                appState.galleryImages.sort((a, b) => a.order_index - b.order_index);
+            }
+        },
+    });
 }
 
 function updateAddImageButtonState() {
-    const canUpload = appState.galleryImages.length < 6;
-    DOMElements.addGalleryImageBtn.disabled = !canUpload;
-    DOMElements.addGalleryImageBtn.textContent = canUpload ? `Añadir Imágenes (${appState.galleryImages.length}/6)` : 'Galería Llena (6/6)';
+    const canUpload = appState.galleryImages.length < 6;
+    DOMElements.addGalleryImageBtn.disabled = !canUpload;
+    DOMElements.addGalleryImageBtn.textContent = canUpload ? `Añadir Imágenes (${appState.galleryImages.length}/6)` : 'Galería Llena (6/6)';
 }
 
 function openGalleryEditModal(image) {
-    appState.editingGalleryImageId = image.id;
-    const modal = DOMElements.galleryEditModal;
-    const previewImage = modal.querySelector('#gallery-edit-preview');
-    const previewContainer = modal.querySelector('#gallery-edit-preview-container');
-    
-    previewImage.src = image.image_url;
-    modal.querySelector('#gallery-edit-caption').value = image.caption || '';
-    
-    // Set initial focus point
-    const focus = image.focus_point || 'center center';
-    previewImage.style.objectPosition = focus;
+    appState.editingGalleryImageId = image.id;
+    const modal = DOMElements.galleryEditModal;
+    const previewImage = modal.querySelector('#gallery-edit-preview');
+    const previewContainer = modal.querySelector('#gallery-edit-preview-container');
+    
+	// 1. Reset potential conflicting inline styles from previous interactions
+	previewImage.style.transform = '';
+	previewImage.style.top = '0px'; // Start at a known, neutral position
 
-    modal.classList.remove('hidden');
-    lucide.createIcons();
+	// 2. Add an onload listener to perform calculations only after the image has its final dimensions
+	previewImage.onload = () => {
+		const containerHeight = previewContainer.offsetHeight;
+		const imageHeight = previewImage.offsetHeight;
+		// This will be a negative number or 0, representing the maximum upward scroll
+		const maxOffset = containerHeight - imageHeight; 
 
-    // Attach drag listeners
-    enableFocusDrag(previewContainer, previewImage, image);
+		let initialTop = (containerHeight - imageHeight) / 2; // Default to vertical center
+
+		// If a focus point is already saved, calculate the initial top position from it
+		if (image.focus_point && image.focus_point.includes('%')) {
+			const yPercent = parseFloat(image.focus_point.split(' ')[1]);
+			if (!isNaN(yPercent)) {
+				// Convert the percentage of the movable distance to a pixel offset
+				initialTop = maxOffset * (yPercent / 100);
+			}
+		}
+		
+		// 3. Ensure the calculated initial position is within the valid draggable bounds
+		initialTop = Math.max(maxOffset, Math.min(initialTop, 0));
+
+		previewImage.style.top = `${initialTop}px`;
+		
+		// 4. Enable drag functionality *after* the image is loaded and correctly positioned
+		enableFocusDrag(previewContainer, previewImage, image);
+	};
+
+    previewImage.src = image.image_url; // Set src to trigger the onload event
+    modal.querySelector('#gallery-edit-caption').value = image.caption || '';
+    
+    modal.classList.remove('hidden');
+    lucide.createIcons();
 }
 
 function closeGalleryEditModal() {
-    DOMElements.galleryEditModal.classList.add('hidden');
-    appState.editingGalleryImageId = null;
+    DOMElements.galleryEditModal.classList.add('hidden');
+    appState.editingGalleryImageId = null;
 }
 
 function enableFocusDrag(container, image, galleryImageData) {
-    let isDragging = false;
-    let startY = 0;
-    let startTop = 0;
+    // Clean up any previous listeners to prevent them from stacking up
+    if (container.dragListeners) {
+        container.removeEventListener('mousedown', container.dragListeners.onMouseDown);
+        document.removeEventListener('mousemove', container.dragListeners.onMouseMove);
+        document.removeEventListener('mouseup', container.dragListeners.onMouseUp);
+        container.removeEventListener('touchstart', container.dragListeners.onMouseDown);
+        document.removeEventListener('touchmove', container.dragListeners.onMouseMove);
+        document.removeEventListener('touchend', container.dragListeners.onMouseUp);
+    }
 
-    const onMouseDown = (e) => {
-        e.preventDefault();
-        isDragging = true;
-        startY = e.clientY || e.touches[0].clientY;
-        startTop = image.offsetTop;
-        container.style.cursor = 'grabbing';
-    };
+    let isDragging = false;
+    let startY = 0;
+    let startTop = 0;
 
-    const onMouseMove = (e) => {
-        if (!isDragging) return;
-        const currentY = e.clientY || e.touches[0].clientY;
-        const deltaY = currentY - startY;
-        let newTop = startTop + deltaY;
+    const onMouseDown = (e) => {
+        e.preventDefault();
+        isDragging = true;
+        startY = e.clientY || e.touches[0].clientY;
+        startTop = image.offsetTop;
+        container.style.cursor = 'grabbing';
+    };
 
-        // Constrain movement
-        const containerHeight = container.offsetHeight;
-        const imageHeight = image.offsetHeight;
-        const minTop = containerHeight - imageHeight;
-        const maxTop = 0;
-        newTop = Math.max(minTop, Math.min(newTop, maxTop));
-        
-        image.style.top = `${newTop}px`;
-    };
+    const onMouseMove = (e) => {
+        if (!isDragging) return;
+        const currentY = e.clientY || e.touches[0].clientY;
+        const deltaY = currentY - startY;
+        let newTop = startTop + deltaY;
 
-    const onMouseUp = async () => {
-        if (!isDragging) return;
-        isDragging = false;
-        container.style.cursor = 'grab';
+        // Constrain movement within the container
+        const containerHeight = container.offsetHeight;
+        const imageHeight = image.offsetHeight;
+        // minTop is the lowest value `top` can be (image scrolled all the way up)
+        const minTop = containerHeight - imageHeight;
+        // maxTop is the highest value `top` can be (image scrolled all the way down)
+        const maxTop = 0;
+        newTop = Math.max(minTop, Math.min(newTop, maxTop));
+        
+        image.style.top = `${newTop}px`;
+    };
 
-        const containerHeight = container.offsetHeight;
-        const imageHeight = image.offsetHeight;
-        const newTop = image.offsetTop;
-        
-        // Calculate percentage
-        const focusPercent = (Math.abs(newTop) / (imageHeight - containerHeight)) * 100;
-        const newFocusPoint = `50% ${focusPercent.toFixed(2)}%`;
-        
-        // Update local state
-        galleryImageData.focus_point = newFocusPoint;
+    const onMouseUp = async () => {
+        if (!isDragging) return;
+        isDragging = false;
+        container.style.cursor = 'grab';
 
-        // Save to DB
-        const { error } = await supabaseClient
-            .from('gallery_images')
-            .update({ focus_point: newFocusPoint })
-            .eq('id', galleryImageData.id);
-
-        if (error) {
-            showAlert("No se pudo guardar el punto de enfoque.");
-        } else {
-            updateLivePreview();
+        const containerHeight = container.offsetHeight;
+        const imageHeight = image.offsetHeight;
+        const newTop = image.offsetTop;
+        
+        // Calculate the new focus point as a percentage
+        const movableDistance = imageHeight - containerHeight;
+        let focusPercent = 0;
+        // Avoid division by zero if image fits perfectly or is smaller than the container
+        if (movableDistance > 0) {
+            focusPercent = (Math.abs(newTop) / movableDistance) * 100;
         }
-    };
+        const newFocusPoint = `50% ${focusPercent.toFixed(2)}%`;
+        
+        // Update local state and save to DB only if the value has changed
+        if (galleryImageData.focus_point !== newFocusPoint) {
+            galleryImageData.focus_point = newFocusPoint;
 
-    container.addEventListener('mousedown', onMouseDown);
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseup', onMouseUp);
+            const { error } = await supabaseClient
+                .from('gallery_images')
+                .update({ focus_point: newFocusPoint })
+                .eq('id', galleryImageData.id);
 
-    container.addEventListener('touchstart', onMouseDown, { passive: false });
-    document.addEventListener('touchmove', onMouseMove, { passive: false });
-    document.addEventListener('touchend', onMouseUp);
+            if (error) {
+                showAlert("No se pudo guardar el punto de enfoque.");
+            } else {
+                updateLivePreview();
+            }
+        }
+    };
 
-    // Store a reference to remove them later
-    container.dragListeners = { onMouseDown, onMouseMove, onMouseUp };
+    container.addEventListener('mousedown', onMouseDown);
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+
+    container.addEventListener('touchstart', onMouseDown, { passive: false });
+    document.addEventListener('touchmove', onMouseMove, { passive: false });
+    document.addEventListener('touchend', onMouseUp);
+
+    // Store a reference to the listeners so they can be removed later
+    container.dragListeners = { onMouseDown, onMouseMove, onMouseUp };
 }
 
 
 DOMElements.addGalleryImageBtn.addEventListener('click', () => {
-    DOMElements.galleryImageUploadInput.click();
+    DOMElements.galleryImageUploadInput.click();
 });
 
 DOMElements.galleryImageUploadInput.addEventListener('change', async (e) => {
-    const files = Array.from(e.target.files);
-    if (files.length === 0) return;
+    const files = Array.from(e.target.files);
+    if (files.length === 0) return;
 
-    const remainingSlots = 6 - appState.galleryImages.length;
-    if (files.length > remainingSlots) {
-        showAlert(`Puedes subir ${remainingSlots} imagen(es) más. Has seleccionado ${files.length}.`);
-        DOMElements.galleryImageUploadInput.value = '';
-        return;
-    }
-    
-    DOMElements.addGalleryImageBtn.disabled = true;
-    DOMElements.addGalleryImageBtn.innerHTML = `<div class="w-5 h-5 border-2 border-t-transparent border-white rounded-full animate-spin"></div>`;
+    const remainingSlots = 6 - appState.galleryImages.length;
+    if (files.length > remainingSlots) {
+        showAlert(`Puedes subir ${remainingSlots} imagen(es) más. Has seleccionado ${files.length}.`);
+        DOMElements.galleryImageUploadInput.value = '';
+        return;
+    }
+    
+    DOMElements.addGalleryImageBtn.disabled = true;
+    DOMElements.addGalleryImageBtn.innerHTML = `<div class="w-5 h-5 border-2 border-t-transparent border-white rounded-full animate-spin"></div>`;
 
-    const uploadPromises = files.map(async (file, index) => {
-        try {
-            const compressedFile = await imageCompression(file, { maxSizeMB: 0.5, maxWidthOrHeight: 1920, useWebWorker: true });
-            const filePath = `${appState.currentUser.id}/${Date.now()}-${compressedFile.name}`;
-            
-            const { error: uploadError } = await supabaseClient.storage.from('gallery-images').upload(filePath, compressedFile);
-            if (uploadError) throw uploadError;
+    const uploadPromises = files.map(async (file, index) => {
+        try {
+            const compressedFile = await imageCompression(file, { maxSizeMB: 0.5, maxWidthOrHeight: 1920, useWebWorker: true });
+            const filePath = `${appState.currentUser.id}/${Date.now()}-${compressedFile.name}`;
+            
+            const { error: uploadError } = await supabaseClient.storage.from('gallery-images').upload(filePath, compressedFile);
+            if (uploadError) throw uploadError;
 
-            const { data: { publicUrl } } = supabaseClient.storage.from('gallery-images').getPublicUrl(filePath);
+            const { data: { publicUrl } } = supabaseClient.storage.from('gallery-images').getPublicUrl(filePath);
 
-            const newOrderIndex = appState.galleryImages.length + index;
-            const { data: newImage, error: dbError } = await supabaseClient
-                .from('gallery_images')
-                .insert({
-                    user_id: appState.currentUser.id,
-                    image_url: publicUrl,
-                    image_path: filePath,
-                    order_index: newOrderIndex
-                })
-                .select()
-                .single();
-            
-            if (dbError) throw dbError;
-            return newImage;
-        } catch (error) {
-            console.error("Error uploading one image:", error);
-            return null;
-        }
-    });
+            const newOrderIndex = appState.galleryImages.length + index;
+            const { data: newImage, error: dbError } = await supabaseClient
+                .from('gallery_images')
+                .insert({
+                    user_id: appState.currentUser.id,
+                    image_url: publicUrl,
+                    image_path: filePath,
+                    order_index: newOrderIndex
+                })
+                .select()
+                .single();
+            
+            if (dbError) throw dbError;
+            return newImage;
+        } catch (error) {
+            console.error("Error uploading one image:", error);
+            return null;
+        }
+    });
 
-    const results = await Promise.all(uploadPromises);
-    const newImages = results.filter(Boolean);
-    appState.galleryImages.push(...newImages);
+    const results = await Promise.all(uploadPromises);
+    const newImages = results.filter(Boolean);
+    appState.galleryImages.push(...newImages);
 
-    renderGalleryEditor();
-    updateLivePreview();
-    
-    DOMElements.galleryImageUploadInput.value = '';
+    renderGalleryEditor();
+    updateLivePreview();
+    
+    DOMElements.galleryImageUploadInput.value = '';
 });
 
 DOMElements.galleryEditorList.addEventListener('click', (e) => {
-    const item = e.target.closest('.gallery-editor-item');
-    if (item) {
-        const imageId = item.dataset.id;
-        const image = appState.galleryImages.find(img => img.id === imageId);
-        if (image) {
-            openGalleryEditModal(image);
-        }
-    }
+    const item = e.target.closest('.gallery-editor-item');
+    if (item) {
+        const imageId = item.dataset.id;
+        const image = appState.galleryImages.find(img => img.id === imageId);
+        if (image) {
+            openGalleryEditModal(image);
+        }
+    }
 });
 
 DOMElements.galleryEditModal.addEventListener('click', (e) => {
-    const closeBtn = e.target.closest('#gallery-edit-close-btn');
-    const cropBtn = e.target.closest('#gallery-edit-crop-btn');
-    const deleteBtn = e.target.closest('#gallery-edit-delete-btn');
-    
-    if (closeBtn) {
-        closeGalleryEditModal();
-    } else if (cropBtn) {
-        const imageToCrop = appState.galleryImages.find(img => img.id === appState.editingGalleryImageId);
-        if (imageToCrop) {
-            DOMElements.thumbnailCropperImage.src = imageToCrop.image_url;
-            DOMElements.thumbnailCropperModal.classList.remove('hidden');
-            if (appState.thumbnailCropper) appState.thumbnailCropper.destroy();
-            
-            DOMElements.thumbnailCropperImage.style.opacity = 0;
+    const closeBtn = e.target.closest('#gallery-edit-close-btn');
+    const cropBtn = e.target.closest('#gallery-edit-crop-btn');
+    const deleteBtn = e.target.closest('#gallery-edit-delete-btn');
+    
+    if (closeBtn) {
+        closeGalleryEditModal();
+    } else if (cropBtn) {
+        const imageToCrop = appState.galleryImages.find(img => img.id === appState.editingGalleryImageId);
+        if (imageToCrop) {
+            DOMElements.thumbnailCropperImage.src = imageToCrop.image_url;
+            DOMElements.thumbnailCropperModal.classList.remove('hidden');
+            if (appState.thumbnailCropper) appState.thumbnailCropper.destroy();
+            
+            DOMElements.thumbnailCropperImage.style.opacity = 0;
 
-            appState.thumbnailCropper = new Cropper(DOMElements.thumbnailCropperImage, {
-                aspectRatio: 1 / 1,
-                viewMode: 1,
-                background: false,
-                ready: function () {
-                    this.cropper.cropper.style.opacity = 1;
-                }
-            });
-        }
-    } else if (deleteBtn) {
-        const imageToDelete = appState.galleryImages.find(img => img.id === appState.editingGalleryImageId);
-        if (imageToDelete) {
-             showConfirm("¿Estás seguro de que quieres eliminar esta imagen?", async (confirmed) => {
-                if (confirmed) {
-                    const { error: dbError } = await supabaseClient.from('gallery_images').delete().eq('id', imageToDelete.id);
-                    if (dbError) return showAlert(`Error al eliminar: ${dbError.message}`);
+            appState.thumbnailCropper = new Cropper(DOMElements.thumbnailCropperImage, {
+                aspectRatio: 1 / 1,
+                viewMode: 1,
+                background: false,
+                ready: function () {
+                    this.cropper.cropper.style.opacity = 1;
+                }
+            });
+        }
+    } else if (deleteBtn) {
+        const imageToDelete = appState.galleryImages.find(img => img.id === appState.editingGalleryImageId);
+        if (imageToDelete) {
+             showConfirm("¿Estás seguro de que quieres eliminar esta imagen?", async (confirmed) => {
+                if (confirmed) {
+                    const { error: dbError } = await supabaseClient.from('gallery_images').delete().eq('id', imageToDelete.id);
+                    if (dbError) return showAlert(`Error al eliminar: ${dbError.message}`);
 
-                    const pathsToDelete = [imageToDelete.image_path];
-                    if (imageToDelete.thumbnail_path) pathsToDelete.push(imageToDelete.thumbnail_path);
-                    await supabaseClient.storage.from('gallery-images').remove(pathsToDelete);
-                    
-                    appState.galleryImages = appState.galleryImages.filter(img => img.id !== imageToDelete.id);
-                    renderGalleryEditor();
-                    updateLivePreview();
-                    closeGalleryEditModal();
-                }
-            });
-        }
-    }
+                    const pathsToDelete = [imageToDelete.image_path];
+                    if (imageToDelete.thumbnail_path) pathsToDelete.push(imageToDelete.thumbnail_path);
+                    await supabaseClient.storage.from('gallery-images').remove(pathsToDelete);
+                    
+                    appState.galleryImages = appState.galleryImages.filter(img => img.id !== imageToDelete.id);
+                    renderGalleryEditor();
+                    updateLivePreview();
+                    closeGalleryEditModal();
+                }
+            });
+        }
+    }
 });
 
 DOMElements.galleryEditModal.querySelector('#gallery-edit-caption').addEventListener('input', debounce(async (e) => {
-    const newCaption = e.target.value;
-    const { error } = await supabaseClient
-        .from('gallery_images')
-        .update({ caption: newCaption })
-        .eq('id', appState.editingGalleryImageId);
-    
-    if (error) {
-        showAlert("No se pudo guardar el pie de foto.");
-        console.error("Error updating caption:", error);
-    } else {
-        const img = appState.galleryImages.find(i => i.id === appState.editingGalleryImageId);
-        if (img) img.caption = newCaption;
-        updateLivePreview();
-    }
+    const newCaption = e.target.value;
+    const { error } = await supabaseClient
+        .from('gallery_images')
+        .update({ caption: newCaption })
+        .eq('id', appState.editingGalleryImageId);
+    
+    if (error) {
+        showAlert("No se pudo guardar el pie de foto.");
+        console.error("Error updating caption:", error);
+    } else {
+        const img = appState.galleryImages.find(i => i.id === appState.editingGalleryImageId);
+        if (img) img.caption = newCaption;
+        updateLivePreview();
+    }
 }, 500));
 
 
 document.getElementById('thumbnail-cropper-cancel-btn').addEventListener('click', () => {
-    DOMElements.thumbnailCropperModal.classList.add('hidden');
-    if(appState.thumbnailCropper) appState.thumbnailCropper.destroy();
-    appState.thumbnailCropper = null;
+    DOMElements.thumbnailCropperModal.classList.add('hidden');
+    if(appState.thumbnailCropper) appState.thumbnailCropper.destroy();
+    appState.thumbnailCropper = null;
 });
 
 document.getElementById('thumbnail-cropper-save-btn').addEventListener('click', () => {
-    if (!appState.thumbnailCropper || !appState.editingGalleryImageId) return;
+    if (!appState.thumbnailCropper || !appState.editingGalleryImageId) return;
 
-    const saveBtn = document.getElementById('thumbnail-cropper-save-btn');
-    saveBtn.disabled = true;
-    saveBtn.innerHTML = `<div class="w-5 h-5 border-2 border-t-transparent border-white rounded-full animate-spin"></div><span>Procesando...</span>`;
+    const saveBtn = document.getElementById('thumbnail-cropper-save-btn');
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = `<div class="w-5 h-5 border-2 border-t-transparent border-white rounded-full animate-spin"></div><span>Procesando...</span>`;
 
-    appState.thumbnailCropper.getCroppedCanvas({ width: 400, height: 400 }).toBlob(async (blob) => {
-        try {
-            const imageToUpdate = appState.galleryImages.find(img => img.id === appState.editingGalleryImageId);
-            if (!imageToUpdate) throw new Error("Image not found");
+    appState.thumbnailCropper.getCroppedCanvas({ width: 400, height: 400 }).toBlob(async (blob) => {
+        try {
+            const imageToUpdate = appState.galleryImages.find(img => img.id === appState.editingGalleryImageId);
+            if (!imageToUpdate) throw new Error("Image not found");
 
-            const compressedBlob = await imageCompression(blob, { maxSizeMB: 0.1, maxWidthOrHeight: 400, useWebWorker: true });
-            
-            if (imageToUpdate.thumbnail_path) {
-                await supabaseClient.storage.from('gallery-images').remove([imageToUpdate.thumbnail_path]);
-            }
+            const compressedBlob = await imageCompression(blob, { maxSizeMB: 0.1, maxWidthOrHeight: 400, useWebWorker: true });
+            
+            if (imageToUpdate.thumbnail_path) {
+                await supabaseClient.storage.from('gallery-images').remove([imageToUpdate.thumbnail_path]);
+            }
 
-            const thumbnailPath = `${appState.currentUser.id}/thumb-${Date.now()}.webp`;
-            const { error: uploadError } = await supabaseClient.storage.from('gallery-images').upload(thumbnailPath, compressedBlob, { contentType: 'image/webp' });
-            if (uploadError) throw uploadError;
+            const thumbnailPath = `${appState.currentUser.id}/thumb-${Date.now()}.webp`;
+            const { error: uploadError } = await supabaseClient.storage.from('gallery-images').upload(thumbnailPath, compressedBlob, { contentType: 'image/webp' });
+            if (uploadError) throw uploadError;
 
-            const { data: { publicUrl } } = supabaseClient.storage.from('gallery-images').getPublicUrl(thumbnailPath);
+            const { data: { publicUrl } } = supabaseClient.storage.from('gallery-images').getPublicUrl(thumbnailPath);
 
-            const { data: updatedImage, error: dbError } = await supabaseClient
-                .from('gallery_images')
-                .update({ thumbnail_url: publicUrl, thumbnail_path: thumbnailPath })
-                .eq('id', appState.editingGalleryImageId)
-                .select()
-                .single();
-            if (dbError) throw dbError;
-            
-            const index = appState.galleryImages.findIndex(img => img.id === appState.editingGalleryImageId);
-            if (index !== -1) appState.galleryImages[index] = updatedImage;
+            const { data: updatedImage, error: dbError } = await supabaseClient
+                .from('gallery_images')
+                .update({ thumbnail_url: publicUrl, thumbnail_path: thumbnailPath })
+                .eq('id', appState.editingGalleryImageId)
+                .select()
+                .single();
+            if (dbError) throw dbError;
+            
+            const index = appState.galleryImages.findIndex(img => img.id === appState.editingGalleryImageId);
+            if (index !== -1) appState.galleryImages[index] = updatedImage;
 
-            renderGalleryEditor();
-            updateLivePreview();
+            renderGalleryEditor();
+            updateLivePreview();
 
-        } catch (error) {
-            showAlert(`Error al guardar la miniatura: ${error.message}`);
-        } finally {
-            saveBtn.disabled = false;
-            saveBtn.textContent = 'Guardar Miniatura';
-            DOMElements.thumbnailCropperModal.classList.add('hidden');
-            if(appState.thumbnailCropper) appState.thumbnailCropper.destroy();
-            appState.thumbnailCropper = null;
-        }
-    }, 'image/webp');
+        } catch (error) {
+            showAlert(`Error al guardar la miniatura: ${error.message}`);
+        } finally {
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Guardar Miniatura';
+            DOMElements.thumbnailCropperModal.classList.add('hidden');
+            if(appState.thumbnailCropper) appState.thumbnailCropper.destroy();
+            appState.thumbnailCropper = null;
+        }
+    }, 'image/webp');
 });
 
 
 // --- INICIALIZACIÓN ---
 initializeApp();
-window.onload = () => { 
-	lucide.createIcons(); 
+window.onload = () => { 
+	lucide.createIcons(); 
 	setupPasswordToggle('password-input', 'auth-password-toggle');
-    setupPasswordToggle('register-password-input', 'register-password-toggle');
-    setupPasswordToggle('register-confirm-password-input', 'register-confirm-password-toggle');
+    setupPasswordToggle('register-password-input', 'register-password-toggle');
+    setupPasswordToggle('register-confirm-password-input', 'register-confirm-password-toggle');
 	setupPasswordToggle('current-password-input', 'current-password-toggle');
 	setupPasswordToggle('new-password-input', 'new-password-toggle');
 	setupPasswordToggle('confirm-password-input', 'confirm-password-toggle');
@@ -2750,3 +2792,5 @@ window.onload = () => {
 	setupPasswordToggle('update-confirm-password-input', 'update-confirm-password-toggle');
 	setupPasswordToggle('delete-confirm-password-input', 'delete-confirm-password-toggle');
 };
+
+
