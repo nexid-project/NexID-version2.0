@@ -1194,6 +1194,7 @@ function openSettingsPanel() {
 	
     // Crear el estado de previsualización
     appState.previewProfile = JSON.parse(JSON.stringify(appState.myProfile));
+    appState.previewProfile.galleryImages = appState.galleryImages;
 
 	appState.isSettingsDirty = false;
 	appState.tempBackgroundImagePath = null;
@@ -1304,9 +1305,10 @@ document.getElementById('save-changes-btn').addEventListener('click', async () =
 
 	// Los datos a guardar ahora vienen de previewProfile
     const dataToSave = { ...appState.previewProfile };
-    // Limpiar datos que no van en la tabla de perfiles, como el id
+    // Limpiar datos que no van en la tabla de perfiles
     delete dataToSave.id; 
     delete dataToSave.created_at;
+    delete dataToSave.galleryImages;
 
 	const oldProfile = appState.myProfile;
 	const newImagePath = dataToSave.background_image_path;
@@ -2854,5 +2856,4 @@ window.onload = () => {
 	setupPasswordToggle('update-confirm-password-input', 'update-confirm-password-toggle');
 	setupPasswordToggle('delete-confirm-password-input', 'delete-confirm-password-toggle');
 };
-
 
