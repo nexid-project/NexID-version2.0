@@ -216,9 +216,11 @@ function initializeApp() {
 		if (event === 'PASSWORD_RECOVERY') {
 			appState.isRecoveringPassword = true;
 			showPage('updatePassword');
-		} else {
+		} else if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
 			handleAuthStateChange(session);
-		}
+		} else {
+            console.log(`onAuthStateChange event ignored: ${event}`);
+        }
 	});
 }
 
