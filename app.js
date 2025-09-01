@@ -51,7 +51,6 @@ let appState = {
     previewProfile: null, // El estado temporal para la previsualización en vivo
 	links: [],
     galleryImages: [],
-	socialButtons: [],
 	tempBackgroundImagePath: null,
 	tempLayoutOrder: null,
 	subscriptions: { auth: null, links: null },
@@ -210,7 +209,6 @@ function initializeApp() {
 	}
 	
 	appState.subscriptions.auth = supabaseClient.auth.onAuthStateChange((event, session) => {
-		// Protección contra interrupciones del Plan de Estado Unificado
         if (appState.previewProfile) {
             console.log("Auth state changed but settings panel is open. Ignoring re-render.");
             return;
@@ -276,7 +274,6 @@ async function handleAuthStateChange(session) {
         
         const { data: galleryImages } = await supabaseClient.from('gallery_images').select('*').eq('user_id', appState.currentUser.id).order('order_index', { ascending: true });
         appState.galleryImages = galleryImages || [];
-        appState.currentGalleryIndex = 0;
 
         const urlParams = new URLSearchParams(window.location.search);
         const publicUsername = urlParams.get('user');
@@ -286,6 +283,7 @@ async function handleAuthStateChange(session) {
             document.getElementById('back-to-my-profile-btn').href = `${window.location.pathname}?user=${myProfile.username.substring(1)}`;
             await loadPublicProfile(publicUsername);
         } else {
+            appState.currentGalleryIndex = 0; // Reset index only when loading my own profile
             document.getElementById('back-to-my-profile-btn').classList.add('hidden');
             const { data: links } = await supabaseClient.from('links').select('*').eq('user_id', appState.currentUser.id).order('order_index', { ascending: true });
             appState.links = links || [];
