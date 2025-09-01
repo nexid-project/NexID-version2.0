@@ -486,7 +486,7 @@ function renderSingleLink(linkData, profileData) {
 function renderProfile(profileData, isOwner) {
 	if (!profileData) return;
 
-	// 1. Actualizar estilos globales (no afectan a los hijos del layout)
+	// 1. Actualizar estilos globales
 	const theme = profileData.theme || 'grafito';
 	const font = profileData.font_family || 'font-inter';
 	loadFontIfNeeded(font);
@@ -506,7 +506,7 @@ function renderProfile(profileData, isOwner) {
 
 	const layoutContainer = document.getElementById('profile-layout-container');
 
-	// 2. Construir el layout deseado (corrigiendo el bug de clonación)
+	// 2. Construir el layout deseado
 	const allBaseSections = ["profile-image", "display-name", "username", "description", "featured-video", "gallery", "social-buttons", "socials"];
 	let baseLayout = appState.tempLayoutOrder || profileData.layout_order || [...allBaseSections];
 	
@@ -529,13 +529,12 @@ function renderProfile(profileData, isOwner) {
     // 3. Reconciliación del DOM
     const existingElements = new Map(Array.from(layoutContainer.children).map(el => [el.dataset.section, el]));
     const elementsToKeep = new Set();
+    const fragment = document.createDocumentFragment();
     
-    // Iterar para crear/actualizar y ordenar
     desiredLayoutOrder.forEach(sectionId => {
         elementsToKeep.add(sectionId);
         let element = existingElements.get(sectionId);
         
-        // Crear si no existe
         if (!element) {
             const tempDiv = document.createElement('div');
             let elementHtml = '';
@@ -552,36 +551,34 @@ function renderProfile(profileData, isOwner) {
             }
         }
 
-        // Actualizar contenido si ya existe
-        if (element && existingElements.has(sectionId)) {
-            switch (sectionId) {
-                case 'display-name': element.querySelector('#public-display-name').textContent = profileData.display_name; break;
-                case 'username': element.querySelector('#public-username').textContent = profileData.username || ''; break;
-                case 'description': element.querySelector('#public-description').textContent = profileData.description || ''; break;
-                case 'profile-image': element.querySelector('#public-profile-img').src = profileData.profile_image_url || 'https://placehold.co/128x128/7f9cf5/1F2937?text=...'; break;
-            }
-            if (sectionId.startsWith('link_')) {
-                const linkId = sectionId.replace('link_', '');
-                const linkData = appState.links.find(l => String(l.id) === linkId);
-                const tempDiv = document.createElement('div');
-                tempDiv.innerHTML = renderSingleLink(linkData, profileData);
-                element.innerHTML = tempDiv.firstElementChild.innerHTML;
-                element.className = tempDiv.firstElementChild.className;
-            }
-        }
-        
-        // Mover a la posición correcta
         if (element) {
-            layoutContainer.appendChild(element);
+             if (existingElements.has(sectionId)) {
+                switch (sectionId) {
+                    case 'display-name': element.querySelector('#public-display-name').textContent = profileData.display_name; break;
+                    case 'username': element.querySelector('#public-username').textContent = profileData.username || ''; break;
+                    case 'description': element.querySelector('#public-description').textContent = profileData.description || ''; break;
+                    case 'profile-image': element.querySelector('#public-profile-img').src = profileData.profile_image_url || 'https://placehold.co/128x128/7f9cf5/1F2937?text=...'; break;
+                }
+                if (sectionId.startsWith('link_')) {
+                    const linkId = sectionId.replace('link_', '');
+                    const linkData = appState.links.find(l => String(l.id) === linkId);
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = renderSingleLink(linkData, profileData);
+                    element.innerHTML = tempDiv.firstElementChild.innerHTML;
+                    element.className = tempDiv.firstElementChild.className;
+                }
+            }
+            fragment.appendChild(element);
         }
     });
     
-    // Eliminar elementos obsoletos
     existingElements.forEach((element, sectionId) => {
         if (!elementsToKeep.has(sectionId)) {
             element.remove();
         }
     });
+    
+    layoutContainer.appendChild(fragment);
 
 	// 4. Renderizar/Actualizar componentes complejos
     const videoSection = layoutContainer.querySelector('[data-section="featured-video"]');
