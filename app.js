@@ -282,7 +282,6 @@ async function handleAuthStateChange(session) {
         } else {
             document.getElementById('back-to-my-profile-btn').classList.add('hidden');
             appState.profile = myProfile;
-			appState.currentGalleryIndex = 0;
             const { data: links } = await supabaseClient.from('links').select('*').eq('user_id', appState.currentUser.id).order('order_index', { ascending: true });
             appState.links = links || [];
             appState.socialButtons = myProfile.social_buttons || [];
@@ -486,18 +485,18 @@ function renderSingleLink(linkData, profileData) {
 
 function renderProfile(profileData, isOwner) {
 	if (!profileData) return;
-	
-	// 1. Preserve video iframe if URL is unchanged to prevent reloading
+
+	// 1. Preserve video container if URL is unchanged
 	const currentVideoContainer = document.querySelector('[data-section="featured-video"]');
-	let savedVideoIframe = null;
+	let savedVideoContainer = null;
 	if (currentVideoContainer) {
 		const existingIframe = currentVideoContainer.querySelector('iframe');
 		const newEmbedUrl = parseVideoUrl(profileData.featured_video_url);
 		if (existingIframe && existingIframe.src === newEmbedUrl) {
-			savedVideoIframe = existingIframe;
+			savedVideoContainer = currentVideoContainer;
 		}
 	}
-	
+
 	const theme = profileData.theme || 'grafito';
 	const font = profileData.font_family || 'font-inter';
 	
@@ -555,12 +554,11 @@ function renderProfile(profileData, isOwner) {
 		}
 	});
 
-    // 2. Restore video or render new one
+	// 2. Restore video or render new one
 	const newVideoContainer = layoutContainer.querySelector('[data-section="featured-video"]');
 	if (newVideoContainer) {
-		if (savedVideoIframe) {
-			newVideoContainer.innerHTML = ''; 
-			newVideoContainer.appendChild(savedVideoIframe);
+		if (savedVideoContainer) {
+			newVideoContainer.replaceWith(savedVideoContainer);
 		} else {
 			const embedUrl = parseVideoUrl(profileData.featured_video_url);
 			if (embedUrl) {
@@ -574,16 +572,15 @@ function renderProfile(profileData, isOwner) {
 	}
 
 	// 3. Render gallery and restore correct image selection
-	const galleryContainer = layoutContainer.querySelector('#gallery-container');
+    const galleryContainer = layoutContainer.querySelector('#gallery-container');
     if (galleryContainer) {
         renderImmersiveGallery(appState.galleryImages);
-        if(appState.currentGalleryIndex < appState.galleryImages.length) {
-			displayGalleryImage(appState.galleryImages, appState.currentGalleryIndex);
-		} else {
-			appState.currentGalleryIndex = 0;
+		const targetIndex = (appState.currentGalleryIndex < appState.galleryImages.length) ? appState.currentGalleryIndex : 0;
+		if (appState.galleryImages.length > 0) {
+			displayGalleryImage(appState.galleryImages, targetIndex);
 		}
+		appState.currentGalleryIndex = targetIndex;
     }
-
     const socialButtonsContainer = layoutContainer.querySelector('#social-buttons-section');
     if (socialButtonsContainer) {
         renderSocialButtons(profileData.social_buttons);
