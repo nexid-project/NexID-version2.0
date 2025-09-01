@@ -529,7 +529,6 @@ function renderProfile(profileData, isOwner) {
     // 3. Reconciliación del DOM
     const existingElements = new Map(Array.from(layoutContainer.children).map(el => [el.dataset.section, el]));
     const elementsToKeep = new Set();
-    const fragment = document.createDocumentFragment();
     
     desiredLayoutOrder.forEach(sectionId => {
         elementsToKeep.add(sectionId);
@@ -549,9 +548,7 @@ function renderProfile(profileData, isOwner) {
                 tempDiv.innerHTML = elementHtml;
                 element = tempDiv.firstElementChild;
             }
-        }
-
-        if (element) {
+        } else {
              if (existingElements.has(sectionId)) {
                 switch (sectionId) {
                     case 'display-name': element.querySelector('#public-display-name').textContent = profileData.display_name; break;
@@ -568,7 +565,10 @@ function renderProfile(profileData, isOwner) {
                     element.className = tempDiv.firstElementChild.className;
                 }
             }
-            fragment.appendChild(element);
+        }
+        
+        if (element) {
+            layoutContainer.appendChild(element);
         }
     });
     
@@ -577,8 +577,6 @@ function renderProfile(profileData, isOwner) {
             element.remove();
         }
     });
-    
-    layoutContainer.appendChild(fragment);
 
 	// 4. Renderizar/Actualizar componentes complejos
     const videoSection = layoutContainer.querySelector('[data-section="featured-video"]');
@@ -1061,34 +1059,39 @@ async function handleShare(profileData) {
 		text: `Mira mi perfil de NexID: ${profileData.description || ''}`,	
 		url: `${window.location.origin}${window.location.pathname}?user=${profileData.username.substring(1)}`
 	};
-	
-	const fallbackCopy = () => {
-		const textArea = document.createElement("textarea");
-		textArea.value = shareData.url;
-		textArea.style.position = "fixed";
-		textArea.style.left = "-9999px";
-		document.body.appendChild(textArea);
-		textArea.focus();
-		textArea.select();
-		try {
-			document.execCommand('copy');
-			showAlert('¡Enlace copiado al portapapeles!');
-		} catch (err) {
-			console.error('Fallback copy failed:', err);
-			showAlert('No se pudo copiar el enlace.');
-		}
-		document.body.removeChild(textArea);
-	};
+
+	let copied = false;
+	const textArea = document.createElement("textarea");
+	textArea.value = shareData.url;
+	textArea.style.position = "fixed";
+	textArea.style.top = '0';
+	textArea.style.left = '-9999px';
+	document.body.appendChild(textArea);
+	textArea.focus();
+	textArea.select();
 
 	try {
-		if (navigator.share) {
-			await navigator.share(shareData);
-		} else {
-			fallbackCopy();
-		}
+		copied = document.execCommand('copy');
 	} catch (err) {
-		console.error("Error al compartir:", err);
-		fallbackCopy();
+		console.error('Copy to clipboard failed:', err);
+	}
+	document.body.removeChild(textArea);
+
+	if (navigator.share) {
+		try {
+			if (copied) {
+				showAlert('¡Enlace copiado! Ahora puedes compartirlo.');
+			}
+			await navigator.share(shareData);
+		} catch (err) {
+			console.log("Share cancelled by user.");
+		}
+	} else {
+		if (copied) {
+			showAlert('¡Enlace copiado al portapapeles!');
+		} else {
+			showAlert('No se pudo copiar el enlace.');
+		}
 	}
 }
 
