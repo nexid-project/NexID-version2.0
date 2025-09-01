@@ -486,7 +486,7 @@ function renderSingleLink(linkData, profileData) {
 function renderProfile(profileData, isOwner) {
 	if (!profileData) return;
 
-	// 1. Preserve video container if URL is unchanged
+	// --- Plan de Actualización Selectiva: Fase 1 (Preservación) ---
 	const currentVideoContainer = document.querySelector('[data-section="featured-video"]');
 	let savedVideoContainer = null;
 	if (currentVideoContainer) {
@@ -497,6 +497,13 @@ function renderProfile(profileData, isOwner) {
 		}
 	}
 
+	const currentGalleryContainer = document.querySelector('#gallery-container');
+	let savedGalleryContainer = null;
+    // Se preserva la galería si existe. La lógica de actualización de la imagen se maneja más abajo.
+	if (currentGalleryContainer && appState.galleryImages.length > 0) {
+		savedGalleryContainer = currentGalleryContainer;
+	}
+	
 	const theme = profileData.theme || 'grafito';
 	const font = profileData.font_family || 'font-inter';
 	
@@ -554,8 +561,8 @@ function renderProfile(profileData, isOwner) {
 		}
 	});
 
-	// 2. Restore video or render new one
-	const newVideoContainer = layoutContainer.querySelector('[data-section="featured-video"]');
+    // --- Plan de Actualización Selectiva: Fase 2 (Reemplazo y Renderizado Final) ---
+    const newVideoContainer = layoutContainer.querySelector('[data-section="featured-video"]');
 	if (newVideoContainer) {
 		if (savedVideoContainer) {
 			newVideoContainer.replaceWith(savedVideoContainer);
@@ -571,16 +578,22 @@ function renderProfile(profileData, isOwner) {
 		}
 	}
 
-	// 3. Render gallery and restore correct image selection
-    const galleryContainer = layoutContainer.querySelector('#gallery-container');
-    if (galleryContainer) {
-        renderImmersiveGallery(appState.galleryImages);
-		const targetIndex = (appState.currentGalleryIndex < appState.galleryImages.length) ? appState.currentGalleryIndex : 0;
-		if (appState.galleryImages.length > 0) {
-			displayGalleryImage(appState.galleryImages, targetIndex);
-		}
-		appState.currentGalleryIndex = targetIndex;
+    const newGalleryContainer = layoutContainer.querySelector('#gallery-container');
+    if (newGalleryContainer) {
+        if (savedGalleryContainer) {
+            newGalleryContainer.replaceWith(savedGalleryContainer);
+            // Asegurarse de que la imagen correcta se muestre incluso si se preserva el contenedor
+            displayGalleryImage(appState.galleryImages, appState.currentGalleryIndex);
+        } else {
+            renderImmersiveGallery(appState.galleryImages);
+            const targetIndex = (appState.currentGalleryIndex < appState.galleryImages.length) ? appState.currentGalleryIndex : 0;
+            if (appState.galleryImages.length > 0) {
+                displayGalleryImage(appState.galleryImages, targetIndex);
+            }
+            appState.currentGalleryIndex = targetIndex;
+        }
     }
+
     const socialButtonsContainer = layoutContainer.querySelector('#social-buttons-section');
     if (socialButtonsContainer) {
         renderSocialButtons(profileData.social_buttons);
@@ -2806,4 +2819,5 @@ window.onload = () => {
 	setupPasswordToggle('update-confirm-password-input', 'update-confirm-password-toggle');
 	setupPasswordToggle('delete-confirm-password-input', 'delete-confirm-password-toggle');
 };
+
 
