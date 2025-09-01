@@ -599,6 +599,7 @@ function renderProfile(profileData, isOwner) {
         if (!gallerySection.querySelector('.immersive-gallery')) {
             renderImmersiveGallery(appState.galleryImages);
         }
+        updateImmersiveGallery(appState.galleryImages);
         displayGalleryImage(appState.galleryImages, appState.currentGalleryIndex);
     }
     
@@ -2406,23 +2407,55 @@ function renderImmersiveGallery(images) {
     });
 }
 
+function updateImmersiveGallery(images) {
+    const thumbnailStrip = document.getElementById('gallery-thumbnail-strip');
+    if (!thumbnailStrip) return;
+
+    const existingThumbnails = new Map(Array.from(thumbnailStrip.children).map((thumb, index) => [thumb.src, thumb]));
+    const fragment = document.createDocumentFragment();
+
+    images.forEach((image, index) => {
+        const src = image.thumbnail_url || image.image_url;
+        let thumb = existingThumbnails.get(src);
+        if (thumb) {
+            existingThumbnails.delete(src); // Mark as kept
+        } else {
+            thumb = document.createElement('img');
+            thumb.src = src;
+            thumb.className = 'thumbnail';
+        }
+        thumb.dataset.index = index;
+        fragment.appendChild(thumb);
+    });
+    
+    thumbnailStrip.innerHTML = '';
+    thumbnailStrip.appendChild(fragment);
+}
+
+
 function displayGalleryImage(images, index) {
     const mainImage = document.getElementById('gallery-main-image');
     const caption = document.getElementById('gallery-caption');
     const thumbnails = document.querySelectorAll('#gallery-thumbnail-strip .thumbnail');
 
-    if (!mainImage || !caption || !thumbnails) return;
+    if (!mainImage || !caption || !thumbnails.length) return;
 
-    mainImage.style.opacity = 0;
-    caption.style.opacity = 0;
+    const selectedImage = images[index];
+    if (!selectedImage) return;
 
-    setTimeout(() => {
-        mainImage.src = images[index].image_url;
-        mainImage.style.objectPosition = images[index].focus_point || 'center';
-        caption.textContent = images[index].caption || '';
-        mainImage.style.opacity = 1;
-        caption.style.opacity = 1;
-    }, 300);
+    // Check if the main image needs updating
+    if (mainImage.src !== selectedImage.image_url) {
+        mainImage.style.opacity = 0;
+        caption.style.opacity = 0;
+
+        setTimeout(() => {
+            mainImage.src = selectedImage.image_url;
+            mainImage.style.objectPosition = selectedImage.focus_point || 'center';
+            caption.textContent = selectedImage.caption || '';
+            mainImage.style.opacity = 1;
+            caption.style.opacity = 1;
+        }, 150);
+    }
 
     thumbnails.forEach((thumb, i) => {
         thumb.classList.toggle('active', i === index);
@@ -2474,11 +2507,11 @@ function renderGalleryEditor() {
                 console.error("Error reordering gallery:", results.find(r => r.error).error);
             } else {
                 updatedOrder.forEach(item => {
-                    const img = appState.galleryImages.find(i => i.id === item.id);
+                    const img = appState.galleryImages.find(i => String(i.id) === String(item.id));
                     if (img) img.order_index = item.order_index;
                 });
                 appState.galleryImages.sort((a, b) => a.order_index - b.order_index);
-                // Forzar la actualización de la vista previa con el nuevo orden
+                
                 markSettingsAsDirty();
                 updateLivePreview();
             }
@@ -2562,7 +2595,12 @@ function enableFocusDrag(container, image, galleryImageData) {
 
         const newFocusPoint = `50% ${lastFocusPercent}%`;
         
-        galleryImageData.focus_point = newFocusPoint;
+        const imageToUpdate = appState.galleryImages.find(i => i.id === galleryImageData.id);
+        if(imageToUpdate) imageToUpdate.focus_point = newFocusPoint;
+        if(appState.previewProfile) {
+            const previewImageToUpdate = appState.previewProfile.galleryImages.find(i => i.id === galleryImageData.id);
+            if(previewImageToUpdate) previewImageToUpdate.focus_point = newFocusPoint;
+        }
 
         const { error } = await supabaseClient
             .from('gallery_images')
@@ -2572,6 +2610,7 @@ function enableFocusDrag(container, image, galleryImageData) {
         if (error) {
             showAlert("No se pudo guardar el punto de enfoque.");
         } else {
+            markSettingsAsDirty();
             updateLivePreview();
         }
     };
@@ -2647,6 +2686,7 @@ DOMElements.galleryImageUploadInput.addEventListener('change', async (e) => {
     appState.galleryImages.push(...newImages);
 
     renderGalleryEditor();
+    markSettingsAsDirty();
     updateLivePreview();
     
     DOMElements.galleryImageUploadInput.value = '';
@@ -2656,7 +2696,7 @@ DOMElements.galleryEditorList.addEventListener('click', (e) => {
     const item = e.target.closest('.gallery-editor-item');
     if (item) {
         const imageId = item.dataset.id;
-        const image = appState.galleryImages.find(img => img.id === imageId);
+        const image = appState.galleryImages.find(img => String(img.id) === String(imageId));
         if (image) {
             openGalleryEditModal(image);
         }
@@ -2707,6 +2747,7 @@ DOMElements.galleryEditModal.addEventListener('click', (e) => {
 
                     appState.galleryImages = appState.galleryImages.filter(img => img.id !== imageToDelete.id);
                     renderGalleryEditor();
+                    markSettingsAsDirty();
                     updateLivePreview();
                     closeGalleryEditModal();
                 }
@@ -2728,6 +2769,7 @@ DOMElements.galleryEditModal.querySelector('#gallery-edit-caption').addEventList
     } else {
         const img = appState.galleryImages.find(i => i.id === appState.editingGalleryImageId);
         if (img) img.caption = newCaption;
+        markSettingsAsDirty();
         updateLivePreview();
     }
 }, 500));
@@ -2775,6 +2817,7 @@ document.getElementById('thumbnail-cropper-save-btn').addEventListener('click', 
             if (index !== -1) appState.galleryImages[index] = updatedImage;
 
             renderGalleryEditor();
+            markSettingsAsDirty();
             updateLivePreview();
 
         } catch (error) {
@@ -2804,5 +2847,4 @@ window.onload = () => {
 	setupPasswordToggle('update-confirm-password-input', 'update-confirm-password-toggle');
 	setupPasswordToggle('delete-confirm-password-input', 'delete-confirm-password-toggle');
 };
-
 
