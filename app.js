@@ -1194,7 +1194,7 @@ function openSettingsPanel() {
 	
     // Crear el estado de previsualización
     appState.previewProfile = JSON.parse(JSON.stringify(appState.myProfile));
-    appState.previewProfile.galleryImages = appState.galleryImages;
+    appState.previewProfile.galleryImages = JSON.parse(JSON.stringify(appState.galleryImages));
 
 	appState.isSettingsDirty = false;
 	appState.tempBackgroundImagePath = null;
