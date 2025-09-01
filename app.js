@@ -283,7 +283,7 @@ async function handleAuthStateChange(session) {
             document.getElementById('back-to-my-profile-btn').href = `${window.location.pathname}?user=${myProfile.username.substring(1)}`;
             await loadPublicProfile(publicUsername);
         } else {
-            appState.currentGalleryIndex = 0; // CORRECTO: Resetear solo aquí
+            appState.currentGalleryIndex = 0; // Reset index only when loading my own profile
             document.getElementById('back-to-my-profile-btn').classList.add('hidden');
             const { data: links } = await supabaseClient.from('links').select('*').eq('user_id', appState.currentUser.id).order('order_index', { ascending: true });
             appState.links = links || [];
@@ -338,7 +338,7 @@ async function loadPublicProfile(username) {
 
 		appState.links = links || [];
         appState.galleryImages = galleryImages || [];
-		appState.currentGalleryIndex = 0; // CORRECTO: Resetear solo aquí
+		appState.currentGalleryIndex = 0;
 		
 		const isOwner = appState.currentUser && appState.currentUser.id === profile.id;
 		renderProfile(profile, isOwner);
@@ -486,7 +486,7 @@ function renderSingleLink(linkData, profileData) {
 function renderProfile(profileData, isOwner) {
 	if (!profileData) return;
 
-	// 1. Actualizar estilos globales
+	// 1. Actualizar estilos globales (no afectan a los hijos del layout)
 	const theme = profileData.theme || 'grafito';
 	const font = profileData.font_family || 'font-inter';
 	loadFontIfNeeded(font);
@@ -506,7 +506,26 @@ function renderProfile(profileData, isOwner) {
 
 	const layoutContainer = document.getElementById('profile-layout-container');
 
-	// 2. Construir el layout deseado
+	// 2. Preservar componentes pesados si no han cambiado
+	let savedVideoContainer = null;
+	const currentVideoContainer = layoutContainer.querySelector('[data-section="featured-video"]');
+	if (currentVideoContainer) {
+		const existingIframe = currentVideoContainer.querySelector('iframe');
+		const newEmbedUrl = parseVideoUrl(profileData.featured_video_url);
+		if (existingIframe && existingIframe.src === newEmbedUrl) {
+			savedVideoContainer = currentVideoContainer;
+            savedVideoContainer.remove();
+		}
+	}
+
+	let savedGalleryContainer = null;
+	const currentGalleryContainer = layoutContainer.querySelector('[data-section="gallery"]');
+	if (currentGalleryContainer && appState.galleryImages.length > 0) {
+		savedGalleryContainer = currentGalleryContainer;
+        savedGalleryContainer.remove();
+	}
+
+	// 3. Construir el layout deseado (corrigiendo el bug de clonación)
 	const allBaseSections = ["profile-image", "display-name", "username", "description", "featured-video", "gallery", "social-buttons", "socials"];
 	let baseLayout = appState.tempLayoutOrder || profileData.layout_order || [...allBaseSections];
 	
@@ -525,83 +544,50 @@ function renderProfile(profileData, isOwner) {
         }
     }
     const desiredLayoutOrder = cleanLayout;
-    
-    // 3. Reconciliación del DOM
-    const existingElements = new Map(Array.from(layoutContainer.children).map(el => [el.dataset.section, el]));
-    const elementsToKeep = new Set();
-    const fragment = document.createDocumentFragment();
-    
-    desiredLayoutOrder.forEach(sectionId => {
-        elementsToKeep.add(sectionId);
-        let element = existingElements.get(sectionId);
-        
-        if (!element) {
-            const tempDiv = document.createElement('div');
-            let elementHtml = '';
-            if (profileSectionTemplates[sectionId]) {
-                elementHtml = profileSectionTemplates[sectionId](profileData, isOwner);
-            } else if (sectionId.startsWith('link_')) {
-                const linkId = sectionId.replace('link_', '');
-                const linkData = appState.links.find(l => String(l.id) === linkId);
-                if (linkData) elementHtml = renderSingleLink(linkData, profileData);
-            }
-            if (elementHtml) {
-                tempDiv.innerHTML = elementHtml;
-                element = tempDiv.firstElementChild;
-            }
-        }
 
-        if (element) {
-             if (existingElements.has(sectionId)) {
-                switch (sectionId) {
-                    case 'display-name': element.querySelector('#public-display-name').textContent = profileData.display_name; break;
-                    case 'username': element.querySelector('#public-username').textContent = profileData.username || ''; break;
-                    case 'description': element.querySelector('#public-description').textContent = profileData.description || ''; break;
-                    case 'profile-image': element.querySelector('#public-profile-img').src = profileData.profile_image_url || 'https://placehold.co/128x128/7f9cf5/1F2937?text=...'; break;
-                }
-                if (sectionId.startsWith('link_')) {
-                    const linkId = sectionId.replace('link_', '');
-                    const linkData = appState.links.find(l => String(l.id) === linkId);
-                    const tempDiv = document.createElement('div');
-                    tempDiv.innerHTML = renderSingleLink(linkData, profileData);
-                    element.innerHTML = tempDiv.firstElementChild.innerHTML;
-                    element.className = tempDiv.firstElementChild.className;
-                }
-            }
-            fragment.appendChild(element);
-        }
-    });
-    
-    existingElements.forEach((element, sectionId) => {
-        if (!elementsToKeep.has(sectionId)) {
-            element.remove();
-        }
-    });
-    
-    layoutContainer.appendChild(fragment);
+	// 4. Reconstruir el HTML para todos los componentes
+    layoutContainer.innerHTML = '';
+	desiredLayoutOrder.forEach(sectionId => {
+		let elementHtml = '';
+		if (profileSectionTemplates[sectionId]) {
+			elementHtml = profileSectionTemplates[sectionId](profileData, isOwner);
+		} else if (sectionId.startsWith('link_')) {
+			const linkId = sectionId.replace('link_', '');
+			const linkData = appState.links.find(l => String(l.id) === linkId);
+			if (linkData) {
+				elementHtml = renderSingleLink(linkData, profileData);
+			}
+		}
+		if (elementHtml) {
+			layoutContainer.innerHTML += elementHtml;
+		}
+	});
 
-	// 4. Renderizar/Actualizar componentes complejos
-    const videoSection = layoutContainer.querySelector('[data-section="featured-video"]');
-    if (videoSection) {
-        const embedUrl = parseVideoUrl(profileData.featured_video_url);
-        const iframe = videoSection.querySelector('iframe');
-        if (embedUrl) {
-            if (!iframe || iframe.src !== embedUrl) {
-                videoSection.innerHTML = `<div class="video-wrapper"><iframe class="w-full h-full rounded-lg absolute inset-0" src="${embedUrl}" title="Video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
-            }
-        } else {
-            videoSection.innerHTML = '';
-        }
-    }
-    
-    const gallerySection = layoutContainer.querySelector('[data-section="gallery"]');
-    if (gallerySection) {
-        if (!gallerySection.querySelector('.immersive-gallery')) {
-            renderImmersiveGallery(appState.galleryImages);
-        }
-        displayGalleryImage(appState.galleryImages, appState.currentGalleryIndex);
-    }
-    
+	// 5. Reemplazar placeholders con los componentes pesados preservados
+	const newVideoPlaceholder = layoutContainer.querySelector('[data-section="featured-video"]');
+	if (newVideoPlaceholder) {
+		if (savedVideoContainer) {
+			newVideoPlaceholder.replaceWith(savedVideoContainer);
+		} else { 
+			const embedUrl = parseVideoUrl(profileData.featured_video_url);
+			if (embedUrl) {
+				newVideoPlaceholder.innerHTML = `<div class="video-wrapper"><iframe class="w-full h-full rounded-lg absolute inset-0" src="${embedUrl}" title="Video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
+			}
+		}
+	}
+
+	const newGalleryPlaceholder = layoutContainer.querySelector('[data-section="gallery"]');
+	if (newGalleryPlaceholder) {
+		if (savedGalleryContainer) {
+			newGalleryPlaceholder.replaceWith(savedGalleryContainer);
+			displayGalleryImage(appState.galleryImages, appState.currentGalleryIndex);
+		} else if (appState.galleryImages.length > 0) {
+			renderImmersiveGallery(appState.galleryImages);
+			displayGalleryImage(appState.galleryImages, appState.currentGalleryIndex);
+		}
+	}
+
+	// 6. Renderizar sub-componentes y elementos finales
 	const socialButtonsContainer = layoutContainer.querySelector('#social-buttons-section');
     if (socialButtonsContainer) renderSocialButtons(profileData.social_buttons);
     
@@ -2801,4 +2787,3 @@ window.onload = () => {
 	setupPasswordToggle('update-confirm-password-input', 'update-confirm-password-toggle');
 	setupPasswordToggle('delete-confirm-password-input', 'delete-confirm-password-toggle');
 };
-
