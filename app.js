@@ -47,8 +47,8 @@ function loadFontIfNeeded(fontClass) {
 // --- 2. ESTADO GLOBAL DE LA APLICACIÓN ---
 let appState = {
 	currentUser: null,
-	myProfile: null,
-	profile: null,
+	myProfile: null, // El estado real guardado en la DB
+    previewProfile: null, // El estado temporal para la previsualización en vivo
 	links: [],
     galleryImages: [],
 	socialButtons: [],
@@ -210,6 +210,11 @@ function initializeApp() {
 	}
 	
 	appState.subscriptions.auth = supabaseClient.auth.onAuthStateChange((event, session) => {
+		// Protección contra interrupciones del Plan de Estado Unificado
+        if (appState.previewProfile) {
+            console.log("Auth state changed but settings panel is open. Ignoring re-render.");
+            return;
+        }
 		if (event === 'PASSWORD_RECOVERY') {
 			appState.isRecoveringPassword = true;
 			showPage('updatePassword');
@@ -271,6 +276,7 @@ async function handleAuthStateChange(session) {
         
         const { data: galleryImages } = await supabaseClient.from('gallery_images').select('*').eq('user_id', appState.currentUser.id).order('order_index', { ascending: true });
         appState.galleryImages = galleryImages || [];
+        appState.currentGalleryIndex = 0;
 
         const urlParams = new URLSearchParams(window.location.search);
         const publicUsername = urlParams.get('user');
@@ -281,11 +287,9 @@ async function handleAuthStateChange(session) {
             await loadPublicProfile(publicUsername);
         } else {
             document.getElementById('back-to-my-profile-btn').classList.add('hidden');
-            appState.profile = myProfile;
             const { data: links } = await supabaseClient.from('links').select('*').eq('user_id', appState.currentUser.id).order('order_index', { ascending: true });
             appState.links = links || [];
-            appState.socialButtons = myProfile.social_buttons || [];
-
+            
             if (myProfile && myProfile.username_set) {
                 if (window.location.protocol !== 'blob:') {
                     const profileUrl = `${window.location.pathname}?user=${myProfile.username.substring(1)}`;
@@ -334,10 +338,8 @@ async function loadPublicProfile(username) {
 		const { data: links } = await supabaseClient.from('links').select('*').eq('user_id', profile.id).order('order_index', { ascending: true });
         const { data: galleryImages } = await supabaseClient.from('gallery_images').select('*').eq('user_id', profile.id).order('order_index', { ascending: true });
 
-		appState.profile = profile;
 		appState.links = links || [];
         appState.galleryImages = galleryImages || [];
-		appState.socialButtons = profile.social_buttons || [];
 		appState.currentGalleryIndex = 0;
 		
 		const isOwner = appState.currentUser && appState.currentUser.id === profile.id;
@@ -444,14 +446,14 @@ const profileSectionTemplates = {
         }
         return '';
     },
-	'social-buttons': () => {
-        if (appState.profile.social_buttons && appState.profile.social_buttons.length > 0) {
+	'social-buttons': (profileData) => {
+        if (profileData.social_buttons && profileData.social_buttons.length > 0) {
             return `<section id="social-buttons-section" data-section="social-buttons" class="draggable-item p-2"></section>`;
         }
         return '';
     },
-	'socials': () => {
-        if (appState.profile.socials && Object.keys(appState.profile.socials).length > 0) {
+	'socials': (profileData) => {
+        if (profileData.socials && Object.keys(profileData.socials).length > 0) {
             return `<footer id="socials-footer" data-section="socials" class="pt-4 pb-2 draggable-item p-2"></footer>`;
         }
         return '';
@@ -486,9 +488,7 @@ function renderSingleLink(linkData, profileData) {
 function renderProfile(profileData, isOwner) {
 	if (!profileData) return;
 
-	// --- Plan de Reconciliación del DOM (Implementación Final) ---
-
-	// 1. Actualizar estilos globales que no están en el layout container
+	// 1. Actualizar estilos globales (no afectan a los hijos del layout)
 	const theme = profileData.theme || 'grafito';
 	const font = profileData.font_family || 'font-inter';
 	loadFontIfNeeded(font);
@@ -501,7 +501,6 @@ function renderProfile(profileData, isOwner) {
 	const overlayOpacity = profileData.background_overlay_opacity ?? 0.4;
 	if (backgroundImageUrl) {
 		DOMElements.globalBackground.style.backgroundImage = `linear-gradient(rgba(var(--overlay-rgb), ${overlayOpacity}), rgba(var(--overlay-rgb), ${overlayOpacity})), url('${backgroundImageUrl}')`;
-		DOMElements.globalBackground.style.backgroundColor = 'var(--background)';
 	} else {
 		DOMElements.globalBackground.style.backgroundImage = 'none';
 		DOMElements.globalBackground.style.backgroundColor = 'var(--background)';
@@ -517,7 +516,7 @@ function renderProfile(profileData, isOwner) {
 		const newEmbedUrl = parseVideoUrl(profileData.featured_video_url);
 		if (existingIframe && existingIframe.src === newEmbedUrl) {
 			savedVideoContainer = currentVideoContainer;
-            savedVideoContainer.remove(); // Desconectar del DOM para preservar
+            savedVideoContainer.remove();
 		}
 	}
 
@@ -525,14 +524,13 @@ function renderProfile(profileData, isOwner) {
 	const currentGalleryContainer = layoutContainer.querySelector('[data-section="gallery"]');
 	if (currentGalleryContainer && appState.galleryImages.length > 0) {
 		savedGalleryContainer = currentGalleryContainer;
-        savedGalleryContainer.remove(); // Desconectar del DOM para preservar
+        savedGalleryContainer.remove();
 	}
 
 	// 3. Construir el layout deseado (corrigiendo el bug de clonación)
 	const allBaseSections = ["profile-image", "display-name", "username", "description", "featured-video", "gallery", "social-buttons", "socials"];
 	let baseLayout = appState.tempLayoutOrder || profileData.layout_order || [...allBaseSections];
 	
-    // Anti-clonación: limpiar enlaces viejos antes de añadir los nuevos
     let cleanLayout = baseLayout.filter(id => !id.startsWith('link_'));
 	const linkIds = appState.links.map(link => `link_${link.id}`);
 	
@@ -549,8 +547,8 @@ function renderProfile(profileData, isOwner) {
     }
     const desiredLayoutOrder = cleanLayout;
 
-	// 4. Reconstruir el HTML para todos los componentes (ligero y rápido)
-    layoutContainer.innerHTML = ''; // Limpieza única y total
+	// 4. Reconstruir el HTML para todos los componentes
+    layoutContainer.innerHTML = '';
 	desiredLayoutOrder.forEach(sectionId => {
 		let elementHtml = '';
 		if (profileSectionTemplates[sectionId]) {
@@ -567,12 +565,12 @@ function renderProfile(profileData, isOwner) {
 		}
 	});
 
-	// 5. Reemplazar placeholders con los componentes pesados preservados (si existen)
+	// 5. Reemplazar placeholders con los componentes pesados preservados
 	const newVideoPlaceholder = layoutContainer.querySelector('[data-section="featured-video"]');
 	if (newVideoPlaceholder) {
 		if (savedVideoContainer) {
 			newVideoPlaceholder.replaceWith(savedVideoContainer);
-		} else { // Si no se preservó, renderizarlo de nuevo (porque la URL cambió o es nuevo)
+		} else { 
 			const embedUrl = parseVideoUrl(profileData.featured_video_url);
 			if (embedUrl) {
 				newVideoPlaceholder.innerHTML = `<div class="video-wrapper"><iframe class="w-full h-full rounded-lg absolute inset-0" src="${embedUrl}" title="Video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
@@ -584,23 +582,19 @@ function renderProfile(profileData, isOwner) {
 	if (newGalleryPlaceholder) {
 		if (savedGalleryContainer) {
 			newGalleryPlaceholder.replaceWith(savedGalleryContainer);
-			// Actualizar solo la imagen visible, no todo el componente
 			displayGalleryImage(appState.galleryImages, appState.currentGalleryIndex);
-		} else if (appState.galleryImages.length > 0) { // Renderizar si es nuevo
+		} else if (appState.galleryImages.length > 0) {
 			renderImmersiveGallery(appState.galleryImages);
 			displayGalleryImage(appState.galleryImages, appState.currentGalleryIndex);
 		}
 	}
 
-	// 6. Renderizar componentes que viven dentro de secciones (socials) y otros elementos
+	// 6. Renderizar sub-componentes y elementos finales
 	const socialButtonsContainer = layoutContainer.querySelector('#social-buttons-section');
-    if (socialButtonsContainer) {
-        renderSocialButtons(profileData.social_buttons);
-    }
+    if (socialButtonsContainer) renderSocialButtons(profileData.social_buttons);
+    
     const socialsFooterContainer = layoutContainer.querySelector('#socials-footer');
-    if (socialsFooterContainer) {
-        renderSocialIcons(profileData.socials, profileData.socials_order);
-    }
+    if (socialsFooterContainer) renderSocialIcons(profileData.socials, profileData.socials_order);
 
 	if (isOwner) {
 		const editProfileImgBtn = document.getElementById('edit-profile-img-btn');
@@ -1178,12 +1172,16 @@ DOMElements.settingsPanel.addEventListener('click', (e) => {
 
 
 function openSettingsPanel() {
-	if (!appState.profile) return;
+	if (!appState.myProfile) return;
 	
+    // Crear el estado de previsualización
+    appState.previewProfile = JSON.parse(JSON.stringify(appState.myProfile));
+
 	appState.isSettingsDirty = false;
 	appState.tempBackgroundImagePath = null;
-	const profile = appState.profile;
-	document.getElementById('display-name-input').value = profile.display_name || '';
+	const profile = appState.previewProfile; // Usar la copia de previsualización
+	
+    document.getElementById('display-name-input').value = profile.display_name || '';
 	document.getElementById('username-input').value = profile.username ? profile.username.substring(1) : '';
 	document.getElementById('description-input').value = profile.description || '';
     DOMElements.featuredVideoUrlInput.value = profile.featured_video_url || '';
@@ -1254,7 +1252,9 @@ async function forceCloseSettingsPanel() {
 		await supabaseClient.storage.from('background-images').remove([appState.tempBackgroundImagePath]);
 		appState.tempBackgroundImagePath = null;
 	}
-	DOMElements.settingsPanel.classList.remove('open');
+    appState.previewProfile = null; // Descartar el estado de previsualización
+	
+    DOMElements.settingsPanel.classList.remove('open');
 	DOMElements.settingsOverlay.classList.add('hidden');
 	
 	document.body.classList.remove('panel-is-open');
@@ -1270,7 +1270,7 @@ async function forceCloseSettingsPanel() {
 		});
 	}, 300);
 
-	renderProfile(appState.myProfile, true);
+	renderProfile(appState.myProfile, true); // Revertir al estado guardado
 }
 
 function closeSettingsPanel() {
@@ -1282,53 +1282,14 @@ function closeSettingsPanel() {
 }
 
 document.getElementById('save-changes-btn').addEventListener('click', async () => {
-	if (!appState.currentUser) return;
+	if (!appState.currentUser || !appState.previewProfile) return;
 
-	const newSocials = {};
-	document.querySelectorAll('#socials-inputs-container input[data-social]').forEach(input => {
-		const key = input.dataset.social;
-		const value = input.value.trim();
-		if (value !== '') {
-			newSocials[key] = extractUsername(value, key);
-		}
-	});
+	// Los datos a guardar ahora vienen de previewProfile
+    const dataToSave = { ...appState.previewProfile };
+    // Limpiar datos que no van en la tabla de perfiles, como el id
+    delete dataToSave.id; 
+    delete dataToSave.created_at;
 
-	let currentSocialsOrder = appState.myProfile.socials_order || [];
-	Object.keys(newSocials).forEach(key => {
-		if (!currentSocialsOrder.includes(key)) {
-			currentSocialsOrder.push(key);
-		}
-	});
-	
-	const newSocialButtons = [];
-	document.querySelectorAll('#social-buttons-inputs-container input[data-social-button]').forEach(input => {
-		const value = input.value.trim();
-		if (value) {
-			const key = input.dataset.socialButton;
-			const username = extractUsername(value, key);
-			const url = `${socialBaseUrls[key]}${username}`;
-			newSocialButtons.push({ url });
-		}
-	});
-
-	const dataToSave = {
-		display_name: document.getElementById('display-name-input').value,
-		description: document.getElementById('description-input').value,
-        featured_video_url: DOMElements.featuredVideoUrlInput.value,
-		background_image_url: document.getElementById('background-image-url-input').value,
-		background_image_path: document.getElementById('background-image-path-input').value,
-		background_overlay_opacity: document.getElementById('background-opacity-slider').value,
-		theme: document.querySelector('.theme-option.selected').dataset.theme,
-		button_style: document.querySelector('input[name="buttonStyle"]:checked').value,
-		button_shape_style: document.querySelector('input[name="buttonShape"]:checked').value,
-		font_family: DOMElements.fontFamilyValue.value,
-		socials: newSocials,
-		socials_order: currentSocialsOrder,
-		social_buttons: newSocialButtons,
-		contact_info: {},
-		is_public: document.getElementById('private-profile-toggle').checked,
-	};
-	
 	const oldProfile = appState.myProfile;
 	const newImagePath = dataToSave.background_image_path;
 	const oldImagePath = oldProfile.background_image_path;
@@ -1341,17 +1302,17 @@ document.getElementById('save-changes-btn').addEventListener('click', async () =
 		}
 	}
 
-	document.querySelectorAll('#contact-inputs input').forEach(input => {
-		if(input.value.trim() !== '') dataToSave.contact_info[input.dataset.contact] = input.value.trim();
-	});
-
-	const { data: updatedProfile, error } = await supabaseClient.from('profiles').update(dataToSave).eq('id', appState.currentUser.id).select().single();
-	if (error) {
+	const { data: updatedProfile, error } = await supabaseClient
+        .from('profiles')
+        .update(dataToSave)
+        .eq('id', appState.currentUser.id)
+        .select()
+        .single();
+	
+    if (error) {
 		showAlert(`Error al guardar: ${error.message}`);
 	} else {
-		appState.profile = updatedProfile;
-		appState.myProfile = updatedProfile;
-		appState.socialButtons = updatedProfile.social_buttons || [];
+		appState.myProfile = updatedProfile; // Actualizar el estado real guardado
 		appState.isSettingsDirty = false;
 		appState.tempBackgroundImagePath = null;
 		showAlert("Perfil guardado con éxito.");
@@ -1360,7 +1321,7 @@ document.getElementById('save-changes-btn').addEventListener('click', async () =
 });
 
 function updateLivePreview() {
-	if (!appState.profile) return;
+	if (!appState.previewProfile) return;
 	
 	const backgroundUrlInput = document.getElementById('background-image-url-input');
 	const opacitySlider = document.getElementById('background-opacity-slider');
@@ -1388,11 +1349,9 @@ function updateLivePreview() {
 		if (input.value.trim() !== '') newSocials[input.dataset.social] = input.value.trim();
 	});
 
-	let newSocialsOrder = appState.profile.socials_order ? [...appState.profile.socials_order] : [];
+	let newSocialsOrder = appState.previewProfile.socials_order ? [...appState.previewProfile.socials_order] : [];
 	Object.keys(newSocials).forEach(key => {
-		if (!newSocialsOrder.includes(key)) {
-			newSocialsOrder.push(key);
-		}
+		if (!newSocialsOrder.includes(key)) newSocialsOrder.push(key);
 	});
 	newSocialsOrder = newSocialsOrder.filter(key => newSocials[key]);
 
@@ -1400,28 +1359,26 @@ function updateLivePreview() {
 	const selectedFont = DOMElements.fontFamilyValue.value;
 	loadFontIfNeeded(selectedFont);
 
-	const previewData = {
-		...appState.profile,
-		display_name: document.getElementById('display-name-input').value,
-		description: document.getElementById('description-input').value,
-        featured_video_url: DOMElements.featuredVideoUrlInput.value,
-		background_image_url: backgroundUrlInput.value,
-		background_overlay_opacity: opacitySlider.value,
-		theme: document.querySelector('.theme-option.selected')?.dataset.theme || 'negro',
-		button_style: document.querySelector('input[name="buttonStyle"]:checked')?.value || 'filled',
-		button_shape_style: document.querySelector('input[name="buttonShape"]:checked')?.value || 'rounded-lg',
-		font_family: selectedFont,
-		socials: newSocials,
-		social_buttons: newSocialButtons,
-		socials_order: newSocialsOrder,
-		contact_info: {},
-	};
+	// Actualizar directamente el estado de previsualización
+    appState.previewProfile.display_name = document.getElementById('display-name-input').value;
+    appState.previewProfile.description = document.getElementById('description-input').value;
+    appState.previewProfile.featured_video_url = DOMElements.featuredVideoUrlInput.value;
+    appState.previewProfile.background_image_url = backgroundUrlInput.value;
+    appState.previewProfile.background_overlay_opacity = opacitySlider.value;
+    appState.previewProfile.theme = document.querySelector('.theme-option.selected')?.dataset.theme || 'negro';
+    appState.previewProfile.button_style = document.querySelector('input[name="buttonStyle"]:checked')?.value || 'filled';
+    appState.previewProfile.button_shape_style = document.querySelector('input[name="buttonShape"]:checked')?.value || 'rounded-lg';
+    appState.previewProfile.font_family = selectedFont;
+    appState.previewProfile.socials = newSocials;
+    appState.previewProfile.social_buttons = newSocialButtons;
+    appState.previewProfile.socials_order = newSocialsOrder;
+	appState.previewProfile.contact_info = {};
 	
 	 document.querySelectorAll('#contact-inputs input').forEach(input => {
-		if (input.value.trim() !== '') previewData.contact_info[input.dataset.contact] = input.value.trim();
+		if (input.value.trim() !== '') appState.previewProfile.contact_info[input.dataset.contact] = input.value.trim();
 	});
 	
-	renderProfile(previewData, true);
+	renderProfile(appState.previewProfile, true);
 }
 
 DOMElements.settingsPanel.addEventListener('input', updateLivePreview);
@@ -1557,7 +1514,6 @@ document.getElementById('add-update-link-btn').addEventListener('click', async (
 				showAlert('Enlace creado, pero no se pudo actualizar el diseño.');
 			} else {
 				appState.myProfile = updatedProfile;
-				appState.profile = updatedProfile;
 			}
 			exitEditMode();
 			appState.links.push(newLink);
@@ -1712,7 +1668,7 @@ document.getElementById('cropper-save-btn').addEventListener('click', () => {
 		
 		try {
 			const compressedBlob = await imageCompression(blob, { maxSizeMB: 0.3, maxWidthOrHeight: 1024, useWebWorker: true });
-			const oldImagePath = appState.profile.profile_image_path;
+			const oldImagePath = appState.previewProfile.profile_image_path;
 			const filePath = `${appState.currentUser.id}/${Date.now()}.webp`;
 
 			const { error: uploadError } = await supabaseClient.storage.from('profile-pictures').upload(filePath, compressedBlob, { contentType: 'image/webp' });
@@ -1720,15 +1676,15 @@ document.getElementById('cropper-save-btn').addEventListener('click', () => {
 
 			const { data: { publicUrl } } = supabaseClient.storage.from('profile-pictures').getPublicUrl(filePath);
 			
-			const { data: updatedProfile, error: updateError } = await supabaseClient.from('profiles').update({ profile_image_url: publicUrl, profile_image_path: filePath }).eq('id', appState.currentUser.id).select().single();
-			if (updateError) throw updateError;
+			// Actualizar el estado de previsualización
+            appState.previewProfile.profile_image_url = publicUrl;
+            appState.previewProfile.profile_image_path = filePath;
+            markSettingsAsDirty();
+            updateLivePreview();
 			
-			showAlert("Imagen de perfil actualizada.");
-			appState.profile = updatedProfile;
-			appState.myProfile = updatedProfile;
-			renderProfile(appState.profile, true);
-			
-			if (oldImagePath) await supabaseClient.storage.from('profile-pictures').remove([oldImagePath]);
+			if (oldImagePath) { // Programar eliminación de la imagen antigua al guardar
+                // Esto podría requerir una lógica más compleja si el usuario cancela
+            }
 		} catch (error) {
 			showAlert(`Error al procesar la imagen: ${error.message}`);
 		} finally {
@@ -1756,7 +1712,8 @@ document.getElementById('gemini-use-text-btn').addEventListener('click', () => {
 	const selectedOption = document.querySelector('input[name="gemini-option"]:checked');
 	if (selectedOption) {
 		document.getElementById('description-input').value = selectedOption.value;
-		updateLivePreview();
+		markSettingsAsDirty();
+        updateLivePreview();
 		DOMElements.geminiModal.classList.add('hidden');
 	} else {
 		showAlert("Por favor, selecciona una opción primero.");
@@ -1851,7 +1808,7 @@ function enterDesignMode() {
 	document.getElementById('user-actions').classList.add('hidden');
 	document.getElementById('layout-actions').classList.remove('hidden');
 
-	updateContainerVisibilityInDesignMode(appState.profile);
+	updateContainerVisibilityInDesignMode(appState.previewProfile || appState.myProfile);
 
 	const layoutContainer = document.getElementById('profile-layout-container');
 	if (appState.sortable.layout) appState.sortable.layout.destroy();
@@ -1893,6 +1850,7 @@ function enterDesignMode() {
 		onUpdate: (evt) => {
 			const newOrder = Array.from(evt.from.children).map(el => el.dataset.section).filter(Boolean);
 			appState.tempLayoutOrder = newOrder;
+            markSettingsAsDirty();
 		},
 	});
 }
@@ -1908,13 +1866,24 @@ function exitDesignMode(shouldRevert = false) {
 
 	if (appState.sortable.layout) { appState.sortable.layout.destroy(); appState.sortable.layout = null; }
 	
-	if (shouldRevert) renderProfile(appState.myProfile, true);
+	if (shouldRevert) {
+        if (appState.previewProfile) {
+            appState.previewProfile.layout_order = appState.myProfile.layout_order;
+            updateLivePreview();
+        } else {
+            renderProfile(appState.myProfile, true);
+        }
+    }
 }
 
 async function saveDesignChanges() {
 	if (!appState.currentUser) return;
 
-	const newLayoutOrder = appState.tempLayoutOrder || Array.from(document.getElementById('profile-layout-container').children).map(el => el.dataset.section).filter(Boolean);
+	const newLayoutOrder = appState.tempLayoutOrder || (appState.previewProfile || appState.myProfile).layout_order;
+    
+    if (appState.previewProfile) {
+        appState.previewProfile.layout_order = newLayoutOrder;
+    }
 	
 	try {
 		const { data: updatedProfile, error } = await supabaseClient.from('profiles').update({ layout_order: newLayoutOrder }).eq('id', appState.currentUser.id).select().single();
@@ -1922,7 +1891,9 @@ async function saveDesignChanges() {
 		
 		showAlert("Diseño guardado con éxito.");
 		appState.myProfile = updatedProfile;
-		appState.profile = updatedProfile;
+        if (appState.previewProfile) {
+            appState.previewProfile = JSON.parse(JSON.stringify(updatedProfile));
+        }
 		appState.tempLayoutOrder = null;
 	} catch (error) {
 		 showAlert(`Error al guardar el diseño: ${error.message}`);
