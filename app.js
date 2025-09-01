@@ -2448,19 +2448,18 @@ function displayGalleryImage(images, index) {
     const selectedImage = images[index];
     if (!selectedImage) return;
 
-    // Check if the main image needs updating
-    if (mainImage.src !== selectedImage.image_url) {
-        mainImage.style.opacity = 0;
-        caption.style.opacity = 0;
+    // FIX: Update styles regardless of src change to reflect focus point changes in real-time
+    mainImage.style.opacity = 0;
+    caption.style.opacity = 0;
 
-        setTimeout(() => {
-            mainImage.src = selectedImage.image_url;
-            mainImage.style.objectPosition = selectedImage.focus_point || 'center';
-            caption.textContent = selectedImage.caption || '';
-            mainImage.style.opacity = 1;
-            caption.style.opacity = 1;
-        }, 150);
-    }
+    setTimeout(() => {
+        mainImage.src = selectedImage.image_url;
+        mainImage.style.objectPosition = selectedImage.focus_point || 'center';
+        caption.textContent = selectedImage.caption || '';
+        mainImage.style.opacity = 1;
+        caption.style.opacity = 1;
+    }, 150);
+
 
     thumbnails.forEach((thumb, i) => {
         thumb.classList.toggle('active', i === index);
@@ -2600,12 +2599,15 @@ function enableFocusDrag(container, image, galleryImageData) {
 
         const newFocusPoint = `50% ${lastFocusPercent}%`;
         
-        const imageToUpdate = appState.galleryImages.find(i => i.id === galleryImageData.id);
-        if(imageToUpdate) imageToUpdate.focus_point = newFocusPoint;
+        // FIX: Update all relevant states to ensure consistency
+        const imageToUpdateInMainState = appState.galleryImages.find(i => String(i.id) === String(galleryImageData.id));
+        if(imageToUpdateInMainState) imageToUpdateInMainState.focus_point = newFocusPoint;
+        
         if(appState.previewProfile) {
-            const previewImageToUpdate = appState.previewProfile.galleryImages.find(i => i.id === galleryImageData.id);
-            if(previewImageToUpdate) previewImageToUpdate.focus_point = newFocusPoint;
+            const imageToUpdateInPreview = appState.previewProfile.galleryImages.find(i => String(i.id) === String(galleryImageData.id));
+            if(imageToUpdateInPreview) imageToUpdateInPreview.focus_point = newFocusPoint;
         }
+
 
         const { error } = await supabaseClient
             .from('gallery_images')
@@ -2852,4 +2854,5 @@ window.onload = () => {
 	setupPasswordToggle('update-confirm-password-input', 'update-confirm-password-toggle');
 	setupPasswordToggle('delete-confirm-password-input', 'delete-confirm-password-toggle');
 };
+
 
