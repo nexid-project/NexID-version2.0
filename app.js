@@ -486,10 +486,9 @@ function renderSingleLink(linkData, profileData) {
 function renderProfile(profileData, isOwner) {
 	if (!profileData) return;
 
-	// --- Plan de Cirugía DOM ---
-	const layoutContainer = document.getElementById('profile-layout-container');
-	
-	// 1. Actualizar estilos globales (no afectan a los hijos del layout)
+	// --- Plan de Reconciliación del DOM (Implementación Final) ---
+
+	// 1. Actualizar estilos globales que no están en el layout container
 	const theme = profileData.theme || 'grafito';
 	const font = profileData.font_family || 'font-inter';
 	loadFontIfNeeded(font);
@@ -508,128 +507,99 @@ function renderProfile(profileData, isOwner) {
 		DOMElements.globalBackground.style.backgroundColor = 'var(--background)';
 	}
 
-	// 2. Determinar el orden deseado de las secciones
+	const layoutContainer = document.getElementById('profile-layout-container');
+
+	// 2. Preservar componentes pesados si no han cambiado
+	let savedVideoContainer = null;
+	const currentVideoContainer = layoutContainer.querySelector('[data-section="featured-video"]');
+	if (currentVideoContainer) {
+		const existingIframe = currentVideoContainer.querySelector('iframe');
+		const newEmbedUrl = parseVideoUrl(profileData.featured_video_url);
+		if (existingIframe && existingIframe.src === newEmbedUrl) {
+			savedVideoContainer = currentVideoContainer;
+            savedVideoContainer.remove(); // Desconectar del DOM para preservar
+		}
+	}
+
+	let savedGalleryContainer = null;
+	const currentGalleryContainer = layoutContainer.querySelector('[data-section="gallery"]');
+	if (currentGalleryContainer && appState.galleryImages.length > 0) {
+		savedGalleryContainer = currentGalleryContainer;
+        savedGalleryContainer.remove(); // Desconectar del DOM para preservar
+	}
+
+	// 3. Construir el layout deseado (corrigiendo el bug de clonación)
 	const allBaseSections = ["profile-image", "display-name", "username", "description", "featured-video", "gallery", "social-buttons", "socials"];
-	let desiredLayoutOrder = appState.tempLayoutOrder || profileData.layout_order || [...allBaseSections];
+	let baseLayout = appState.tempLayoutOrder || profileData.layout_order || [...allBaseSections];
 	
+    // Anti-clonación: limpiar enlaces viejos antes de añadir los nuevos
+    let cleanLayout = baseLayout.filter(id => !id.startsWith('link_'));
 	const linkIds = appState.links.map(link => `link_${link.id}`);
 	
-    // Reemplazar 'links' placeholder con los IDs de los enlaces reales
-    const linksIndex = desiredLayoutOrder.indexOf('links');
+    const linksIndex = cleanLayout.indexOf('links');
     if (linksIndex !== -1) {
-		desiredLayoutOrder.splice(linksIndex, 1, ...linkIds);
+		cleanLayout.splice(linksIndex, 1, ...linkIds);
 	} else {
-        // Si no hay 'links' en el layout, añadir los enlaces antes de los 'socials'
-        const socialsIndex = desiredLayoutOrder.indexOf('socials');
+        const socialsIndex = cleanLayout.indexOf('socials');
         if (socialsIndex !== -1) {
-            desiredLayoutOrder.splice(socialsIndex, 0, ...linkIds);
+            cleanLayout.splice(socialsIndex, 0, ...linkIds);
         } else {
-            desiredLayoutOrder.push(...linkIds);
+            cleanLayout.push(...linkIds);
         }
     }
+    const desiredLayoutOrder = cleanLayout;
 
-
-	// 3. Crear un mapa de los elementos actuales para una búsqueda eficiente
-	const currentChildren = Array.from(layoutContainer.children);
-	const childrenMap = new Map();
-	currentChildren.forEach(child => {
-		if (child.dataset.section) {
-			childrenMap.set(child.dataset.section, child);
-		}
-	});
-
-	const fragment = document.createDocumentFragment();
-
-	// 4. Recorrer el orden deseado y actualizar/crear/mover elementos
+	// 4. Reconstruir el HTML para todos los componentes (ligero y rápido)
+    layoutContainer.innerHTML = ''; // Limpieza única y total
 	desiredLayoutOrder.forEach(sectionId => {
-		let element = childrenMap.get(sectionId);
-		let wasElementFound = !!element;
-
-		// Si el elemento no existe, créalo
-		if (!element) {
-			const tempContainer = document.createElement('div');
-			if (profileSectionTemplates[sectionId]) {
-				const templateHtml = profileSectionTemplates[sectionId](profileData, isOwner);
-                if (templateHtml) tempContainer.innerHTML = templateHtml;
-			} else if (sectionId.startsWith('link_')) {
-				const linkId = sectionId.replace('link_', '');
-				const linkData = appState.links.find(l => String(l.id) === linkId);
-				if (linkData) {
-					tempContainer.innerHTML = renderSingleLink(linkData, profileData);
-				}
-			}
-			if (tempContainer.children.length > 0) {
-				element = tempContainer.firstElementChild;
+		let elementHtml = '';
+		if (profileSectionTemplates[sectionId]) {
+			elementHtml = profileSectionTemplates[sectionId](profileData, isOwner);
+		} else if (sectionId.startsWith('link_')) {
+			const linkId = sectionId.replace('link_', '');
+			const linkData = appState.links.find(l => String(l.id) === linkId);
+			if (linkData) {
+				elementHtml = renderSingleLink(linkData, profileData);
 			}
 		}
-		
-		if (element) {
-			// Actualizar contenido si ya existía, de forma selectiva
-			if (wasElementFound) {
-				switch (sectionId) {
-					case 'display-name':
-						element.querySelector('#public-display-name').textContent = profileData.display_name;
-						break;
-					case 'username':
-						element.querySelector('#public-username').textContent = profileData.username || '';
-						break;
-					case 'description':
-						element.querySelector('#public-description').textContent = profileData.description || '';
-						break;
-					case 'profile-image':
-						element.querySelector('#public-profile-img').src = profileData.profile_image_url || 'https://placehold.co/128x128/7f9cf5/1F2937?text=...';
-						break;
-				}
-                if (sectionId.startsWith('link_')) {
-                    const linkId = sectionId.replace('link_', '');
-				    const linkData = appState.links.find(l => String(l.id) === linkId);
-                    if (linkData) {
-						// Re-renderizar el enlace completo para actualizar estilos y texto
-						const newLinkHTML = renderSingleLink(linkData, profileData);
-                        const tempDiv = document.createElement('div');
-                        tempDiv.innerHTML = newLinkHTML;
-                        if (tempDiv.firstElementChild) {
-							element.replaceWith(tempDiv.firstElementChild);
-							element = layoutContainer.querySelector(`[data-section="${sectionId}"]`);
-						}
-                    }
-                }
-			}
-
-			fragment.appendChild(element);
-			if (wasElementFound) {
-				childrenMap.delete(sectionId);
-			}
+		if (elementHtml) {
+			layoutContainer.innerHTML += elementHtml;
 		}
 	});
 
-	// 5. Eliminar elementos que ya no están en el layout
-	childrenMap.forEach(staleElement => staleElement.remove());
+	// 5. Reemplazar placeholders con los componentes pesados preservados (si existen)
+	const newVideoPlaceholder = layoutContainer.querySelector('[data-section="featured-video"]');
+	if (newVideoPlaceholder) {
+		if (savedVideoContainer) {
+			newVideoPlaceholder.replaceWith(savedVideoContainer);
+		} else { // Si no se preservó, renderizarlo de nuevo (porque la URL cambió o es nuevo)
+			const embedUrl = parseVideoUrl(profileData.featured_video_url);
+			if (embedUrl) {
+				newVideoPlaceholder.innerHTML = `<div class="video-wrapper"><iframe class="w-full h-full rounded-lg absolute inset-0" src="${embedUrl}" title="Video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
+			}
+		}
+	}
 
-	// 6. Aplicar todos los cambios al DOM de una sola vez
-	layoutContainer.innerHTML = ''; // Limpiar antes de añadir el fragmento ordenado
-	layoutContainer.appendChild(fragment);
+	const newGalleryPlaceholder = layoutContainer.querySelector('[data-section="gallery"]');
+	if (newGalleryPlaceholder) {
+		if (savedGalleryContainer) {
+			newGalleryPlaceholder.replaceWith(savedGalleryContainer);
+			// Actualizar solo la imagen visible, no todo el componente
+			displayGalleryImage(appState.galleryImages, appState.currentGalleryIndex);
+		} else if (appState.galleryImages.length > 0) { // Renderizar si es nuevo
+			renderImmersiveGallery(appState.galleryImages);
+			displayGalleryImage(appState.galleryImages, appState.currentGalleryIndex);
+		}
+	}
 
-	// 7. Post-renderizado y actualizaciones de componentes complejos
-	renderSocialButtons(profileData.social_buttons);
-	renderSocialIcons(profileData.socials, profileData.socials_order);
-    
-    const videoUrl = parseVideoUrl(profileData.featured_video_url);
-    const videoSection = layoutContainer.querySelector('[data-section="featured-video"]');
-    if (videoUrl && videoSection) {
-        if (!videoSection.querySelector('iframe') || videoSection.querySelector('iframe').src !== videoUrl) {
-            videoSection.innerHTML = `<div class="video-wrapper"><iframe class="w-full h-full rounded-lg absolute inset-0" src="${videoUrl}" title="Video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
-        }
+	// 6. Renderizar componentes que viven dentro de secciones (socials) y otros elementos
+	const socialButtonsContainer = layoutContainer.querySelector('#social-buttons-section');
+    if (socialButtonsContainer) {
+        renderSocialButtons(profileData.social_buttons);
     }
-
-    if (appState.galleryImages.length > 0) {
-        const galleryEl = document.getElementById('gallery-container');
-        if (galleryEl && galleryEl.innerHTML.trim() === '') {
-             renderImmersiveGallery(appState.galleryImages);
-        }
-        if (galleryEl) {
-            displayGalleryImage(appState.galleryImages, appState.currentGalleryIndex);
-        }
+    const socialsFooterContainer = layoutContainer.querySelector('#socials-footer');
+    if (socialsFooterContainer) {
+        renderSocialIcons(profileData.socials, profileData.socials_order);
     }
 
 	if (isOwner) {
@@ -642,7 +612,7 @@ function renderProfile(profileData, isOwner) {
 	document.getElementById('user-actions').classList.toggle('hidden', !isOwner || isDesignMode);
 	document.getElementById('layout-actions').classList.toggle('hidden', !isDesignMode);
 
-	if (!appState.currentUser && !document.querySelector('.join-nexid-button')) {
+	if (!appState.currentUser && !layoutContainer.querySelector('.join-nexid-button')) {
 		layoutContainer.insertAdjacentHTML('beforeend', `
 			<div class="mt-8 text-center">
 				 <a href="/app.html" class="join-nexid-button inline-flex items-center justify-center py-3 px-8 font-bold text-lg rounded-full transition-transform duration-200 hover:scale-110">
@@ -651,7 +621,7 @@ function renderProfile(profileData, isOwner) {
 			</div>
 		`);
 	} else if (appState.currentUser) {
-        const joinButton = document.querySelector('.join-nexid-button');
+        const joinButton = layoutContainer.querySelector('.join-nexid-button');
         if (joinButton) joinButton.parentElement.remove();
     }
 
@@ -2848,6 +2818,4 @@ window.onload = () => {
 	setupPasswordToggle('update-confirm-password-input', 'update-confirm-password-toggle');
 	setupPasswordToggle('delete-confirm-password-input', 'delete-confirm-password-toggle');
 };
-
-
 
