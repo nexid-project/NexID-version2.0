@@ -398,108 +398,19 @@
 	}
 }
 
-/* === Estilos para Video y Galería === */
-.video-wrapper, .immersive-gallery {
+/* === Estilos para Video === */
+.video-wrapper {
     position: relative;
     width: 100%;
-}
-
-.video-wrapper {
     aspect-ratio: 16 / 9;
 }
 
-.design-mode .video-wrapper::after,
-.design-mode .immersive-gallery::after {
+.design-mode .video-wrapper::after {
     content: '';
     position: absolute;
     inset: 0;
     z-index: 10;
     cursor: grab;
-}
-
-.immersive-gallery {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-.main-image-container {
-    width: 100%;
-    aspect-ratio: 16 / 9;
-    border-radius: 0.75rem;
-    overflow: hidden;
-    position: relative;
-    background-color: #374151;
-}
-
-.main-image {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: opacity 0.3s ease-in-out;
-}
-
-.caption {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    padding: 0.75rem 1rem;
-    background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
-    color: white;
-    font-size: 0.875rem;
-    transition: opacity 0.3s ease-in-out;
-    opacity: 1;
-}
-
-.thumbnail-strip {
-    display: flex;
-    gap: 0.5rem;
-    overflow-x: auto;
-    padding-bottom: 0.5rem;
-}
-
-.thumbnail {
-    width: 64px;
-    height: 64px;
-    object-fit: cover;
-    border-radius: 0.5rem;
-    cursor: pointer;
-    border: 2px solid transparent;
-    opacity: 0.6;
-    transition: all 0.2s ease-in-out;
-    flex-shrink: 0;
-}
-
-.thumbnail:hover {
-    opacity: 1;
-    transform: scale(1.05);
-}
-
-.thumbnail.active {
-    opacity: 1;
-    border-color: var(--profile-border-color, #67e8f9);
-}
-
-.thumbnail-strip::-webkit-scrollbar { height: 6px; }
-.thumbnail-strip::-webkit-scrollbar-track { background: #4b5563; border-radius: 10px; }
-.thumbnail-strip::-webkit-scrollbar-thumb { background: #9ca3af; border-radius: 10px; }
-.thumbnail-strip::-webkit-scrollbar-thumb:hover { background: #d1d5db; }
-
-/* Editor de la Galería */
-#gallery-editor-list {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 0.5rem;
-}
-
-.gallery-editor-item {
-    position: relative;
-    cursor: pointer;
-    aspect-ratio: 1 / 1;
-}
-.gallery-editor-item img{
-    border-radius: 0.5rem;
 }
 
 /* Modal de Zoom Interactivo */
@@ -527,25 +438,3 @@
 .zoom-nav-btn.left-4 { left: 1rem; }
 .zoom-nav-btn.right-4 { right: 1rem; }
 
-#gallery-edit-modal {
-    z-index: 60;
-}
-#thumbnail-cropper-modal {
-    z-index: 70;
-}
-
-/* Suavizar aparición del cropper */
-#thumbnail-cropper-image + .cropper-container {
-    opacity: 0;
-    transition: opacity 0.3s ease-in-out;
-}
-
-/* === NUEVO: Estilos para el Ajuste Visual de Enfoque === */
-#gallery-focus-adjuster:active {
-    cursor: grabbing;
-}
-
-#gallery-focus-adjuster img {
-    user-select: none; /* Evita que la imagen se seleccione como texto al arrastrar */
-    pointer-events: none; /* Asegura que el evento de arrastre lo capture el contenedor */
-}
