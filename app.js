@@ -284,7 +284,7 @@ async function handleAuthStateChange(session) {
                         history.replaceState(null, '', profileUrl);
                     }
                 }
-                buildProfileLayout(myProfile, true); // Usar la nueva función de construcción
+                buildProfileLayout(myProfile, true);
                 renderLinksEditor(appState.links);
                 listenToUserLinks(myProfile.id);
                 showPage('profile');
@@ -989,7 +989,6 @@ completeSetupBtn.addEventListener('click', async () => {
 		showAlert(`Error al completar el perfil: ${error.message}`);
 	} else {
 		const updatedProfile = { ...appState.profile, ...updates };
-		appState.profile = updatedProfile;
 		appState.myProfile = updatedProfile;
 
 		if (window.location.protocol !== 'blob:') {
@@ -1259,33 +1258,6 @@ function closeSettingsPanel() {
 document.getElementById('save-changes-btn').addEventListener('click', async () => {
 	if (!appState.currentUser || !appState.previewProfile) return;
 
-	const newSocials = {};
-	document.querySelectorAll('#socials-inputs-container input[data-social]').forEach(input => {
-		const key = input.dataset.social;
-		const value = input.value.trim();
-		if (value !== '') {
-			newSocials[key] = extractUsername(value, key);
-		}
-	});
-
-	let currentSocialsOrder = appState.myProfile.socials_order || [];
-	Object.keys(newSocials).forEach(key => {
-		if (!currentSocialsOrder.includes(key)) {
-			currentSocialsOrder.push(key);
-		}
-	});
-	
-	const newSocialButtons = [];
-	document.querySelectorAll('#social-buttons-inputs-container input[data-social-button]').forEach(input => {
-		const value = input.value.trim();
-		if (value) {
-			const key = input.dataset.socialButton;
-			const username = extractUsername(value, key);
-			const url = `${socialBaseUrls[key]}${username}`;
-			newSocialButtons.push({ url });
-		}
-	});
-
 	const dataToSave = { ...appState.previewProfile }; // Usar los datos de la previsualización
 	delete dataToSave.id;
 	delete dataToSave.created_at;
@@ -1355,6 +1327,11 @@ function updateLivePreview() {
 	const selectedFont = DOMElements.fontFamilyValue.value;
 	loadFontIfNeeded(selectedFont);
 	
+    const oldButtonsCount = (appState.previewProfile.social_buttons || []).length;
+    const newButtonsCount = newSocialButtons.length;
+    const oldSocialsCount = Object.values(appState.previewProfile.socials || {}).filter(v => v).length;
+    const newSocialsCount = Object.values(newSocials).filter(v => v).length;
+
 	appState.previewProfile = {
 		...appState.previewProfile,
 		display_name: document.getElementById('display-name-input').value,
@@ -1376,8 +1353,14 @@ function updateLivePreview() {
 		if (input.value.trim() !== '') appState.previewProfile.contact_info[input.dataset.contact] = input.value.trim();
 	});
 	
-	updateProfileStyles(appState.previewProfile);
-    updateProfileContent(appState.previewProfile, true);
+    const needsRebuild = (oldButtonsCount === 0 && newButtonsCount > 0) || (oldSocialsCount === 0 && newSocialsCount > 0);
+
+    if (needsRebuild) {
+        buildProfileLayout(appState.previewProfile, true);
+    } else {
+        updateProfileStyles(appState.previewProfile);
+        updateProfileContent(appState.previewProfile, true);
+    }
 }
 
 DOMElements.settingsPanel.addEventListener('input', updateLivePreview);
