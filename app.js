@@ -579,10 +579,10 @@ function updateContainerVisibility(profileData) {
     if (descriptionContainer) descriptionContainer.classList.toggle('is-empty', isEmpty(profileData.description || ''));
     
     const socialButtonsContainer = document.querySelector('[data-section="social-buttons"]');
-    if (socialButtonsContainer) socialButtonsContainer.classList.toggle('is-empty', isEmpty(profileData.social_buttons));
+    if (socialButtonsContainer) socialButtonsContainer.classList.toggle('is-empty', socialButtonsContainer.innerHTML.trim() === '');
     
     const socialsFooterContainer = document.querySelector('[data-section="socials"]');
-    if (socialsFooterContainer) socialsFooterContainer.classList.toggle('is-empty', isEmpty(profileData.socials));
+    if (socialsFooterContainer) socialsFooterContainer.classList.toggle('is-empty', socialsFooterContainer.innerHTML.trim() === '');
     
     const videoContainer = document.querySelector('[data-section="featured-video"]');
     if(videoContainer) videoContainer.classList.toggle('is-empty', !parseVideoUrl(profileData.featured_video_url));
