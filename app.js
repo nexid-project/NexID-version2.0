@@ -50,19 +50,15 @@ let appState = {
 	myProfile: null, // El estado real guardado en la DB
     previewProfile: null, // El estado temporal para la previsualización en vivo
 	links: [],
-    galleryImages: [],
 	tempBackgroundImagePath: null,
 	tempLayoutOrder: null,
 	subscriptions: { auth: null, links: null },
-	sortable: { layout: null, gallery: null },
+	sortable: { layout: null },
 	cropper: null,
-    thumbnailCropper: null,
-    editingGalleryImageId: null,
 	isUsernameAvailable: false,
 	isSettingsDirty: false,
 	isDesignModeActive: false,
 	isRecoveringPassword: false,
-	currentGalleryIndex: 0,
 };
 
 // --- 3. REFERENCIAS A ELEMENTOS DEL DOM ---
@@ -81,9 +77,6 @@ const DOMElements = {
 	imageUploadInput: document.getElementById('image-upload-input'),
 	cropperModal: document.getElementById('cropper-modal'),
 	cropperImage: document.getElementById('cropper-image'),
-    thumbnailCropperModal: document.getElementById('thumbnail-cropper-modal'),
-    thumbnailCropperImage: document.getElementById('thumbnail-cropper-image'),
-    galleryEditModal: document.getElementById('gallery-edit-modal'),
 	geminiModal: document.getElementById('gemini-modal'),
 	uploadBackgroundBtn: document.getElementById('upload-background-btn'),
 	backgroundUploadInput: document.getElementById('background-upload-input'),
@@ -115,9 +108,6 @@ const DOMElements = {
     registerPasswordInput: document.getElementById('register-password-input'),
     registerConfirmPasswordInput: document.getElementById('register-confirm-password-input'),
     featuredVideoUrlInput: document.getElementById('featured-video-url-input'),
-    galleryEditorList: document.getElementById('gallery-editor-list'),
-    addGalleryImageBtn: document.getElementById('add-gallery-image-btn'),
-    galleryImageUploadInput: document.getElementById('gallery-image-upload-input'),
 };
 
 // --- 4. FUNCIONES DE UTILIDAD (MODALES, ETC.) ---
@@ -274,9 +264,6 @@ async function handleAuthStateChange(session) {
             return;
         }
         
-        const { data: galleryImages } = await supabaseClient.from('gallery_images').select('*').eq('user_id', appState.currentUser.id).order('order_index', { ascending: true });
-        appState.galleryImages = galleryImages || [];
-
         const urlParams = new URLSearchParams(window.location.search);
         const publicUsername = urlParams.get('user');
         
@@ -285,7 +272,6 @@ async function handleAuthStateChange(session) {
             document.getElementById('back-to-my-profile-btn').href = `${window.location.pathname}?user=${myProfile.username.substring(1)}`;
             await loadPublicProfile(publicUsername);
         } else {
-            appState.currentGalleryIndex = 0; // CORRECTO: Resetear solo aquí
             document.getElementById('back-to-my-profile-btn').classList.add('hidden');
             const { data: links } = await supabaseClient.from('links').select('*').eq('user_id', appState.currentUser.id).order('order_index', { ascending: true });
             appState.links = links || [];
@@ -297,7 +283,6 @@ async function handleAuthStateChange(session) {
                 }
                 renderProfile(myProfile, true);
                 renderLinksEditor(appState.links);
-                renderGalleryEditor();
                 listenToUserLinks(myProfile.id);
                 showPage('profile');
             } else {
@@ -336,11 +321,8 @@ async function loadPublicProfile(username) {
 		}
 		
 		const { data: links } = await supabaseClient.from('links').select('*').eq('user_id', profile.id).order('order_index', { ascending: true });
-        const { data: galleryImages } = await supabaseClient.from('gallery_images').select('*').eq('user_id', profile.id).order('order_index', { ascending: true });
 
 		appState.links = links || [];
-        appState.galleryImages = galleryImages || [];
-		appState.currentGalleryIndex = 0; // CORRECTO: Resetear solo aquí
 		
 		const isOwner = appState.currentUser && appState.currentUser.id === profile.id;
 		renderProfile(profile, isOwner);
@@ -440,12 +422,6 @@ const profileSectionTemplates = {
         }
         return '';
     },
-    'gallery': () => {
-        if (appState.galleryImages && appState.galleryImages.length > 0) {
-            return `<div data-section="gallery" id="gallery-container" class="draggable-item p-2"></div>`;
-        }
-        return '';
-    },
 	'social-buttons': (profileData) => {
         if (profileData.social_buttons && profileData.social_buttons.length > 0) {
             return `<section id="social-buttons-section" data-section="social-buttons" class="draggable-item p-2"></section>`;
@@ -509,7 +485,7 @@ function renderProfile(profileData, isOwner) {
 	const layoutContainer = document.getElementById('profile-layout-container');
 
 	// 2. Construir el layout deseado
-	const allBaseSections = ["profile-image", "display-name", "username", "description", "featured-video", "gallery", "social-buttons", "socials"];
+	const allBaseSections = ["profile-image", "display-name", "username", "description", "featured-video", "social-buttons", "socials"];
 	let baseLayout = appState.tempLayoutOrder || profileData.layout_order || [...allBaseSections];
 	
     let cleanLayout = baseLayout.filter(id => !id.startsWith('link_'));
@@ -594,15 +570,6 @@ function renderProfile(profileData, isOwner) {
         }
     }
     
-    const gallerySection = layoutContainer.querySelector('[data-section="gallery"]');
-    if (gallerySection) {
-        if (!gallerySection.querySelector('.immersive-gallery')) {
-            renderImmersiveGallery(appState.galleryImages);
-        }
-        updateImmersiveGallery(appState.galleryImages);
-        displayGalleryImage(appState.galleryImages, appState.currentGalleryIndex);
-    }
-    
 	const socialButtonsContainer = layoutContainer.querySelector('#social-buttons-section');
     if (socialButtonsContainer) renderSocialButtons(profileData.social_buttons);
     
@@ -651,9 +618,6 @@ function updateContainerVisibilityInDesignMode(profileData) {
     
     const videoContainer = document.querySelector('[data-section="featured-video"]');
     if(videoContainer) videoContainer.classList.toggle('is-empty', !parseVideoUrl(profileData.featured_video_url));
-
-    const galleryContainer = document.querySelector('[data-section="gallery"]');
-    if(galleryContainer) galleryContainer.classList.toggle('is-empty', isEmpty(appState.galleryImages));
 }
 
 function renderLinksEditor(links) {
@@ -1194,7 +1158,6 @@ function openSettingsPanel() {
 	
     // Crear el estado de previsualización
     appState.previewProfile = JSON.parse(JSON.stringify(appState.myProfile));
-    appState.previewProfile.galleryImages = JSON.parse(JSON.stringify(appState.galleryImages));
 
 	appState.isSettingsDirty = false;
 	appState.tempBackgroundImagePath = null;
@@ -1308,7 +1271,6 @@ document.getElementById('save-changes-btn').addEventListener('click', async () =
     // Limpiar datos que no van en la tabla de perfiles
     delete dataToSave.id; 
     delete dataToSave.created_at;
-    delete dataToSave.galleryImages;
 
 	const oldProfile = appState.myProfile;
 	const newImagePath = dataToSave.background_image_path;
@@ -1507,7 +1469,7 @@ document.getElementById('add-update-link-btn').addEventListener('click', async (
 		if (error) {
 			showAlert(`Error al crear enlace: ${error.message}`);
 		} else {
-			const defaultLayout = ["profile-image", "display-name", "username", "description", "featured-video", "gallery", "social-buttons", "socials"];
+			const defaultLayout = ["profile-image", "display-name", "username", "description", "featured-video", "social-buttons", "socials"];
 			const currentLayout = appState.myProfile.layout_order && appState.myProfile.layout_order.length > 0 ? [...appState.myProfile.layout_order] : [...defaultLayout];
 			
 			const lastLinkIndex = currentLayout.map((item, index) => ({ item, index })).filter(obj => obj.item.startsWith('link_')).pop()?.index ?? -1;
@@ -1589,21 +1551,6 @@ DOMElements.profilePage.addEventListener('click', (e) => {
 			});
 		}
 	}
-
-    const thumbnail = e.target.closest('.thumbnail');
-    if (thumbnail) {
-        const index = parseInt(thumbnail.dataset.index, 10);
-		appState.currentGalleryIndex = index;
-        displayGalleryImage(appState.galleryImages, index);
-    } 
-    
-    const mainImage = e.target.closest('.main-image');
-    if (mainImage) {
-        const currentIndex = appState.galleryImages.findIndex(img => img.image_url === mainImage.src);
-        if (currentIndex !== -1) {
-            openImageZoomModal(appState.galleryImages, currentIndex);
-        }
-    }
     
     const profileImage = e.target.closest('#public-profile-img');
     if (profileImage && !e.target.closest('#edit-profile-img-btn')) {
@@ -2387,461 +2334,6 @@ document.getElementById('logout-for-deletion-btn').addEventListener('click', asy
 	await supabaseClient.auth.signOut();
 });
 
-
-// --- 26. LÓGICA COMPLETA DE LA GALERÍA ---
-
-function renderImmersiveGallery(images) {
-    const container = document.getElementById('gallery-container');
-    if (!container || !images || images.length === 0) return;
-
-    container.innerHTML = `
-        <div class="immersive-gallery">
-            <div class="main-image-container">
-                <img src="${images[0].image_url}" class="main-image" id="gallery-main-image" style="object-position: ${images[0].focus_point || 'center'}">
-                <p class="caption" id="gallery-caption">${images[0].caption || ''}</p>
-            </div>
-            <div class="thumbnail-strip" id="gallery-thumbnail-strip"></div>
-        </div>
-    `;
-
-    const thumbnailStrip = document.getElementById('gallery-thumbnail-strip');
-    images.forEach((image, index) => {
-        const thumb = document.createElement('img');
-        thumb.src = image.thumbnail_url || image.image_url;
-        thumb.className = `thumbnail ${index === 0 ? 'active' : ''}`;
-        thumb.dataset.index = index;
-        thumbnailStrip.appendChild(thumb);
-    });
-}
-
-function updateImmersiveGallery(images) {
-    const thumbnailStrip = document.getElementById('gallery-thumbnail-strip');
-    if (!thumbnailStrip) return;
-
-    const existingThumbnails = new Map(Array.from(thumbnailStrip.children).map((thumb, index) => [thumb.src, thumb]));
-    const fragment = document.createDocumentFragment();
-
-    images.forEach((image, index) => {
-        const src = image.thumbnail_url || image.image_url;
-        let thumb = existingThumbnails.get(src);
-        if (thumb) {
-            existingThumbnails.delete(src); // Mark as kept
-        } else {
-            thumb = document.createElement('img');
-            thumb.src = src;
-            thumb.className = 'thumbnail';
-        }
-        thumb.dataset.index = index;
-        fragment.appendChild(thumb);
-    });
-    
-    thumbnailStrip.innerHTML = '';
-    thumbnailStrip.appendChild(fragment);
-}
-
-
-function displayGalleryImage(images, index) {
-    const mainImage = document.getElementById('gallery-main-image');
-    const caption = document.getElementById('gallery-caption');
-    const thumbnails = document.querySelectorAll('#gallery-thumbnail-strip .thumbnail');
-
-    if (!mainImage || !caption || !thumbnails.length) return;
-
-    const selectedImage = images[index];
-    if (!selectedImage) return;
-
-    // FIX: Update styles regardless of src change to reflect focus point changes in real-time
-    mainImage.style.opacity = 0;
-    caption.style.opacity = 0;
-
-    setTimeout(() => {
-        mainImage.src = selectedImage.image_url;
-        mainImage.style.objectPosition = selectedImage.focus_point || 'center';
-        caption.textContent = selectedImage.caption || '';
-        mainImage.style.opacity = 1;
-        caption.style.opacity = 1;
-    }, 150);
-
-
-    thumbnails.forEach((thumb, i) => {
-        thumb.classList.toggle('active', i === index);
-    });
-}
-
-function renderGalleryEditor() {
-    const listEl = DOMElements.galleryEditorList;
-    if (!listEl) return;
-    listEl.innerHTML = '';
-
-    appState.galleryImages.forEach(image => {
-        const item = document.createElement('div');
-        item.className = 'gallery-editor-item relative group cursor-pointer';
-        item.dataset.id = image.id;
-        item.innerHTML = `
-            <img src="${image.thumbnail_url || image.image_url}" class="w-full h-full object-cover rounded-lg pointer-events-none">
-            <div class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                <i data-lucide="edit" class="w-8 h-8 text-white"></i>
-            </div>
-        `;
-        listEl.appendChild(item);
-    });
-    
-    lucide.createIcons();
-    updateAddImageButtonState();
-
-    if (appState.sortable.gallery) appState.sortable.gallery.destroy();
-    appState.sortable.gallery = new Sortable(listEl, {
-        animation: 150,
-        onEnd: async () => {
-            const updatedOrder = Array.from(listEl.children).map((item, index) => ({
-                id: item.dataset.id,
-                order_index: index,
-            }));
-
-            const updatePromises = updatedOrder.map(item =>
-                supabaseClient
-                    .from('gallery_images')
-                    .update({ order_index: item.order_index })
-                    .eq('id', item.id)
-            );
-            
-            const results = await Promise.all(updatePromises);
-            const hasError = results.some(result => result.error);
-
-            if (hasError) {
-                showAlert("Error al reordenar la galería.");
-                console.error("Error reordering gallery:", results.find(r => r.error).error);
-            } else {
-                updatedOrder.forEach(item => {
-                    const img = appState.galleryImages.find(i => String(i.id) === String(item.id));
-                    if (img) img.order_index = item.order_index;
-                });
-                appState.galleryImages.sort((a, b) => a.order_index - b.order_index);
-                
-                markSettingsAsDirty();
-                updateLivePreview();
-            }
-        },
-    });
-}
-
-function updateAddImageButtonState() {
-    const canUpload = appState.galleryImages.length < 6;
-    DOMElements.addGalleryImageBtn.disabled = !canUpload;
-    DOMElements.addGalleryImageBtn.textContent = canUpload ? `Añadir Imágenes (${appState.galleryImages.length}/6)` : 'Galería Llena (6/6)';
-}
-
-function openGalleryEditModal(image) {
-    appState.editingGalleryImageId = image.id;
-    const modal = DOMElements.galleryEditModal;
-    const previewImage = modal.querySelector('#gallery-edit-preview');
-    const previewContainer = modal.querySelector('#gallery-edit-preview-container');
-    
-    previewImage.src = image.image_url;
-    modal.querySelector('#gallery-edit-caption').value = image.caption || '';
-    
-    const focus = image.focus_point || 'center center';
-    previewImage.style.objectPosition = focus;
-
-    modal.classList.remove('hidden');
-    lucide.createIcons();
-
-    enableFocusDrag(previewContainer, previewImage, image);
-}
-
-function closeGalleryEditModal() {
-    DOMElements.galleryEditModal.classList.add('hidden');
-    appState.editingGalleryImageId = null;
-}
-
-function enableFocusDrag(container, image, galleryImageData) {
-    let isDragging = false;
-    let startY = 0;
-    let startFocusPercent = 0;
-	let lastFocusPercent = 0;
-
-    const onMouseDown = (e) => {
-        e.preventDefault();
-        isDragging = true;
-        startY = e.clientY || e.touches[0].clientY;
-        const currentFocusY = parseFloat(image.style.objectPosition.split(' ')[1]);
-        startFocusPercent = isNaN(currentFocusY) ? 50 : currentFocusY;
-		lastFocusPercent = startFocusPercent;
-        container.style.cursor = 'grabbing';
-		image.classList.remove('transition-all');
-    };
-
-    const onMouseMove = (e) => {
-        if (!isDragging) return;
-        const currentY = e.clientY || e.touches[0].clientY;
-        const deltaY = currentY - startY;
-        
-        const containerHeight = container.offsetHeight;
-        const imageHeight = image.naturalHeight * (container.offsetWidth / image.naturalWidth);
-		
-		if (imageHeight <= containerHeight) return;
-
-        const maxDeltaY = imageHeight - containerHeight;
-		
-        const deltaPercent = (deltaY / maxDeltaY) * 100;
-        
-        let newFocusPercent = startFocusPercent - deltaPercent;
-
-        newFocusPercent = Math.max(0, Math.min(100, newFocusPercent));
-        
-        image.style.objectPosition = `50% ${newFocusPercent}%`;
-		lastFocusPercent = newFocusPercent;
-    };
-
-    const onMouseUp = async () => {
-        if (!isDragging) return;
-        isDragging = false;
-        container.style.cursor = 'grab';
-		image.classList.add('transition-all');
-
-        const newFocusPoint = `50% ${lastFocusPercent}%`;
-        
-        // FIX: Update all relevant states to ensure consistency
-        const imageToUpdateInMainState = appState.galleryImages.find(i => String(i.id) === String(galleryImageData.id));
-        if(imageToUpdateInMainState) imageToUpdateInMainState.focus_point = newFocusPoint;
-        
-        if(appState.previewProfile) {
-            const imageToUpdateInPreview = appState.previewProfile.galleryImages.find(i => String(i.id) === String(galleryImageData.id));
-            if(imageToUpdateInPreview) imageToUpdateInPreview.focus_point = newFocusPoint;
-        }
-
-
-        const { error } = await supabaseClient
-            .from('gallery_images')
-            .update({ focus_point: newFocusPoint })
-            .eq('id', galleryImageData.id);
-
-        if (error) {
-            showAlert("No se pudo guardar el punto de enfoque.");
-        } else {
-            markSettingsAsDirty();
-            updateLivePreview();
-        }
-    };
-    
-    const existingListeners = container.dragListeners || {};
-    Object.keys(existingListeners).forEach(event => {
-        container.removeEventListener(event, existingListeners[event]);
-        document.removeEventListener(event, existingListeners[event]);
-    });
-    
-    container.addEventListener('mousedown', onMouseDown);
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseup', onMouseUp);
-
-    container.addEventListener('touchstart', onMouseDown, { passive: false });
-    document.addEventListener('touchmove', onMouseMove, { passive: false });
-    document.addEventListener('touchend', onMouseUp);
-    
-    container.dragListeners = { onMouseDown, onMouseMove, onMouseUp };
-}
-
-
-DOMElements.addGalleryImageBtn.addEventListener('click', () => {
-    DOMElements.galleryImageUploadInput.click();
-});
-
-DOMElements.galleryImageUploadInput.addEventListener('change', async (e) => {
-    const files = Array.from(e.target.files);
-    if (files.length === 0) return;
-
-    const remainingSlots = 6 - appState.galleryImages.length;
-    if (files.length > remainingSlots) {
-        showAlert(`Puedes subir ${remainingSlots} imagen(es) más. Has seleccionado ${files.length}.`);
-        DOMElements.galleryImageUploadInput.value = '';
-        return;
-    }
-    
-    DOMElements.addGalleryImageBtn.disabled = true;
-    DOMElements.addGalleryImageBtn.innerHTML = `<div class="w-5 h-5 border-2 border-t-transparent border-white rounded-full animate-spin"></div>`;
-
-    const uploadPromises = files.map(async (file, index) => {
-        try {
-            const compressedFile = await imageCompression(file, { maxSizeMB: 0.5, maxWidthOrHeight: 1920, useWebWorker: true });
-            const filePath = `${appState.currentUser.id}/${Date.now()}-${compressedFile.name}`;
-            
-            const { error: uploadError } = await supabaseClient.storage.from('gallery-images').upload(filePath, compressedFile);
-            if (uploadError) throw uploadError;
-
-            const { data: { publicUrl } } = supabaseClient.storage.from('gallery-images').getPublicUrl(filePath);
-
-            const newOrderIndex = appState.galleryImages.length + index;
-            const { data: newImage, error: dbError } = await supabaseClient
-                .from('gallery_images')
-                .insert({
-                    user_id: appState.currentUser.id,
-                    image_url: publicUrl,
-                    image_path: filePath,
-                    order_index: newOrderIndex
-                })
-                .select()
-                .single();
-            
-            if (dbError) throw dbError;
-            return newImage;
-        } catch (error) {
-            console.error("Error uploading one image:", error);
-            return null;
-        }
-    });
-
-    const results = await Promise.all(uploadPromises);
-    const newImages = results.filter(Boolean);
-    appState.galleryImages.push(...newImages);
-
-    renderGalleryEditor();
-    markSettingsAsDirty();
-    updateLivePreview();
-    
-    DOMElements.galleryImageUploadInput.value = '';
-});
-
-DOMElements.galleryEditorList.addEventListener('click', (e) => {
-    const item = e.target.closest('.gallery-editor-item');
-    if (item) {
-        const imageId = item.dataset.id;
-        const image = appState.galleryImages.find(img => String(img.id) === String(imageId));
-        if (image) {
-            openGalleryEditModal(image);
-        }
-    }
-});
-
-DOMElements.galleryEditModal.addEventListener('click', (e) => {
-    const closeBtn = e.target.closest('#gallery-edit-close-btn');
-    const cropBtn = e.target.closest('#gallery-edit-crop-btn');
-    const deleteBtn = e.target.closest('#gallery-edit-delete-btn');
-    
-    if (closeBtn) {
-        closeGalleryEditModal();
-    } else if (cropBtn) {
-        const imageToCrop = appState.galleryImages.find(img => img.id === appState.editingGalleryImageId);
-        if (imageToCrop) {
-            DOMElements.thumbnailCropperImage.src = imageToCrop.image_url;
-            DOMElements.thumbnailCropperModal.classList.remove('hidden');
-            if (appState.thumbnailCropper) appState.thumbnailCropper.destroy();
-            
-            DOMElements.thumbnailCropperImage.style.opacity = 0;
-
-            appState.thumbnailCropper = new Cropper(DOMElements.thumbnailCropperImage, {
-                aspectRatio: 1 / 1,
-                viewMode: 1,
-                background: false,
-                ready: function () {
-                    this.cropper.cropper.style.opacity = 1;
-                }
-            });
-        }
-    } else if (deleteBtn) {
-        const imageToDelete = appState.galleryImages.find(img => img.id === appState.editingGalleryImageId);
-        if (imageToDelete) {
-             showConfirm("¿Estás seguro de que quieres eliminar esta imagen?", async (confirmed) => {
-                if (confirmed) {
-                    const { error: dbError } = await supabaseClient.from('gallery_images').delete().eq('id', imageToDelete.id);
-                    if (dbError) return showAlert(`Error al eliminar: ${dbError.message}`);
-
-                    const pathsToDelete = [imageToDelete.image_path];
-                    if (imageToDelete.thumbnail_path) pathsToDelete.push(imageToDelete.thumbnail_path);
-                    
-                    const { error: storageError } = await supabaseClient.storage.from('gallery-images').remove(pathsToDelete);
-
-                    if (storageError) {
-                        console.error("Error al eliminar imagen(es) del storage:", storageError);
-                    }
-
-                    appState.galleryImages = appState.galleryImages.filter(img => img.id !== imageToDelete.id);
-                    renderGalleryEditor();
-                    markSettingsAsDirty();
-                    updateLivePreview();
-                    closeGalleryEditModal();
-                }
-            });
-        }
-    }
-});
-
-DOMElements.galleryEditModal.querySelector('#gallery-edit-caption').addEventListener('input', debounce(async (e) => {
-    const newCaption = e.target.value;
-    const { error } = await supabaseClient
-        .from('gallery_images')
-        .update({ caption: newCaption })
-        .eq('id', appState.editingGalleryImageId);
-    
-    if (error) {
-        showAlert("No se pudo guardar el pie de foto.");
-        console.error("Error updating caption:", error);
-    } else {
-        const img = appState.galleryImages.find(i => i.id === appState.editingGalleryImageId);
-        if (img) img.caption = newCaption;
-        markSettingsAsDirty();
-        updateLivePreview();
-    }
-}, 500));
-
-
-document.getElementById('thumbnail-cropper-cancel-btn').addEventListener('click', () => {
-    DOMElements.thumbnailCropperModal.classList.add('hidden');
-    if(appState.thumbnailCropper) appState.thumbnailCropper.destroy();
-    appState.thumbnailCropper = null;
-});
-
-document.getElementById('thumbnail-cropper-save-btn').addEventListener('click', () => {
-    if (!appState.thumbnailCropper || !appState.editingGalleryImageId) return;
-
-    const saveBtn = document.getElementById('thumbnail-cropper-save-btn');
-    saveBtn.disabled = true;
-    saveBtn.innerHTML = `<div class="w-5 h-5 border-2 border-t-transparent border-white rounded-full animate-spin"></div><span>Procesando...</span>`;
-
-    appState.thumbnailCropper.getCroppedCanvas({ width: 400, height: 400 }).toBlob(async (blob) => {
-        try {
-            const imageToUpdate = appState.galleryImages.find(img => img.id === appState.editingGalleryImageId);
-            if (!imageToUpdate) throw new Error("Image not found");
-
-            const compressedBlob = await imageCompression(blob, { maxSizeMB: 0.1, maxWidthOrHeight: 400, useWebWorker: true });
-            
-            if (imageToUpdate.thumbnail_path) {
-                await supabaseClient.storage.from('gallery-images').remove([imageToUpdate.thumbnail_path]);
-            }
-
-            const thumbnailPath = `${appState.currentUser.id}/thumb-${Date.now()}.webp`;
-            const { error: uploadError } = await supabaseClient.storage.from('gallery-images').upload(thumbnailPath, compressedBlob, { contentType: 'image/webp' });
-            if (uploadError) throw uploadError;
-
-            const { data: { publicUrl } } = supabaseClient.storage.from('gallery-images').getPublicUrl(thumbnailPath);
-
-            const { data: updatedImage, error: dbError } = await supabaseClient
-                .from('gallery_images')
-                .update({ thumbnail_url: publicUrl, thumbnail_path: thumbnailPath })
-                .eq('id', appState.editingGalleryImageId)
-                .select()
-                .single();
-            if (dbError) throw dbError;
-            
-            const index = appState.galleryImages.findIndex(img => img.id === appState.editingGalleryImageId);
-            if (index !== -1) appState.galleryImages[index] = updatedImage;
-
-            renderGalleryEditor();
-            markSettingsAsDirty();
-            updateLivePreview();
-
-        } catch (error) {
-            showAlert(`Error al guardar la miniatura: ${error.message}`);
-        } finally {
-            saveBtn.disabled = false;
-            saveBtn.textContent = 'Guardar Miniatura';
-            DOMElements.thumbnailCropperModal.classList.add('hidden');
-            if(appState.thumbnailCropper) appState.thumbnailCropper.destroy();
-            appState.thumbnailCropper = null;
-        }
-    }, 'image/webp');
-});
-
-
 // --- INICIALIZACIÓN ---
 initializeApp();
 window.onload = () => { 
@@ -2856,3 +2348,4 @@ window.onload = () => {
 	setupPasswordToggle('update-confirm-password-input', 'update-confirm-password-toggle');
 	setupPasswordToggle('delete-confirm-password-input', 'delete-confirm-password-toggle');
 };
+
