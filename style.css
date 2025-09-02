@@ -192,7 +192,7 @@
 
 #search-input { transition: width 0.3s ease-in-out, opacity 0.3s ease-in-out, padding 0.3s ease-in-out; }
 #search-container.expanded #search-input { width: 180px; opacity: 1; padding-left: 1rem; padding-right: 1rem; }
-@media (min-width: 640px) { #search-container.expanded #search-input { width: 250px; } }
+@media (min-width: 640px) { #search-container.expanded #search-input { width: 200px; } }
 #search-container #search-icon-btn .icon-search { display: block; }
 #search-container #search-icon-btn .icon-x { display: none; }
 #search-container.expanded #search-icon-btn .icon-search { display: none; }
@@ -398,7 +398,7 @@
 	}
 }
 
-/* === Estilos para Video === */
+/* === Estilos para Video y Galería === */
 .video-wrapper {
     position: relative;
     width: 100%;
@@ -411,6 +411,10 @@
     inset: 0;
     z-index: 10;
     cursor: grab;
+}
+
+.draggable-item.is-empty {
+    display: none !important;
 }
 
 /* Modal de Zoom Interactivo */
