@@ -179,6 +179,9 @@ function extractUsername(input, socialKey) {
 
 // --- 5. LÓGICA PRINCIPAL DE LA APLICACIÓN ---
 
+// Bandera para prevenir ejecuciones simultáneas de handleAuthStateChange
+let isHandlingAuth = false;
+
 function initializeApp() {
 	if (!SUPABASE_URL || !SUPABASE_ANON_KEY || SUPABASE_URL.includes('TU_SUPABASE_URL')) {
 		showAlert('CONFIGURACIÓN NECESARIA: Por favor, añade tus claves de API de Supabase en el código y sigue las instrucciones de la base de datos.');
@@ -236,85 +239,90 @@ async function fetchUserProfileWithRetry(userId, retries = 3, delay = 500) {
 }
 
 async function handleAuthStateChange(session) {
-    if (appState.isRecoveringPassword) {
-        showPage('updatePassword');
-        return;
-    }
+    if (isHandlingAuth) return;
+    isHandlingAuth = true;
 
-    if (session?.user) {
-        appState.currentUser = session.user;
-        document.getElementById('main-header').classList.remove('hidden');
-
-        const { profile: myProfile, error: myProfileError } = await fetchUserProfileWithRetry(appState.currentUser.id);
-
-        if (myProfileError) {
-            console.error("Error fetching profile:", myProfileError);
-            showAlert("No se pudo cargar tu perfil. Por favor, intenta recargar la página.");
-            showPage('auth');
+    try {
+        if (appState.isRecoveringPassword) {
+            showPage('updatePassword');
             return;
         }
 
-        appState.myProfile = myProfile;
+        if (session?.user) {
+            appState.currentUser = session.user;
+            document.getElementById('main-header').classList.remove('hidden');
 
-        if (myProfile.is_deactivated) {
-            const deletionDate = new Date(myProfile.deletion_scheduled_at);
-            deletionDate.setDate(deletionDate.getDate() + 30);
-            document.getElementById('deletion-date').textContent = deletionDate.toLocaleDateString();
-            showPage('reactivateAccount');
-            return;
-        }
-        
-        const urlParams = new URLSearchParams(window.location.search);
-        const publicUsername = urlParams.get('user');
-        
-        if (publicUsername && myProfile.username && myProfile.username !== `@${publicUsername}`) {
-            document.getElementById('back-to-my-profile-btn').classList.remove('hidden');
-            document.getElementById('back-to-my-profile-btn').href = `${window.location.pathname}?user=${myProfile.username.substring(1)}`;
-            await loadPublicProfile(publicUsername);
-        } else {
-            document.getElementById('back-to-my-profile-btn').classList.add('hidden');
-            const { data: links } = await supabaseClient.from('links').select('*').eq('user_id', appState.currentUser.id).order('order_index', { ascending: true });
-            appState.links = links || [];
+            const { profile: myProfile, error: myProfileError } = await fetchUserProfileWithRetry(appState.currentUser.id);
+
+            if (myProfileError) {
+                console.error("Error fetching profile:", myProfileError);
+                showAlert("No se pudo cargar tu perfil. Por favor, intenta recargar la página.");
+                showPage('auth');
+                return;
+            }
+
+            appState.myProfile = myProfile;
+
+            if (myProfile.is_deactivated) {
+                const deletionDate = new Date(myProfile.deletion_scheduled_at);
+                deletionDate.setDate(deletionDate.getDate() + 30);
+                document.getElementById('deletion-date').textContent = deletionDate.toLocaleDateString();
+                showPage('reactivateAccount');
+                return;
+            }
             
-            if (myProfile && myProfile.username_set) {
-                const correctUsername = myProfile.username.substring(1);
-                const currentUsernameInUrl = new URLSearchParams(window.location.search).get('user');
-                
-                if (window.location.protocol !== 'blob:' && correctUsername !== currentUsernameInUrl) {
-                    const profileUrl = `${window.location.pathname}?user=${correctUsername}`;
-                    history.replaceState(null, '', profileUrl);
-                    // Retornar para que la siguiente llamada de onAuthStateChange haga el renderizado
-                    // Esto evita el bucle de carga y el renderizado doble.
-                    return; 
-                }
-
-                renderProfile(myProfile, true);
-                renderLinksEditor(appState.links);
-                listenToUserLinks(myProfile.id);
-                showPage('profile');
+            const urlParams = new URLSearchParams(window.location.search);
+            const publicUsername = urlParams.get('user');
+            
+            if (publicUsername && myProfile.username && myProfile.username !== `@${publicUsername}`) {
+                document.getElementById('back-to-my-profile-btn').classList.remove('hidden');
+                document.getElementById('back-to-my-profile-btn').href = `${window.location.pathname}?user=${myProfile.username.substring(1)}`;
+                await loadPublicProfile(publicUsername);
             } else {
-                if (window.location.protocol !== 'blob:') {
-                    history.replaceState(null, '', window.location.pathname);
+                document.getElementById('back-to-my-profile-btn').classList.add('hidden');
+                const { data: links } = await supabaseClient.from('links').select('*').eq('user_id', appState.currentUser.id).order('order_index', { ascending: true });
+                appState.links = links || [];
+                
+                if (myProfile && myProfile.username_set) {
+                    const correctUsername = myProfile.username.substring(1);
+                    const currentUsernameInUrl = urlParams.get('user');
+                    
+                    if (window.location.protocol !== 'blob:' && correctUsername !== currentUsernameInUrl) {
+                        const profileUrl = `${window.location.pathname}?user=${correctUsername}`;
+                        history.replaceState(null, '', profileUrl);
+                        // No retornamos, dejamos que la segunda llamada se bloquee por la bandera `isHandlingAuth`
+                    }
+
+                    renderProfile(myProfile, true);
+                    renderLinksEditor(appState.links);
+                    listenToUserLinks(myProfile.id);
+                    showPage('profile');
+                } else {
+                    if (window.location.protocol !== 'blob:') {
+                        history.replaceState(null, '', window.location.pathname);
+                    }
+                    showPage('welcome');
                 }
-                showPage('welcome');
             }
-        }
-    } else {
-        const urlParams = new URLSearchParams(window.location.search);
-        const publicUsername = urlParams.get('user');
-        
-        document.getElementById('main-header').classList.add('hidden');
-        if (publicUsername) {
-            await loadPublicProfile(publicUsername);
         } else {
-            document.getElementById('email-input').value = '';
-            document.getElementById('password-input').value = '';
-            showPage('auth');
+            const urlParams = new URLSearchParams(window.location.search);
+            const publicUsername = urlParams.get('user');
             
-            if (urlParams.get('action') === 'register') {
-                DOMElements.registerModal.classList.remove('hidden');
+            document.getElementById('main-header').classList.add('hidden');
+            if (publicUsername) {
+                await loadPublicProfile(publicUsername);
+            } else {
+                document.getElementById('email-input').value = '';
+                document.getElementById('password-input').value = '';
+                showPage('auth');
+                
+                if (urlParams.get('action') === 'register') {
+                    DOMElements.registerModal.classList.remove('hidden');
+                }
             }
         }
+    } finally {
+        isHandlingAuth = false;
     }
 }
 
