@@ -443,13 +443,22 @@ function buildProfileLayout(profileData, isOwner) {
     const layoutContainer = document.getElementById('profile-layout-container');
     layoutContainer.innerHTML = ''; // Limpiar para construir desde cero
 
-    const allBaseSections = ["profile-image", "display-name", "username", "description", "featured-video", "social-buttons", "socials"];
+    const defaultBaseSections = ["profile-image", "display-name", "username", "description", "featured-video", "social-buttons", "socials"];
     const currentLinkIds = appState.links.map(l => `link_${l.id}`);
-    let layoutOrder = profileData.layout_order || [...allBaseSections, ...currentLinkIds];
+    
+    // Si no hay un layout guardado, usamos uno por defecto que pone los botones antes de los enlaces
+    const defaultLayout = ["profile-image", "display-name", "username", "description", "featured-video", "social-buttons", ...currentLinkIds, "socials"];
+    
+    let layoutOrder = profileData.layout_order && profileData.layout_order.length > 0 ? profileData.layout_order : defaultLayout;
     
     currentLinkIds.forEach(linkId => {
         if (!layoutOrder.includes(linkId)) {
-            layoutOrder.push(linkId);
+             const socialButtonsIndex = layoutOrder.indexOf('social-buttons');
+             if (socialButtonsIndex !== -1) {
+                 layoutOrder.splice(socialButtonsIndex + 1, 0, linkId);
+             } else {
+                 layoutOrder.push(linkId);
+             }
         }
     });
 
@@ -564,7 +573,7 @@ function updateProfileContent(profileData, isOwner) {
 
 
 function updateContainerVisibility(profileData) {
-    const isEmpty = (data) => !data || (Array.isArray(data) && data.length === 0) || (typeof data === 'object' && Object.keys(data).length === 0) || data.trim() === '';
+    const isEmpty = (data) => !data || (Array.isArray(data) && data.length === 0) || (typeof data === 'object' && Object.keys(data).length === 0) || (typeof data === 'string' && data.trim() === '');
 
     const descriptionContainer = document.querySelector('[data-section="description"]');
     if (descriptionContainer) descriptionContainer.classList.toggle('is-empty', isEmpty(profileData.description || ''));
@@ -1437,8 +1446,8 @@ document.getElementById('add-update-link-btn').addEventListener('click', async (
             if (lastLinkIndex !== -1) {
                 currentLayout.splice(lastLinkIndex + 1, 0, `link_${newLink.id}`);
             } else {
-                const socialsIndex = currentLayout.indexOf('socials');
-                currentLayout.splice(socialsIndex !== -1 ? socialsIndex : currentLayout.length, 0, `link_${newLink.id}`);
+                const socialButtonsIndex = currentLayout.indexOf('social-buttons');
+                currentLayout.splice(socialButtonsIndex !== -1 ? socialButtonsIndex + 1 : currentLayout.length, 0, `link_${newLink.id}`);
             }
 			
 			const { data: updatedProfile, error: profileUpdateError } = await supabaseClient
