@@ -432,9 +432,7 @@ function renderSingleLink(linkData, profileData) {
 		? `<span class="w-6 h-6">${iconHtml}</span><span class="flex-grow text-center">${linkData.title}</span><span class="w-6 h-6"></span>`
 		: `<span class="flex-grow text-center">${linkData.title}</span>`;
 
-	const linkHtml = `<a href="#" draggable="false" data-url="${linkData.url}" data-link-id="${linkData.id}" rel="noopener noreferrer" class="${linkClasses.join(' ')}">${linkContent}</a>`;
-
-	return `<div data-section="link_${linkData.id}" class="draggable-item my-2">${linkHtml}</div>`;
+	return `<a href="#" draggable="false" data-url="${linkData.url}" data-link-id="${linkData.id}" rel="noopener noreferrer" class="${linkClasses.join(' ')}">${linkContent}</a>`;
 }
 
 // NUEVA ARQUITECTURA: Construir una vez, actualizar selectivamente.
@@ -446,28 +444,23 @@ function buildProfileLayout(profileData, isOwner) {
     layoutContainer.innerHTML = ''; // Limpiar para construir desde cero
 
     const allBaseSections = ["profile-image", "display-name", "username", "description", "featured-video", "social-buttons", "socials"];
-    const layoutOrder = profileData.layout_order || allBaseSections;
+    const layoutOrder = profileData.layout_order || [...allBaseSections, ...appState.links.map(l => `link_${l.id}`)];
 
     const fragment = document.createDocumentFragment();
 
     layoutOrder.forEach(sectionId => {
-        if (sectionId.startsWith('link_')) return;
+        const tempDiv = document.createElement('div');
         if (profileSectionTemplates[sectionId]) {
-            const tempDiv = document.createElement('div');
             tempDiv.innerHTML = profileSectionTemplates[sectionId]();
             fragment.appendChild(tempDiv.firstChild);
+        } else if (sectionId.startsWith('link_')) {
+            // Crear un marcador de posición para el enlace
+            const linkPlaceholder = document.createElement('div');
+            linkPlaceholder.dataset.section = sectionId;
+            linkPlaceholder.className = 'draggable-item my-2'; // Asegurar que sea arrastrable
+            fragment.appendChild(linkPlaceholder);
         }
     });
-
-    const linkContainer = document.createElement('div');
-    linkContainer.dataset.section = 'links-container';
-    
-    const socialsNode = fragment.querySelector('[data-section="socials"]');
-    if (socialsNode) {
-        fragment.insertBefore(linkContainer, socialsNode);
-    } else {
-        fragment.appendChild(linkContainer);
-    }
     
     layoutContainer.appendChild(fragment);
 
@@ -527,20 +520,12 @@ function updateProfileContent(profileData, isOwner) {
     }
 
     // Actualizar lista de enlaces
-    const linksContainer = document.querySelector('[data-section="links-container"]');
-    if (linksContainer) {
-        linksContainer.innerHTML = '';
-        const layoutOrder = profileData.layout_order || [];
-        const linksInOrder = layoutOrder
-            .map(sectionId => appState.links.find(link => `link_${link.id}` === sectionId))
-            .filter(Boolean);
-        
-        const unOrderedLinks = appState.links.filter(link => !linksInOrder.includes(link));
-        
-        [...linksInOrder, ...unOrderedLinks].forEach(linkData => {
-            linksContainer.insertAdjacentHTML('beforeend', renderSingleLink(linkData, profileData));
-        });
-    }
+    appState.links.forEach(linkData => {
+        const linkPlaceholder = document.querySelector(`[data-section="link_${linkData.id}"]`);
+        if (linkPlaceholder) {
+            linkPlaceholder.innerHTML = renderSingleLink(linkData, profileData);
+        }
+    });
 
     renderSocialButtons(profileData.social_buttons);
     renderSocialIcons(profileData.socials, profileData.socials_order);
