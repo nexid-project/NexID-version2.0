@@ -349,7 +349,7 @@ async function refreshLinks() {
 	appState.links = linksData || [];
 	
 	renderLinksEditor(appState.links);
-    updateLivePreview();
+    if(appState.previewProfile) updateProfileContent(appState.previewProfile, true);
 }
 
 function listenToUserLinks(userId) {
@@ -412,28 +412,13 @@ const profileSectionTemplates = {
 		if (profileData.display_name && profileData.display_name.trim() !== '' && profileData.display_name.trim() !== 'Nombre de Perfil') {
 			return `<div data-section="display-name" class="text-center draggable-item p-2"><h1 id="public-display-name" class="text-3xl font-bold">${profileData.display_name}</h1></div>`;
 		}
-		return '';
+		return '<div data-section="display-name" class="draggable-item p-2"></div>';
 	},
 	'username': (profileData) => `<div data-section="username" class="text-center draggable-item p-2"><p id="public-username" class="text-lg opacity-80">${profileData.username || ''}</p></div>`,
 	'description': (profileData) => `<div data-section="description" class="text-center draggable-item p-2"><p id="public-description" class="opacity-90">${profileData.description || ''}</p></div>`,
-    'featured-video': (profileData) => {
-        if (parseVideoUrl(profileData.featured_video_url)) {
-            return `<div data-section="featured-video" class="draggable-item p-2"></div>`;
-        }
-        return '';
-    },
-	'social-buttons': (profileData) => {
-        if (profileData.social_buttons && profileData.social_buttons.length > 0) {
-            return `<section id="social-buttons-section" data-section="social-buttons" class="draggable-item p-2"></section>`;
-        }
-        return '';
-    },
-	'socials': (profileData) => {
-        if (profileData.socials && Object.keys(profileData.socials).length > 0) {
-            return `<footer id="socials-footer" data-section="socials" class="pt-4 pb-2 draggable-item p-2"></footer>`;
-        }
-        return '';
-    }
+    'featured-video': (profileData) => `<div data-section="featured-video" class="draggable-item p-2"></div>`,
+	'social-buttons': () => `<section id="social-buttons-section" data-section="social-buttons" class="draggable-item p-2"></section>`,
+	'socials': () => `<footer id="socials-footer" data-section="socials" class="pt-4 pb-2 draggable-item p-2"></footer>`
 };
 
 function renderSingleLink(linkData, profileData) {
@@ -463,9 +448,74 @@ function renderSingleLink(linkData, profileData) {
 
 function renderProfile(profileData, isOwner) {
 	if (!profileData) return;
+	
+    updateProfileStyles(profileData);
 
-	// 1. Actualizar estilos globales
-	const theme = profileData.theme || 'grafito';
+	const layoutContainer = document.getElementById('profile-layout-container');
+    layoutContainer.innerHTML = ''; // Limpiar para renderizado completo
+
+    const desiredLayoutOrder = appState.tempLayoutOrder || profileData.layout_order || ["profile-image", "display-name", "username", "description", "featured-video", "social-buttons", "socials"];
+    
+    const fragment = document.createDocumentFragment();
+
+    desiredLayoutOrder.forEach(sectionId => {
+        if (sectionId.startsWith('link_')) return;
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = profileSectionTemplates[sectionId](profileData, isOwner);
+        if (tempDiv.firstChild) fragment.appendChild(tempDiv.firstChild);
+    });
+    
+    const linkIds = appState.links.map(link => `link_${link.id}`);
+    const linksHtml = linkIds.map(linkId => {
+        const linkData = appState.links.find(l => `link_${l.id}` === linkId);
+        return linkData ? renderSingleLink(linkData, profileData) : '';
+    }).join('');
+    const tempLinksDiv = document.createElement('div');
+    tempLinksDiv.innerHTML = linksHtml;
+    
+    const allLinkElements = Array.from(tempLinksDiv.children);
+
+    let linksInLayout = false;
+    desiredLayoutOrder.forEach(sectionId => {
+        if (sectionId.startsWith('link_')) {
+            const linkEl = allLinkElements.find(el => el.dataset.section === sectionId);
+            if (linkEl) fragment.appendChild(linkEl);
+            linksInLayout = true;
+        }
+    });
+
+    if (!linksInLayout && allLinkElements.length > 0) {
+        const socialsNode = fragment.querySelector('[data-section="socials"]');
+        if (socialsNode) {
+            allLinkElements.forEach(linkEl => socialsNode.parentNode.insertBefore(linkEl, socialsNode));
+        } else {
+            allLinkElements.forEach(linkEl => fragment.appendChild(linkEl));
+        }
+    }
+    
+    layoutContainer.appendChild(fragment);
+
+	updateProfileContent(profileData, isOwner);
+
+	const isDesignMode = DOMElements.profilePage.classList.contains('design-mode');
+	document.getElementById('user-actions').classList.toggle('hidden', !isOwner || isDesignMode);
+	document.getElementById('layout-actions').classList.toggle('hidden', !isDesignMode);
+
+	if (!appState.currentUser) {
+		layoutContainer.insertAdjacentHTML('beforeend', `
+			<div class="mt-8 text-center">
+				 <a href="/app.html" class="join-nexid-button inline-flex items-center justify-center py-3 px-8 font-bold text-lg rounded-full transition-transform duration-200 hover:scale-110">
+					Únete a NexID
+				</a>
+			</div>
+		`);
+	}
+	
+	lucide.createIcons();
+}
+
+function updateProfileStyles(profileData) {
+    const theme = profileData.theme || 'grafito';
 	const font = profileData.font_family || 'font-inter';
 	loadFontIfNeeded(font);
 	document.body.className = `bg-gray-900 text-white min-h-screen overflow-x-hidden theme-${theme}`;
@@ -481,132 +531,57 @@ function renderProfile(profileData, isOwner) {
 		DOMElements.globalBackground.style.backgroundImage = 'none';
 		DOMElements.globalBackground.style.backgroundColor = 'var(--background)';
 	}
+}
 
-	const layoutContainer = document.getElementById('profile-layout-container');
+function updateProfileContent(profileData, isOwner) {
+    // Actualizar campos de texto
+	const displayNameContainer = document.querySelector('[data-section="display-name"]');
+	if (displayNameContainer) {
+		const hasContent = profileData.display_name && profileData.display_name.trim() !== '' && profileData.display_name.trim() !== 'Nombre de Perfil';
+		displayNameContainer.innerHTML = hasContent ? `<h1 id="public-display-name" class="text-3xl font-bold">${profileData.display_name}</h1>` : '';
+	}
+    const usernameEl = document.getElementById('public-username');
+    if (usernameEl) usernameEl.textContent = profileData.username || '';
+    const descriptionEl = document.getElementById('public-description');
+    if (descriptionEl) descriptionEl.textContent = profileData.description || '';
 
-	// --- LÓGICA DE VIDEO MEJORADA ---
-	const embedUrl = parseVideoUrl(profileData.featured_video_url);
-	let videoSection = layoutContainer.querySelector('[data-section="featured-video"]');
+    // Actualizar imagen de perfil
+    const profileImgEl = document.getElementById('public-profile-img');
+    if (profileImgEl) profileImgEl.src = profileData.profile_image_url || 'https://placehold.co/128x128/7f9cf5/1F2937?text=...';
+    if(isOwner && !document.getElementById('edit-profile-img-btn')) {
+        profileImgEl.insertAdjacentHTML('afterend', `<button id="edit-profile-img-btn" class="absolute bottom-1 right-1 bg-gray-800 bg-opacity-70 p-2 rounded-full text-white hover:bg-opacity-100 transition-colors"><i data-lucide="camera" class="w-5 h-5"></i></button>`);
+        document.getElementById('edit-profile-img-btn').addEventListener('click', (e) => { e.stopPropagation(); DOMElements.imageUploadInput.click(); });
+    }
 
-	if (embedUrl) {
-		if (!videoSection) {
+    // Actualización no destructiva del video
+    const embedUrl = parseVideoUrl(profileData.featured_video_url);
+    const videoSection = document.querySelector('[data-section="featured-video"]');
+    if (videoSection) {
+        const iframe = videoSection.querySelector('iframe');
+        if (embedUrl) {
+            if (!iframe || iframe.src !== embedUrl) {
+                videoSection.innerHTML = `<div class="video-wrapper"><iframe class="w-full h-full rounded-lg absolute inset-0" src="${embedUrl}" title="Video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
+            }
+        } else {
+            videoSection.innerHTML = '';
+        }
+    }
+	
+	document.querySelectorAll('[data-section^="link_"]').forEach(linkEl => {
+		const linkId = linkEl.dataset.section.replace('link_', '');
+		const linkData = appState.links.find(l => String(l.id) === linkId);
+		if(linkData) {
 			const tempDiv = document.createElement('div');
-			tempDiv.innerHTML = profileSectionTemplates['featured-video'](profileData, isOwner);
-			videoSection = tempDiv.firstElementChild;
-			layoutContainer.appendChild(videoSection);
+			tempDiv.innerHTML = renderSingleLink(linkData, profileData);
+			linkEl.innerHTML = tempDiv.firstChild.innerHTML;
+			linkEl.className = tempDiv.firstChild.className;
 		}
-		const iframe = videoSection.querySelector('iframe');
-		if (!iframe || iframe.src !== embedUrl) {
-			videoSection.innerHTML = `<div class="video-wrapper"><iframe class="w-full h-full rounded-lg absolute inset-0" src="${embedUrl}" title="Video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
-		}
-	} else if (videoSection) {
-		videoSection.innerHTML = '';
-	}
-	// --- FIN DE LÓGICA DE VIDEO ---
+	});
 
-	// 2. Construir el layout deseado
-	const allBaseSections = ["profile-image", "display-name", "username", "description", "featured-video", "social-buttons", "socials"];
-	let baseLayout = appState.tempLayoutOrder || profileData.layout_order || [...allBaseSections];
-	
-    let cleanLayout = baseLayout.filter(id => !id.startsWith('link_'));
-	const linkIds = appState.links.map(link => `link_${link.id}`);
-	
-    const linksIndex = cleanLayout.indexOf('links');
-    if (linksIndex !== -1) {
-		cleanLayout.splice(linksIndex, 1, ...linkIds);
-	} else {
-        const socialsIndex = cleanLayout.indexOf('socials');
-        if (socialsIndex !== -1) {
-            cleanLayout.splice(socialsIndex, 0, ...linkIds);
-        } else {
-            cleanLayout.push(...linkIds);
-        }
-    }
-    const desiredLayoutOrder = cleanLayout;
-    
-    // 3. Reconciliación del DOM
-    const existingElements = new Map(Array.from(layoutContainer.children).map(el => [el.dataset.section, el]));
-    const elementsToKeep = new Set();
-    
-    desiredLayoutOrder.forEach(sectionId => {
-        elementsToKeep.add(sectionId);
-        let element = existingElements.get(sectionId);
-        
-        if (!element) {
-            const tempDiv = document.createElement('div');
-            let elementHtml = '';
-            if (profileSectionTemplates[sectionId]) {
-                elementHtml = profileSectionTemplates[sectionId](profileData, isOwner);
-            } else if (sectionId.startsWith('link_')) {
-                const linkId = sectionId.replace('link_', '');
-                const linkData = appState.links.find(l => String(l.id) === linkId);
-                if (linkData) elementHtml = renderSingleLink(linkData, profileData);
-            }
-            if (elementHtml) {
-                tempDiv.innerHTML = elementHtml;
-                element = tempDiv.firstElementChild;
-            }
-        } else {
-             if (existingElements.has(sectionId) && sectionId !== 'featured-video') { // No tocar el video aquí
-                switch (sectionId) {
-                    case 'display-name': element.querySelector('#public-display-name').textContent = profileData.display_name; break;
-                    case 'username': element.querySelector('#public-username').textContent = profileData.username || ''; break;
-                    case 'description': element.querySelector('#public-description').textContent = profileData.description || ''; break;
-                    case 'profile-image': element.querySelector('#public-profile-img').src = profileData.profile_image_url || 'https://placehold.co/128x128/7f9cf5/1F2937?text=...'; break;
-                }
-                if (sectionId.startsWith('link_')) {
-                    const linkId = sectionId.replace('link_', '');
-                    const linkData = appState.links.find(l => String(l.id) === linkId);
-                    const tempDiv = document.createElement('div');
-                    tempDiv.innerHTML = renderSingleLink(linkData, profileData);
-                    element.innerHTML = tempDiv.firstElementChild.innerHTML;
-                    element.className = tempDiv.firstElementChild.className;
-                }
-            }
-        }
-        
-        if (element) {
-            layoutContainer.appendChild(element);
-        }
-    });
-    
-    existingElements.forEach((element, sectionId) => {
-        if (!elementsToKeep.has(sectionId)) {
-            element.remove();
-        }
-    });
-
-	// 4. Renderizar/Actualizar componentes complejos
-	const socialButtonsContainer = layoutContainer.querySelector('#social-buttons-section');
-    if (socialButtonsContainer) renderSocialButtons(profileData.social_buttons);
-    
-    const socialsFooterContainer = layoutContainer.querySelector('#socials-footer');
-    if (socialsFooterContainer) renderSocialIcons(profileData.socials, profileData.socials_order);
-
-	if (isOwner) {
-		const editProfileImgBtn = document.getElementById('edit-profile-img-btn');
-		if(editProfileImgBtn) editProfileImgBtn.addEventListener('click', (e) => { e.stopPropagation(); DOMElements.imageUploadInput.click(); });
-	}
-	renderProfileActions(profileData);
+    renderSocialButtons(profileData.social_buttons);
+    renderSocialIcons(profileData.socials, profileData.socials_order);
+    renderProfileActions(profileData);
 	updateContainerVisibilityInDesignMode(profileData);
-	const isDesignMode = DOMElements.profilePage.classList.contains('design-mode');
-	document.getElementById('user-actions').classList.toggle('hidden', !isOwner || isDesignMode);
-	document.getElementById('layout-actions').classList.toggle('hidden', !isDesignMode);
-
-	if (!appState.currentUser && !layoutContainer.querySelector('.join-nexid-button')) {
-		layoutContainer.insertAdjacentHTML('beforeend', `
-			<div class="mt-8 text-center">
-				 <a href="/app.html" class="join-nexid-button inline-flex items-center justify-center py-3 px-8 font-bold text-lg rounded-full transition-transform duration-200 hover:scale-110">
-					Únete a NexID
-				</a>
-			</div>
-		`);
-	} else if (appState.currentUser) {
-        const joinButton = layoutContainer.querySelector('.join-nexid-button');
-        if (joinButton) joinButton.parentElement.remove();
-    }
-
-	lucide.createIcons();
 }
 
 function updateContainerVisibilityInDesignMode(profileData) {
@@ -1367,7 +1342,8 @@ function updateLivePreview() {
 		if (input.value.trim() !== '') appState.previewProfile.contact_info[input.dataset.contact] = input.value.trim();
 	});
 	
-	renderProfile(appState.previewProfile, true);
+	updateProfileStyles(appState.previewProfile);
+    updateProfileContent(appState.previewProfile, true);
 }
 
 DOMElements.settingsPanel.addEventListener('input', updateLivePreview);
@@ -1824,6 +1800,9 @@ function enterDesignMode() {
 		onUpdate: (evt) => {
 			const newOrder = Array.from(evt.from.children).map(el => el.dataset.section).filter(Boolean);
 			appState.tempLayoutOrder = newOrder;
+            if (appState.previewProfile) {
+                appState.previewProfile.layout_order = newOrder;
+            }
             markSettingsAsDirty();
 		},
 	});
@@ -1843,7 +1822,7 @@ function exitDesignMode(shouldRevert = false) {
 	if (shouldRevert) {
         if (appState.previewProfile) {
             appState.previewProfile.layout_order = appState.myProfile.layout_order;
-            updateLivePreview();
+            renderProfile(appState.previewProfile, true);
         } else {
             renderProfile(appState.myProfile, true);
         }
