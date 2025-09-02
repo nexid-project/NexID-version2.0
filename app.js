@@ -2,7 +2,7 @@ const { createClient } = supabase;
 
 // --- 1. CONFIGURACIÓN E INICIALIZACIÓN ---
 const SUPABASE_URL = 'https://ukowtlaytmqgdhjygulq.supabase.co';	
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVrb3d0bGF5dG1xZ2RoanlndWxxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM2NTEyMTgsImV4cCI6MjA2OTIyNzIxOH0.Kmg90Xdcu0RzAP55YwwuYfuRYj2U5LU90KAiKbEtLQg';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVrb3d0bGF5dG1xZ2RoanlndWxxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM2NTEyMTgsImV4cCI6MjA2OTIyNzIxOH0.Kmg9-Xdcu0RzAP55YwwuYfuRYj2U5LU90KAiKbEtLQg';
 const GEMINI_API_KEY = ""; // Replace with your Gemini API key
 
 const backgroundLibraryUrls = [
@@ -277,11 +277,17 @@ async function handleAuthStateChange(session) {
             appState.links = links || [];
             
             if (myProfile && myProfile.username_set) {
+                const correctUsername = myProfile.username.substring(1);
                 const currentUsernameInUrl = new URLSearchParams(window.location.search).get('user');
-                if (window.location.protocol !== 'blob:' && myProfile.username.substring(1) !== currentUsernameInUrl) {
-                    const profileUrl = `${window.location.pathname}?user=${myProfile.username.substring(1)}`;
+                
+                if (window.location.protocol !== 'blob:' && correctUsername !== currentUsernameInUrl) {
+                    const profileUrl = `${window.location.pathname}?user=${correctUsername}`;
                     history.replaceState(null, '', profileUrl);
+                    // Retornar para que la siguiente llamada de onAuthStateChange haga el renderizado
+                    // Esto evita el bucle de carga y el renderizado doble.
+                    return; 
                 }
+
                 renderProfile(myProfile, true);
                 renderLinksEditor(appState.links);
                 listenToUserLinks(myProfile.id);
