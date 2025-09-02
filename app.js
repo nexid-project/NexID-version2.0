@@ -402,14 +402,33 @@ function parseVideoUrl(url) {
     return embedUrl;
 }
 
+// Lógica de renderizado inteligente para contenedores.
 const profileSectionTemplates = {
-	'profile-image': () => `<div data-section="profile-image" class="draggable-item flex justify-center items-center p-2"><div class="relative"><img id="public-profile-img" alt="Foto de perfil" class="w-32 h-32 rounded-full border-4 shadow-lg object-cover"><div id="image-actions-container" class="absolute top-1/2 -translate-y-1/2 left-full ml-4 flex flex-col items-center gap-3"></div></div></div>`,
-	'display-name': () => `<div data-section="display-name" class="text-center draggable-item p-2"><h1 id="public-display-name" class="text-3xl font-bold"></h1></div>`,
-	'username': () => `<div data-section="username" class="text-center draggable-item p-2"><p id="public-username" class="text-lg opacity-80"></p></div>`,
-	'description': () => `<div data-section="description" class="text-center draggable-item p-2"><p id="public-description" class="opacity-90"></p></div>`,
-    'featured-video': () => `<div data-section="featured-video" class="draggable-item p-2"></div>`,
-	'social-buttons': () => `<section id="social-buttons-section" data-section="social-buttons" class="draggable-item p-2"></section>`,
-	'socials': () => `<footer id="socials-footer" data-section="socials" class="pt-4 pb-2 draggable-item p-2"></footer>`
+    'profile-image': () => `<div data-section="profile-image" class="draggable-item flex justify-center items-center p-2"><div class="relative"><img id="public-profile-img" alt="Foto de perfil" class="w-32 h-32 rounded-full border-4 shadow-lg object-cover"><div id="image-actions-container" class="absolute top-1/2 -translate-y-1/2 left-full ml-4 flex flex-col items-center gap-3"></div></div></div>`,
+    'display-name': () => `<div data-section="display-name" class="text-center draggable-item p-2"></div>`,
+    'username': () => `<div data-section="username" class="text-center draggable-item p-2"></div>`,
+    'description': () => `<div data-section="description" class="text-center draggable-item p-2"></div>`,
+    'featured-video': (profileData) => {
+        if (parseVideoUrl(profileData.featured_video_url)) {
+            return `<div data-section="featured-video" class="draggable-item p-2"></div>`;
+        }
+        return '';
+    },
+    'social-buttons': (profileData) => {
+        const buttons = profileData.social_buttons || [];
+        if (buttons.length > 0) {
+            return `<section id="social-buttons-section" data-section="social-buttons" class="draggable-item p-2"></section>`;
+        }
+        return '';
+    },
+    'socials': (profileData) => {
+        const socials = profileData.socials || {};
+        const validSocials = Object.values(socials).some(value => value && value.trim() !== '');
+        if (validSocials) {
+            return `<footer id="socials-footer" data-section="socials" class="pt-4 pb-2 draggable-item p-2"></footer>`;
+        }
+        return '';
+    }
 };
 
 function renderSingleLink(linkData, profileData) {
@@ -446,12 +465,10 @@ function buildProfileLayout(profileData, isOwner) {
     const defaultBaseSections = ["profile-image", "display-name", "username", "description", "featured-video", "social-buttons", "socials"];
     const currentLinkIds = appState.links.map(l => `link_${l.id}`);
     
-    // Si no hay un layout guardado, usamos uno por defecto que pone los botones antes de los enlaces
     const defaultLayout = ["profile-image", "display-name", "username", "description", "featured-video", "social-buttons", ...currentLinkIds, "socials"];
     
     let layoutOrder = profileData.layout_order && profileData.layout_order.length > 0 ? profileData.layout_order : defaultLayout;
     
-    // Asegurarse de que todos los enlaces actuales estén en el layout
     currentLinkIds.forEach(linkId => {
         if (!layoutOrder.includes(linkId)) {
              const socialButtonsIndex = layoutOrder.indexOf('social-buttons');
@@ -466,17 +483,18 @@ function buildProfileLayout(profileData, isOwner) {
     const fragment = document.createDocumentFragment();
 
     layoutOrder.forEach(sectionId => {
-        // No renderizar placeholders para enlaces que ya no existen
         if (!appState.links.find(l => `link_${l.id}` === sectionId) && sectionId.startsWith('link_')) {
              return; 
         }
         
         const tempDiv = document.createElement('div');
         if (profileSectionTemplates[sectionId]) {
-            tempDiv.innerHTML = profileSectionTemplates[sectionId]();
-            fragment.appendChild(tempDiv.firstChild);
+            const templateHtml = profileSectionTemplates[sectionId](profileData, isOwner);
+            if (templateHtml) {
+                tempDiv.innerHTML = templateHtml;
+                fragment.appendChild(tempDiv.firstChild);
+            }
         } else if (sectionId.startsWith('link_')) {
-            // Crear un placeholder vacío para cada enlace
             const linkPlaceholder = document.createElement('div');
             linkPlaceholder.dataset.section = sectionId;
             linkPlaceholder.className = 'draggable-item my-2'; 
@@ -509,15 +527,21 @@ function updateProfileStyles(profileData) {
 }
 
 function updateProfileContent(profileData, isOwner) {
-    // Actualizar campos de texto
-    const displayNameEl = document.getElementById('public-display-name');
-    if (displayNameEl) displayNameEl.textContent = profileData.display_name || '';
-    const usernameEl = document.getElementById('public-username');
-    if (usernameEl) usernameEl.textContent = profileData.username || '';
-    const descriptionEl = document.getElementById('public-description');
-    if (descriptionEl) descriptionEl.textContent = profileData.description || '';
+    const displayNameContainer = document.querySelector('[data-section="display-name"]');
+    if (displayNameContainer) {
+        displayNameContainer.innerHTML = (profileData.display_name) ? `<h1 id="public-display-name" class="text-3xl font-bold">${profileData.display_name}</h1>` : '';
+    }
 
-    // Actualizar imagen de perfil
+    const usernameContainer = document.querySelector('[data-section="username"]');
+    if(usernameContainer) {
+        usernameContainer.innerHTML = (profileData.username) ? `<p id="public-username" class="text-lg opacity-80">${profileData.username}</p>` : '';
+    }
+
+    const descriptionContainer = document.querySelector('[data-section="description"]');
+    if(descriptionContainer) {
+        descriptionContainer.innerHTML = (profileData.description) ? `<p id="public-description" class="opacity-90">${profileData.description}</p>` : '';
+    }
+
     const profileImgEl = document.getElementById('public-profile-img');
     if (profileImgEl) profileImgEl.src = profileData.profile_image_url || 'https://placehold.co/128x128/7f9cf5/1F2937?text=...';
     
@@ -527,7 +551,6 @@ function updateProfileContent(profileData, isOwner) {
         document.getElementById('edit-profile-img-btn').addEventListener('click', (e) => { e.stopPropagation(); DOMElements.imageUploadInput.click(); });
     }
 
-    // Actualización no destructiva del video
     const embedUrl = parseVideoUrl(profileData.featured_video_url);
     const videoSection = document.querySelector('[data-section="featured-video"]');
     if (videoSection) {
@@ -541,7 +564,6 @@ function updateProfileContent(profileData, isOwner) {
         }
     }
 
-    // Actualizar lista de enlaces
     appState.links.forEach(linkData => {
         const linkPlaceholder = document.querySelector(`[data-section="link_${linkData.id}"]`);
         if (linkPlaceholder) {
@@ -581,7 +603,6 @@ function updateContainerVisibility(profileData) {
     const descriptionContainer = document.querySelector('[data-section="description"]');
     if (descriptionContainer) descriptionContainer.classList.toggle('is-empty', isEmpty(profileData.description || ''));
     
-    // Lógica mejorada para verificar si los contenedores tienen elementos hijos visibles
     const socialButtonsContainer = document.querySelector('[data-section="social-buttons"]');
     if (socialButtonsContainer) socialButtonsContainer.classList.toggle('is-empty', socialButtonsContainer.children.length === 0);
     
@@ -665,7 +686,7 @@ const socialIcons = {
 	whatsapp: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor"><path d="M13.601 2.326A7.85 7.85 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.9 7.9 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.9 7.9 0 0 0 13.6 2.326zM7.994 14.521a6.6 6.6 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.56 6.56 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592m3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.31-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.73.73 0 0 0-.529.247c-.182.198-.691.677-.691 1.654s.71 1.916.81 2.049c.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232"/></svg>`, 
 	behance: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M20.07,6.35H15V7.76h5.09ZM19,16.05a2.23,2.23,0,0,1-1.3.37A2.23,2.23,0,0,1,16,15.88a2.49,2.49,0,0,1-.62-1.76H22a6.47,6.47,0,0,0-.17-2,5.08,5.08,0,0,0-.8-1.73,4.17,4.17,0,0,0-1.42-1.21,4.37,4.37,0,0,0-2-.45,4.88,4.88,0,0,0-1.9.37,4.51,4.51,0,0,0-1.47,1,4.4,4.4,0,0,0-.95,1.52,5.4,5.4,0,0,0-.33,1.91,5.52,5.52,0,0,0,.32,1.94A4.46,4.46,0,0,0,14.16,17a4,4,0,0,0,1.46,1,5.2,5.2,0,0,0,1.94.34,4.77,4.77,0,0,0,2.64-.7,4.21,4.21,0,0,0,1.63-2.35H19.62A1.54,1.54,0,0,1,19,16.05Zm-3.43-4.12a1.87,1.87,0,0,1,1-1.14,2.28,2.28,0,0,1,1-.2,1.73,1.73,0,0,1,1.36.49,2.91,2.91,0,0,1,.63,1.45H15.41A3,3,0,0,1,15.52,11.93Zm-5.29-.48a3.06,3.06,0,0,0,1.28-1,2.72,2.72,0,0,0,.43-1.58,3.28,3.28,0,0,0-.29-1.48,2.4,2.4,0,0,0-.82-1,3.24,3.24,0,0,0-1.27-.52,7.54,7.54,0,0,0-1.64-.16H2V18.29H8.1a6.55,6.55,0,0,0,1.65-.21,4.55,4.55,0,0,0,1.43-.65,3.13,3.13,0,0,0,1-1.14,3.41,3.41,0,0,0,.37-1.65,3.47,3.47,0,0,0-.57-2A3,3,0,0,0,10.23,11.45ZM4.77,7.86H7.36a4.17,4.17,0,0,1,.71.06,1.64,1.64,0,0,1,.61.22,1.05,1.05,0,0,1,.42.44,1.42,1.42,0,0,1,.16.72,1.36,1.36,0,0,1-.47,1.15,2,2,0,0,1-1.22.35H4.77ZM9.61,15.3a1.28,1.28,0,0,1-.45.5,2,2,0,0,1-.65.26,3.33,3.33,0,0,1-.78.08h-3V12.69h3a2.4,2.4,0,0,1,1.45.41,1.65,1.65,0,0,1,.54,1.39A1.77,1.77,0,0,1,9.61,15.3Z"/></svg>`,
 	pinterest: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12.018 0C5.381 0 0 5.368 0 11.988c0 5.078 3.166 9.416 7.637 11.16 -0.106 -0.948 -0.199 -2.402 0.041 -3.438 0.22 -0.936 1.41 -5.957 1.41 -5.957s-0.36 -0.72 -0.36 -1.781c0 -1.663 0.97 -2.911 2.173 -2.911 1.026 0 1.522 0.768 1.522 1.687 0 1.03 -0.654 2.568 -0.995 3.992 -0.286 1.193 0.602 2.165 1.78 2.165 2.134 0 3.778 -2.244 3.778 -5.486 0 -2.861 -2.068 -4.87 -5.021 -4.87 -3.418 0 -5.422 2.562 -5.422 5.2 0 1.032 0.395 2.143 0.89 2.741 0.1 0.12 0.113 0.226 0.085 0.346 -0.09 0.374 -0.293 1.199 -0.335 1.362 -0.053 0.226 -0.172 0.271 -0.402 0.166 -1.499 -0.69 -2.438 -2.878 -2.438 -4.646 0 -3.775 2.755 -7.252 7.939 -7.252 4.169 0 7.41 2.966 7.41 6.923 0 4.135 -2.614 7.462 -6.248 7.462 -1.217 0 -2.359 -0.629 -2.765 -1.379l-0.75 2.849c-0.27 1.044 -1.008 2.352 -1.502 3.145A12 12 0 0 0 11.986 24C18.61 24 24 18.636 24 12.012 24 5.392 18.608 0.028 11.986 0.028z"/></svg>`,
-	twitch: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M2.149 0l-2.149 4.773v16.454h5.741v2.773h3.223l2.773-2.773h5.292l6.219-6.219v-14.227h-21.099zm18.378 13.59l-3.223 3.223h-5.741l-2.773 2.773v-2.773h-4.654v-14.89h16.391v11.667zm-5.292-7.371v5.546h-2.149v-5.546h2.149z"/></svg>`,
+	twitch: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M2.149 0l-2.149 4.773v16.454h5.741v2.773h3.223l2.773-2.773h5.292l6.219-6.219v-14.227h-21.099zm18.378 13.59l-3.223 3.223h-5.741l-2.773 2.773v-2.773h-4.654v-14.89h16.391v11.667zm-5.292-7.371v5.546h-2.149v-5.546h2.149zm-5.291 0v5.546h-2.149v-5.546h2.149z"/></svg>`,
 	discord: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M15.0031,4 C15.74742,4 16.532444,4.2597504 17.2533144,4.5466496 L17.7803,4.76328 L17.7803,4.76328 C19.0402,5.29134 19.7484,6.39876 20.2975,7.61613 C21.1882,9.59078 21.8067,12.2238 22.0209,14.2256 C22.1227,15.1766 22.1483,16.1321 21.9647,16.7747 C21.76838,17.46166 21.0975,17.947788 20.4466008,18.3303128 L20.1251058,18.5133917 L20.1251058,18.5133917 L19.7907,18.6986 C19.61865,18.794725 19.442175,18.8900812 19.2660703,18.9830547 L18.7436625,19.2532125 L18.7436625,19.2532125 L18.0271553,19.610458 L18.0271553,19.610458 L17.4503,19.8944 L17.4503,19.8944 C16.9564,20.1414 16.3557,19.9412 16.1087,19.4472 C15.8617,18.9532 16.0619,18.3526 16.5559,18.1056 L17.3469,17.7158 L17.3469,17.7158 L16.7663,17.1071 C15.3765,17.6777 13.7389,18 12.0001,18 C10.2612,18 8.6236,17.6777 7.23378,17.1071 L6.65415,17.7148 L7.44727,18.1056 L7.44727,18.1056 C7.94124,18.3526 8.14147,18.9532 7.89448,19.4472 C7.64749,19.9412 7.04682,20.1414 6.55284,19.8944 L6.00922,19.6247 C5.60650667,19.4255667 5.20386444,19.2265222 4.80574963,19.0185 L3.87804989,18.5133917 L3.87804989,18.5133917 L3.55657432,18.3303128 C2.9057004,17.947788 2.234774,17.46166 2.03851,16.7747 C1.85493,16.1321 1.88051,15.1766 1.98227,14.2256 C2.19645,12.2238 2.81496,9.59078 3.70567,7.61613 C4.25479,6.39877 4.96296,5.29134 6.22289,4.76328 C7.05903,4.41284 8.07171,4 9.00004,4 C9.60303,4 10.0767,4.55523 9.98927,5.14727 C10.6366,5.05075 11.3099,5 12.0001,5 C12.6914,5 13.3657,5.05091 14.014,5.14774 C13.9263,4.55557 14.4,4 15.0031,4 Z M8.75006,10.5 C7.78356,10.5 7.00006,11.2835 7.00006,12.25 C7.00006,13.2165 7.78356,14 8.75006,14 C9.71656,14 10.5001,13.2165 10.5001,12.25 C10.5001,11.2835 9.71656,10.5 8.75006,10.5 Z M15.2501,10.5 C14.2836,10.5 13.5001,11.2835 13.5001,12.25 C13.5001,13.2165 14.2836,14 15.2501,14 C16.2166,14 17.0001,13.2165 17.0001,12.25 C17.0001,11.2835 16.2166,10.5 15.2501,10.5 Z"/></svg>`,
 	spotify: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.161 17.218c-.21.315-.576.42-.892.21-2.553-1.56-5.75-1.91-9.52-1.047-.36.084-.696-.134-.78-.494s.134-.696.494-.78c4.13-1.007 7.62-0.608 10.45 1.132.316.21.42.576.21.892zm1.201-2.73c-.255.38-.71.504-1.09.248-2.887-1.758-7.15-2.22-10.59-1.21-.434.12-.87-.135-.99-.565s.135-.87.565-.99c3.85-1.12 8.52-0.61 11.8 1.388.38.256.504.71.248 1.09zm.12-2.99c-3.48-2.03-9.21-2.22-12.32-1.21-.525.165-.99-.22-1.155-.745s.22-.99.745-1.155c3.62-1.12 10.02-.89 13.97 1.388.465.255.63.84.375 1.305-.255.465-.84.63-1.305.375z"/></svg>`,
 	soundcloud: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M7,19a1,1,0,0,1-1-1V8A1,1,0,0,1,8,8V18A1,1,0,0,1,7,19ZM3,18a1,1,0,0,1-1-1V11a1,1,0,0,1,2,0v6A1,1,0,0,1,3,18Z"></path><path d="M18.76,10.2A7,7,0,0,0,12,5a5.89,5.89,0,0,0-1.18.11,1,1,0,0,0-.82,1V18a1,1,0,0,0,1,1h6.5a4.49,4.49,0,0,0,1.26-8.8Z"></path></svg>`,
@@ -706,6 +727,7 @@ const socialCategories = [
 ];
 
 const SOCIAL_ICON_ORDER = socialCategories.flatMap(category => category.socials);
+// --- FIN FASE 3 ---
 
 function getSocialInfoForUrl(url) {
 	if (!url) return null;
@@ -731,50 +753,48 @@ function getSocialIconForUrl(url) {
 }
 
 function renderSocialIcons(socials, socialsOrder) {
-    const footer = document.getElementById('socials-footer');
-    if (!footer) return;
+	const footer = document.getElementById('socials-footer');
+	if (!footer) return;
+	footer.innerHTML = ''; // Empezar limpio
 
-    footer.innerHTML = ''; 
-    const validSocials = socials ? Object.entries(socials).filter(([_, value]) => value && value.trim() !== '') : [];
-    
-    if (validSocials.length === 0) {
-        return; 
-    }
+	if (!socials || Object.keys(socials).length === 0) return; // Salir si no hay datos sociales
 
+	const order = socialsOrder && socialsOrder.length > 0 ? socialsOrder : SOCIAL_ICON_ORDER;
+	
+    // Filtrar por claves que realmente existen en el objeto socials
+    const validKeys = order.filter(key => socials[key]); 
+
+    if (validKeys.length === 0) return; // Salir si no hay iconos válidos para mostrar
+
+    // Ahora que sabemos que hay iconos, creamos el contenedor
     const wrapper = document.createElement('div');
     wrapper.className = 'social-icons-wrapper';
-    
-    const order = socialsOrder && socialsOrder.length > 0 ? socialsOrder : SOCIAL_ICON_ORDER;
-    
-    order.forEach(key => {
-        const username = socials[key];
-        if (username && socialIcons[key]) {
-            const link = document.createElement('a');
-            link.href = `${socialBaseUrls[key]}${username}`;
-            link.target = '_blank';
-            link.rel = 'noopener noreferrer';
-            link.innerHTML = socialIcons[key];
-            link.className = 'opacity-70 hover:opacity-100 transition-opacity';
-            link.dataset.socialKey = key;
-            wrapper.appendChild(link);
-        }
-    });
+	
+	validKeys.forEach(key => {
+		const username = socials[key];
+        // La comprobación `if (username && socialIcons[key])` es ahora redundante debido al filtro validKeys, pero la mantenemos por seguridad.
+		if (username && socialIcons[key]) {
+			const link = document.createElement('a');
+			link.href = `${socialBaseUrls[key]}${username}`;
+			link.target = '_blank';
+			link.rel = 'noopener noreferrer';
+			link.innerHTML = socialIcons[key];
+			link.className = 'opacity-70 hover:opacity-100 transition-opacity';
+			link.dataset.socialKey = key;
+			wrapper.appendChild(link);
+		}
+	});
 
-    if (wrapper.children.length > 0) {
-        footer.appendChild(wrapper);
-    }
+    footer.appendChild(wrapper);
 }
 
 function renderSocialButtons(buttons) {
-    const section = document.getElementById('social-buttons-section');
-    if (!section) return;
+	const section = document.getElementById('social-buttons-section');
+	if (!section) return;
+	section.innerHTML = '';
+	const buttonList = buttons || []; // Asegurarse de que tenemos un array
 
-    section.innerHTML = '';
-    const buttonList = buttons || [];
-
-    if (buttonList.length === 0) {
-        return;
-    }
+	if (buttonList.length === 0) return; // Salir si no hay botones
 
 	buttonList.forEach(buttonData => {
 		const info = getSocialInfoForUrl(buttonData.url);
@@ -784,7 +804,7 @@ function renderSocialButtons(buttons) {
 		buttonEl.href = '#';
 		buttonEl.dataset.url = buttonData.url;
 		buttonEl.rel = 'noopener noreferrer';
-		buttonEl.className = `social-button flex items-center justify-center rounded-lg transition-all duration-200 transform hover:scale-105 ${info.bg} ${info.color} ${info.hover}`;
+		buttonEl.className = `social-button flex items-center justify-center rounded-lg transition-all duration-200 transform hover:scale-105 ${info.bg} ${info.color} ${info.hover} draggable-item`;
 		buttonEl.innerHTML = `${largeSocialIcons[info.key]}`;
 		section.appendChild(buttonEl);
 	});
@@ -840,6 +860,7 @@ function renderProfileActions(profileData) {
 
 // --- 7. MANEJADORES DE EVENTOS ---
 
+// NUEVO: Lógica para el modal de registro
 function closeRegisterModal() {
     DOMElements.registerModal.classList.add('hidden');
     DOMElements.registerPasswordInput.value = '';
@@ -847,8 +868,10 @@ function closeRegisterModal() {
 }
 
 DOMElements.showRegisterModalBtn.addEventListener('click', () => {
+    // Transfiere los datos del formulario de login al modal
     DOMElements.registerEmailInput.value = document.getElementById('email-input').value;
     DOMElements.registerPasswordInput.value = document.getElementById('password-input').value;
+    // Muestra el modal
     DOMElements.registerModal.classList.remove('hidden');
 });
 
@@ -997,39 +1020,34 @@ async function handleShare(profileData) {
 		text: `Mira mi perfil de NexID: ${profileData.description || ''}`,	
 		url: `${window.location.origin}${window.location.pathname}?user=${profileData.username.substring(1)}`
 	};
-
-	let copied = false;
-	const textArea = document.createElement("textarea");
-	textArea.value = shareData.url;
-	textArea.style.position = "fixed";
-	textArea.style.top = '0';
-	textArea.style.left = '-9999px';
-	document.body.appendChild(textArea);
-	textArea.focus();
-	textArea.select();
-
-	try {
-		copied = document.execCommand('copy');
-	} catch (err) {
-		console.error('Copy to clipboard failed:', err);
-	}
-	document.body.removeChild(textArea);
-
-	if (navigator.share) {
+	
+	const fallbackCopy = () => {
+		const textArea = document.createElement("textarea");
+		textArea.value = shareData.url;
+		textArea.style.position = "fixed";
+		textArea.style.left = "-9999px";
+		document.body.appendChild(textArea);
+		textArea.focus();
+		textArea.select();
 		try {
-			if (copied) {
-				showAlert('¡Enlace copiado! Ahora puedes compartirlo.');
-			}
-			await navigator.share(shareData);
-		} catch (err) {
-			console.log("Share cancelled by user.");
-		}
-	} else {
-		if (copied) {
+			document.execCommand('copy');
 			showAlert('¡Enlace copiado al portapapeles!');
-		} else {
+		} catch (err) {
+			console.error('Fallback copy failed:', err);
 			showAlert('No se pudo copiar el enlace.');
 		}
+		document.body.removeChild(textArea);
+	};
+
+	try {
+		if (navigator.share) {
+			await navigator.share(shareData);
+		} else {
+			fallbackCopy();
+		}
+	} catch (err) {
+		console.error("Error al compartir:", err);
+		fallbackCopy();
 	}
 }
 
@@ -1060,6 +1078,7 @@ function markSettingsAsDirty() {
 	appState.isSettingsDirty = true;
 }
 
+// --- FASE 3: Nueva función para renderizar pestañas sociales ---
 function renderSocialTabs(container, mode, data) {
     container.innerHTML = `
         <div class="social-tabs-container">
@@ -1072,6 +1091,7 @@ function renderSocialTabs(container, mode, data) {
     const content = container.querySelector('.social-tabs-content');
 
     socialCategories.forEach((category, index) => {
+        // Crear botón de pestaña
         const button = document.createElement('button');
         button.className = `social-tab-button ${index === 0 ? 'active' : ''}`;
         button.dataset.tab = category.id;
@@ -1079,11 +1099,13 @@ function renderSocialTabs(container, mode, data) {
         button.innerHTML = `<i data-lucide="${category.icon}" class="w-5 h-5"></i>`;
         nav.appendChild(button);
 
+        // Crear panel de contenido
         const pane = document.createElement('div');
         pane.className = `social-tab-pane ${index === 0 ? 'active' : ''}`;
         pane.id = `${mode}-${category.id}`;
         content.appendChild(pane);
 
+        // Rellenar panel con inputs
         category.socials.forEach(key => {
             const item = document.createElement('div');
             const info = socialButtonStyles[key];
@@ -1109,6 +1131,7 @@ function renderSocialTabs(container, mode, data) {
     lucide.createIcons();
 }
 
+// --- FASE 3: Manejador de eventos para las pestañas ---
 DOMElements.settingsPanel.addEventListener('click', (e) => {
     const tabButton = e.target.closest('.social-tab-button');
     if (tabButton) {
@@ -1128,17 +1151,15 @@ DOMElements.settingsPanel.addEventListener('click', (e) => {
 function openSettingsPanel() {
 	if (!appState.myProfile) return;
 	
-    // Crear el estado de previsualización
-    appState.previewProfile = JSON.parse(JSON.stringify(appState.myProfile));
-
 	appState.isSettingsDirty = false;
 	appState.tempBackgroundImagePath = null;
-	const profile = appState.previewProfile; // Usar la copia de previsualización
+	appState.previewProfile = JSON.parse(JSON.stringify(appState.myProfile)); // Crear copia para previsualización
 	
-    document.getElementById('display-name-input').value = profile.display_name || '';
+	const profile = appState.previewProfile;
+	
+	document.getElementById('display-name-input').value = profile.display_name || '';
 	document.getElementById('username-input').value = profile.username ? profile.username.substring(1) : '';
 	document.getElementById('description-input').value = profile.description || '';
-    DOMElements.featuredVideoUrlInput.value = profile.featured_video_url || '';
 	
 	setTimeout(() => autoResizeTextarea(DOMElements.descriptionInput), 50);
 
@@ -1155,7 +1176,7 @@ function openSettingsPanel() {
 		opacityControls.classList.add('hidden');
 	}
 
-	const currentTheme = profile.theme || 'grafito';
+	const currentTheme = profile.theme || 'negro';
 	const themeOptionEl = document.querySelector(`.theme-option[data-theme="${currentTheme}"]`);
 	if (themeOptionEl) {
 		const tabContentEl = themeOptionEl.closest('.theme-tab-content');
@@ -1184,6 +1205,7 @@ function openSettingsPanel() {
 		}
 	});
 	
+    DOMElements.featuredVideoUrlInput.value = profile.featured_video_url || '';
 	document.getElementById('private-profile-toggle').checked = profile.is_public;
 
 	DOMElements.settingsPanel.classList.add('open');
@@ -1206,9 +1228,8 @@ async function forceCloseSettingsPanel() {
 		await supabaseClient.storage.from('background-images').remove([appState.tempBackgroundImagePath]);
 		appState.tempBackgroundImagePath = null;
 	}
-    appState.previewProfile = null; // Descartar el estado de previsualización
-	
-    DOMElements.settingsPanel.classList.remove('open');
+	appState.previewProfile = null; // Descartar la copia de previsualización
+	DOMElements.settingsPanel.classList.remove('open');
 	DOMElements.settingsOverlay.classList.add('hidden');
 	
 	document.body.classList.remove('panel-is-open');
@@ -1224,7 +1245,7 @@ async function forceCloseSettingsPanel() {
 		});
 	}, 300);
 
-	buildProfileLayout(appState.myProfile, true); // Revertir al estado guardado
+	buildProfileLayout(appState.myProfile, true); // Revertir al estado original guardado
 }
 
 function closeSettingsPanel() {
@@ -1238,12 +1259,37 @@ function closeSettingsPanel() {
 document.getElementById('save-changes-btn').addEventListener('click', async () => {
 	if (!appState.currentUser || !appState.previewProfile) return;
 
-	// Los datos a guardar ahora vienen de previewProfile
-    const dataToSave = { ...appState.previewProfile };
-    // Limpiar datos que no van en la tabla de perfiles
-    delete dataToSave.id; 
-    delete dataToSave.created_at;
+	const newSocials = {};
+	document.querySelectorAll('#socials-inputs-container input[data-social]').forEach(input => {
+		const key = input.dataset.social;
+		const value = input.value.trim();
+		if (value !== '') {
+			newSocials[key] = extractUsername(value, key);
+		}
+	});
 
+	let currentSocialsOrder = appState.myProfile.socials_order || [];
+	Object.keys(newSocials).forEach(key => {
+		if (!currentSocialsOrder.includes(key)) {
+			currentSocialsOrder.push(key);
+		}
+	});
+	
+	const newSocialButtons = [];
+	document.querySelectorAll('#social-buttons-inputs-container input[data-social-button]').forEach(input => {
+		const value = input.value.trim();
+		if (value) {
+			const key = input.dataset.socialButton;
+			const username = extractUsername(value, key);
+			const url = `${socialBaseUrls[key]}${username}`;
+			newSocialButtons.push({ url });
+		}
+	});
+
+	const dataToSave = { ...appState.previewProfile }; // Usar los datos de la previsualización
+	delete dataToSave.id;
+	delete dataToSave.created_at;
+	
 	const oldProfile = appState.myProfile;
 	const newImagePath = dataToSave.background_image_path;
 	const oldImagePath = oldProfile.background_image_path;
@@ -1256,17 +1302,11 @@ document.getElementById('save-changes-btn').addEventListener('click', async () =
 		}
 	}
 
-	const { data: updatedProfile, error } = await supabaseClient
-        .from('profiles')
-        .update(dataToSave)
-        .eq('id', appState.currentUser.id)
-        .select()
-        .single();
-	
-    if (error) {
+	const { data: updatedProfile, error } = await supabaseClient.from('profiles').update(dataToSave).eq('id', appState.currentUser.id).select().single();
+	if (error) {
 		showAlert(`Error al guardar: ${error.message}`);
 	} else {
-		appState.myProfile = updatedProfile; // Actualizar el estado real guardado
+		appState.myProfile = updatedProfile;
 		appState.isSettingsDirty = false;
 		appState.tempBackgroundImagePath = null;
 		showAlert("Perfil guardado con éxito.");
@@ -1305,28 +1345,32 @@ function updateLivePreview() {
 
 	let newSocialsOrder = appState.previewProfile.socials_order ? [...appState.previewProfile.socials_order] : [];
 	Object.keys(newSocials).forEach(key => {
-		if (!newSocialsOrder.includes(key)) newSocialsOrder.push(key);
+		if (!newSocialsOrder.includes(key)) {
+			newSocialsOrder.push(key);
+		}
 	});
 	newSocialsOrder = newSocialsOrder.filter(key => newSocials[key]);
 
 
 	const selectedFont = DOMElements.fontFamilyValue.value;
 	loadFontIfNeeded(selectedFont);
-
-	// Actualizar directamente el estado de previsualización
-    appState.previewProfile.display_name = document.getElementById('display-name-input').value;
-    appState.previewProfile.description = document.getElementById('description-input').value;
-    appState.previewProfile.featured_video_url = DOMElements.featuredVideoUrlInput.value;
-    appState.previewProfile.background_image_url = backgroundUrlInput.value;
-    appState.previewProfile.background_overlay_opacity = opacitySlider.value;
-    appState.previewProfile.theme = document.querySelector('.theme-option.selected')?.dataset.theme || 'negro';
-    appState.previewProfile.button_style = document.querySelector('input[name="buttonStyle"]:checked')?.value || 'filled';
-    appState.previewProfile.button_shape_style = document.querySelector('input[name="buttonShape"]:checked')?.value || 'rounded-lg';
-    appState.previewProfile.font_family = selectedFont;
-    appState.previewProfile.socials = newSocials;
-    appState.previewProfile.social_buttons = newSocialButtons;
-    appState.previewProfile.socials_order = newSocialsOrder;
-	appState.previewProfile.contact_info = {};
+	
+	appState.previewProfile = {
+		...appState.previewProfile,
+		display_name: document.getElementById('display-name-input').value,
+		description: document.getElementById('description-input').value,
+		background_image_url: backgroundUrlInput.value,
+		background_overlay_opacity: opacitySlider.value,
+		theme: document.querySelector('.theme-option.selected')?.dataset.theme || 'negro',
+		button_style: document.querySelector('input[name="buttonStyle"]:checked')?.value || 'filled',
+		button_shape_style: document.querySelector('input[name="buttonShape"]:checked')?.value || 'rounded-lg',
+		font_family: selectedFont,
+		socials: newSocials,
+		social_buttons: newSocialButtons,
+		socials_order: newSocialsOrder,
+		contact_info: {},
+        featured_video_url: DOMElements.featuredVideoUrlInput.value.trim(),
+	};
 	
 	 document.querySelectorAll('#contact-inputs input').forEach(input => {
 		if (input.value.trim() !== '') appState.previewProfile.contact_info[input.dataset.contact] = input.value.trim();
@@ -1393,16 +1437,17 @@ function populateIconGrid() {
 	const gridContainer = document.getElementById('icon-grid-container');
 	if (!gridContainer) return;
 
-	gridContainer.innerHTML = ''; 
+	gridContainer.innerHTML = ''; // Limpiar iconos previos
 
 	iconTags.forEach(tag => {
 		const button = document.createElement('button');
-		button.type = 'button';
+		button.type = 'button'; // Prevenir envío de formulario
 		button.className = 'icon-option-btn';
 		button.dataset.iconValue = tag.value;
 		button.title = tag.label;
 
 		const icon = document.createElement('i');
+		// Usar un icono específico para la opción "Ninguno"
 		icon.dataset.lucide = tag.value || 'circle-slash';
 		icon.className = 'w-5 h-5';
 		
@@ -1854,7 +1899,7 @@ document.getElementById('save-layout-btn').addEventListener('click', saveDesignC
 document.getElementById('cancel-layout-btn').addEventListener('click', () => exitDesignMode(true));
 
 
-// --- 13. LÓGICA de SUBIDA DE IMAGEN de FONDO ---
+// --- 13. LÓGICA DE SUBIDA DE IMAGEN DE FONDO ---
 DOMElements.uploadBackgroundBtn.addEventListener('click', () => DOMElements.backgroundUploadInput.click());
 
 DOMElements.backgroundUploadInput.addEventListener('change', async (e) => {
@@ -2177,7 +2222,9 @@ function setupPasswordToggle(inputId, toggleId) {
 
 // --- 23. LÓGICA DE RECUPERACIÓN DE CONTRASEÑA ---
 document.getElementById('forgot-password-link').addEventListener('click', (e) => { e.preventDefault(); showPage('forgotPassword'); });
+// Actualizado para que el enlace de "volver" funcione desde la página de olvido de contraseña
 document.getElementById('back-to-login-link-from-forgot').addEventListener('click', (e) => { e.preventDefault(); appState.isRecoveringPassword = false; showPage('auth'); });
+
 document.getElementById('send-recovery-btn').addEventListener('click', async () => {
 	const email = document.getElementById('recovery-email-input').value;
 	if (!email) return showAlert('Por favor, introduce tu correo electrónico.');
@@ -2315,13 +2362,16 @@ document.getElementById('logout-for-deletion-btn').addEventListener('click', asy
 	await supabaseClient.auth.signOut();
 });
 
+
 // --- INICIALIZACIÓN ---
 initializeApp();
 window.onload = () => { 
 	lucide.createIcons(); 
 	setupPasswordToggle('password-input', 'auth-password-toggle');
+    // Nuevos toggles para el modal de registro
     setupPasswordToggle('register-password-input', 'register-password-toggle');
     setupPasswordToggle('register-confirm-password-input', 'register-confirm-password-toggle');
+    // Toggles existentes
 	setupPasswordToggle('current-password-input', 'current-password-toggle');
 	setupPasswordToggle('new-password-input', 'new-password-toggle');
 	setupPasswordToggle('confirm-password-input', 'confirm-password-toggle');
