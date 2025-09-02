@@ -562,10 +562,12 @@ function renderProfile(profileData, isOwner) {
         const embedUrl = parseVideoUrl(profileData.featured_video_url);
         const iframe = videoSection.querySelector('iframe');
         if (embedUrl) {
+            // Solo actualiza el iframe si no existe o si la URL ha cambiado.
             if (!iframe || iframe.src !== embedUrl) {
                 videoSection.innerHTML = `<div class="video-wrapper"><iframe class="w-full h-full rounded-lg absolute inset-0" src="${embedUrl}" title="Video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
             }
         } else {
+            // Si no hay URL de video, elimina el contenido de la sección.
             videoSection.innerHTML = '';
         }
     }
@@ -2348,4 +2350,5 @@ window.onload = () => {
 	setupPasswordToggle('update-confirm-password-input', 'update-confirm-password-toggle');
 	setupPasswordToggle('delete-confirm-password-input', 'delete-confirm-password-toggle');
 };
+
 
