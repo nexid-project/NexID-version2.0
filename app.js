@@ -484,6 +484,26 @@ function renderProfile(profileData, isOwner) {
 
 	const layoutContainer = document.getElementById('profile-layout-container');
 
+	// --- LÓGICA DE VIDEO MEJORADA ---
+	const embedUrl = parseVideoUrl(profileData.featured_video_url);
+	let videoSection = layoutContainer.querySelector('[data-section="featured-video"]');
+
+	if (embedUrl) {
+		if (!videoSection) {
+			const tempDiv = document.createElement('div');
+			tempDiv.innerHTML = profileSectionTemplates['featured-video'](profileData, isOwner);
+			videoSection = tempDiv.firstElementChild;
+			layoutContainer.appendChild(videoSection);
+		}
+		const iframe = videoSection.querySelector('iframe');
+		if (!iframe || iframe.src !== embedUrl) {
+			videoSection.innerHTML = `<div class="video-wrapper"><iframe class="w-full h-full rounded-lg absolute inset-0" src="${embedUrl}" title="Video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
+		}
+	} else if (videoSection) {
+		videoSection.innerHTML = '';
+	}
+	// --- FIN DE LÓGICA DE VIDEO ---
+
 	// 2. Construir el layout deseado
 	const allBaseSections = ["profile-image", "display-name", "username", "description", "featured-video", "social-buttons", "socials"];
 	let baseLayout = appState.tempLayoutOrder || profileData.layout_order || [...allBaseSections];
@@ -527,7 +547,7 @@ function renderProfile(profileData, isOwner) {
                 element = tempDiv.firstElementChild;
             }
         } else {
-             if (existingElements.has(sectionId)) {
+             if (existingElements.has(sectionId) && sectionId !== 'featured-video') { // No tocar el video aquí
                 switch (sectionId) {
                     case 'display-name': element.querySelector('#public-display-name').textContent = profileData.display_name; break;
                     case 'username': element.querySelector('#public-username').textContent = profileData.username || ''; break;
@@ -557,21 +577,6 @@ function renderProfile(profileData, isOwner) {
     });
 
 	// 4. Renderizar/Actualizar componentes complejos
-    const videoSection = layoutContainer.querySelector('[data-section="featured-video"]');
-    if (videoSection) {
-        const embedUrl = parseVideoUrl(profileData.featured_video_url);
-        const iframe = videoSection.querySelector('iframe');
-        if (embedUrl) {
-            // Solo actualiza el iframe si no existe o si la URL ha cambiado.
-            if (!iframe || iframe.src !== embedUrl) {
-                videoSection.innerHTML = `<div class="video-wrapper"><iframe class="w-full h-full rounded-lg absolute inset-0" src="${embedUrl}" title="Video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`;
-            }
-        } else {
-            // Si no hay URL de video, elimina el contenido de la sección.
-            videoSection.innerHTML = '';
-        }
-    }
-    
 	const socialButtonsContainer = layoutContainer.querySelector('#social-buttons-section');
     if (socialButtonsContainer) renderSocialButtons(profileData.social_buttons);
     
