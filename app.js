@@ -277,7 +277,8 @@ async function handleAuthStateChange(session) {
             appState.links = links || [];
             
             if (myProfile && myProfile.username_set) {
-                if (window.location.protocol !== 'blob:') {
+                const currentUsernameInUrl = new URLSearchParams(window.location.search).get('user');
+                if (window.location.protocol !== 'blob:' && myProfile.username.substring(1) !== currentUsernameInUrl) {
                     const profileUrl = `${window.location.pathname}?user=${myProfile.username.substring(1)}`;
                     history.replaceState(null, '', profileUrl);
                 }
