@@ -2,7 +2,7 @@ const { createClient } = supabase;
 
 // --- 1. CONFIGURACIÓN E INICIALIZACIÓN ---
 const SUPABASE_URL = 'https://ukowtlaytmqgdhjygulq.supabase.co';	
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVrb3d0bGF5dG1xZ2RoanlndWxxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM2NTEyMTgsImV4cCI6MjA2OTIyNzIxOH0.Kmg90Xdcu0RzAP55YwwuYfuRYj2U5LU90KAiKbEtLQg';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzIΙNiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVrb3d0bGF5dG1xZ2RoanlndWxxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM2NTEyMTgsImV4cCI6MjA2OTIyNzIxOH0.Kmg90Xdcu0RzAP55YwwuYfuRYj2U5LU90KAiKbEtLQg';
 const GEMINI_API_KEY = ""; // Replace with your Gemini API key
 
 const backgroundLibraryUrls = [
@@ -2350,5 +2350,4 @@ window.onload = () => {
 	setupPasswordToggle('update-confirm-password-input', 'update-confirm-password-toggle');
 	setupPasswordToggle('delete-confirm-password-input', 'delete-confirm-password-toggle');
 };
-
 
