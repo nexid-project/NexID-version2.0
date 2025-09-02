@@ -451,6 +451,7 @@ function buildProfileLayout(profileData, isOwner) {
     
     let layoutOrder = profileData.layout_order && profileData.layout_order.length > 0 ? profileData.layout_order : defaultLayout;
     
+    // Asegurarse de que todos los enlaces actuales estén en el layout
     currentLinkIds.forEach(linkId => {
         if (!layoutOrder.includes(linkId)) {
              const socialButtonsIndex = layoutOrder.indexOf('social-buttons');
@@ -465,6 +466,7 @@ function buildProfileLayout(profileData, isOwner) {
     const fragment = document.createDocumentFragment();
 
     layoutOrder.forEach(sectionId => {
+        // No renderizar placeholders para enlaces que ya no existen
         if (!appState.links.find(l => `link_${l.id}` === sectionId) && sectionId.startsWith('link_')) {
              return; 
         }
@@ -474,6 +476,7 @@ function buildProfileLayout(profileData, isOwner) {
             tempDiv.innerHTML = profileSectionTemplates[sectionId]();
             fragment.appendChild(tempDiv.firstChild);
         } else if (sectionId.startsWith('link_')) {
+            // Crear un placeholder vacío para cada enlace
             const linkPlaceholder = document.createElement('div');
             linkPlaceholder.dataset.section = sectionId;
             linkPlaceholder.className = 'draggable-item my-2'; 
@@ -578,11 +581,12 @@ function updateContainerVisibility(profileData) {
     const descriptionContainer = document.querySelector('[data-section="description"]');
     if (descriptionContainer) descriptionContainer.classList.toggle('is-empty', isEmpty(profileData.description || ''));
     
+    // Lógica mejorada para verificar si los contenedores tienen elementos hijos visibles
     const socialButtonsContainer = document.querySelector('[data-section="social-buttons"]');
-    if (socialButtonsContainer) socialButtonsContainer.classList.toggle('is-empty', socialButtonsContainer.innerHTML.trim() === '');
+    if (socialButtonsContainer) socialButtonsContainer.classList.toggle('is-empty', socialButtonsContainer.children.length === 0);
     
     const socialsFooterContainer = document.querySelector('[data-section="socials"]');
-    if (socialsFooterContainer) socialsFooterContainer.classList.toggle('is-empty', socialsFooterContainer.innerHTML.trim() === '');
+    if (socialsFooterContainer) socialsFooterContainer.classList.toggle('is-empty', socialsFooterContainer.children.length === 0);
     
     const videoContainer = document.querySelector('[data-section="featured-video"]');
     if(videoContainer) videoContainer.classList.toggle('is-empty', !parseVideoUrl(profileData.featured_video_url));
@@ -731,9 +735,9 @@ function renderSocialIcons(socials, socialsOrder) {
     if (!footer) return;
 
     footer.innerHTML = ''; 
-    const hasIcons = socials && Object.keys(socials).length > 0;
+    const validSocials = socials ? Object.entries(socials).filter(([_, value]) => value && value.trim() !== '') : [];
     
-    if (!hasIcons) {
+    if (validSocials.length === 0) {
         return; 
     }
 
@@ -780,7 +784,7 @@ function renderSocialButtons(buttons) {
 		buttonEl.href = '#';
 		buttonEl.dataset.url = buttonData.url;
 		buttonEl.rel = 'noopener noreferrer';
-		buttonEl.className = `social-button flex items-center justify-center rounded-lg transition-all duration-200 transform hover:scale-105 ${info.bg} ${info.color} ${info.hover} draggable-item`;
+		buttonEl.className = `social-button flex items-center justify-center rounded-lg transition-all duration-200 transform hover:scale-105 ${info.bg} ${info.color} ${info.hover}`;
 		buttonEl.innerHTML = `${largeSocialIcons[info.key]}`;
 		section.appendChild(buttonEl);
 	});
