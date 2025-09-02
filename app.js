@@ -444,11 +444,9 @@ function buildProfileLayout(profileData, isOwner) {
     layoutContainer.innerHTML = ''; // Limpiar para construir desde cero
 
     const allBaseSections = ["profile-image", "display-name", "username", "description", "featured-video", "social-buttons", "socials"];
-    // Asegurarse de que el layoutOrder contenga todos los enlaces, incluso si no están explícitamente guardados
     const currentLinkIds = appState.links.map(l => `link_${l.id}`);
     let layoutOrder = profileData.layout_order || [...allBaseSections, ...currentLinkIds];
     
-    // Añadir enlaces que puedan faltar en el layoutOrder (por si se crean nuevos)
     currentLinkIds.forEach(linkId => {
         if (!layoutOrder.includes(linkId)) {
             layoutOrder.push(linkId);
@@ -459,7 +457,7 @@ function buildProfileLayout(profileData, isOwner) {
 
     layoutOrder.forEach(sectionId => {
         if (!appState.links.find(l => `link_${l.id}` === sectionId) && sectionId.startsWith('link_')) {
-             return; // No renderizar enlaces que ya no existen
+             return; 
         }
         
         const tempDiv = document.createElement('div');
@@ -467,17 +465,16 @@ function buildProfileLayout(profileData, isOwner) {
             tempDiv.innerHTML = profileSectionTemplates[sectionId]();
             fragment.appendChild(tempDiv.firstChild);
         } else if (sectionId.startsWith('link_')) {
-            // Crear un marcador de posición para el enlace
             const linkPlaceholder = document.createElement('div');
             linkPlaceholder.dataset.section = sectionId;
-            linkPlaceholder.className = 'draggable-item my-2'; // Asegurar que sea arrastrable
+            linkPlaceholder.className = 'draggable-item my-2'; 
             fragment.appendChild(linkPlaceholder);
         }
     });
     
     layoutContainer.appendChild(fragment);
 
-    updateProfileContent(profileData, isOwner); // Llenar el layout con contenido
+    updateProfileContent(profileData, isOwner); 
 }
 
 function updateProfileStyles(profileData) {
@@ -536,17 +533,14 @@ function updateProfileContent(profileData, isOwner) {
     appState.links.forEach(linkData => {
         const linkPlaceholder = document.querySelector(`[data-section="link_${linkData.id}"]`);
         if (linkPlaceholder) {
-            // Solo renderizar si el placeholder está vacío, para no reconstruirlo innecesariamente
-            if (linkPlaceholder.innerHTML.trim() === '') {
-                 linkPlaceholder.innerHTML = renderSingleLink(linkData, profileData);
-            }
+            linkPlaceholder.innerHTML = renderSingleLink(linkData, profileData);
         }
     });
 
     renderSocialButtons(profileData.social_buttons);
     renderSocialIcons(profileData.socials, profileData.socials_order);
     renderProfileActions(profileData);
-	updateContainerVisibilityInDesignMode(profileData);
+	updateContainerVisibility(profileData);
 
     const isDesignMode = DOMElements.profilePage.classList.contains('design-mode');
 	document.getElementById('user-actions').classList.toggle('hidden', !isOwner || isDesignMode);
@@ -569,19 +563,17 @@ function updateProfileContent(profileData, isOwner) {
 }
 
 
-function updateContainerVisibilityInDesignMode(profileData) {
-	if (!appState.isDesignModeActive) return;
-	
-    const isEmpty = (data) => !data || (Array.isArray(data) && data.length === 0) || (typeof data === 'object' && Object.keys(data).length === 0);
+function updateContainerVisibility(profileData) {
+    const isEmpty = (data) => !data || (Array.isArray(data) && data.length === 0) || (typeof data === 'object' && Object.keys(data).length === 0) || data.trim() === '';
 
     const descriptionContainer = document.querySelector('[data-section="description"]');
-	if (descriptionContainer) descriptionContainer.classList.toggle('is-empty', !profileData.description || profileData.description.trim() === '');
-	
+    if (descriptionContainer) descriptionContainer.classList.toggle('is-empty', isEmpty(profileData.description || ''));
+    
     const socialButtonsContainer = document.querySelector('[data-section="social-buttons"]');
-	if (socialButtonsContainer) socialButtonsContainer.classList.toggle('is-empty', isEmpty(profileData.social_buttons));
-	
+    if (socialButtonsContainer) socialButtonsContainer.classList.toggle('is-empty', isEmpty(profileData.social_buttons));
+    
     const socialsFooterContainer = document.querySelector('[data-section="socials"]');
-	if (socialsFooterContainer) socialsFooterContainer.classList.toggle('is-empty', isEmpty(profileData.socials));
+    if (socialsFooterContainer) socialsFooterContainer.classList.toggle('is-empty', isEmpty(profileData.socials));
     
     const videoContainer = document.querySelector('[data-section="featured-video"]');
     if(videoContainer) videoContainer.classList.toggle('is-empty', !parseVideoUrl(profileData.featured_video_url));
@@ -1437,11 +1429,17 @@ document.getElementById('add-update-link-btn').addEventListener('click', async (
 		if (error) {
 			showAlert(`Error al crear enlace: ${error.message}`);
 		} else {
-			appState.links.push(newLink); // Actualizar estado local primero
+			appState.links.push(newLink);
             
-            // Actualizar el layoutOrder en el perfil local
-			const currentLayout = appState.myProfile.layout_order || [];
-			currentLayout.push(`link_${newLink.id}`);
+            const currentLayout = [...(appState.myProfile.layout_order || [])];
+            const lastLinkIndex = currentLayout.map(id => id.startsWith('link_')).lastIndexOf(true);
+            
+            if (lastLinkIndex !== -1) {
+                currentLayout.splice(lastLinkIndex + 1, 0, `link_${newLink.id}`);
+            } else {
+                const socialsIndex = currentLayout.indexOf('socials');
+                currentLayout.splice(socialsIndex !== -1 ? socialsIndex : currentLayout.length, 0, `link_${newLink.id}`);
+            }
 			
 			const { data: updatedProfile, error: profileUpdateError } = await supabaseClient
 				.from('profiles')
@@ -1460,7 +1458,6 @@ document.getElementById('add-update-link-btn').addEventListener('click', async (
 			}
 			exitEditMode();
 			renderLinksEditor(appState.links);
-            // Reconstruir el layout para que incluya el nuevo enlace
             buildProfileLayout(appState.previewProfile || appState.myProfile, true);
 		}
 	}
@@ -1481,9 +1478,16 @@ document.getElementById('links-list-editor').addEventListener('click', (e) => {
 				} else {
 					const currentLayout = appState.myProfile.layout_order || [];
 					const newLayout = currentLayout.filter(item => item !== `link_${linkId}`);
-					const { error: profileUpdateError } = await supabaseClient.from('profiles').update({ layout_order: newLayout }).eq('id', appState.currentUser.id);
-					if (profileUpdateError) showAlert('Enlace eliminado, pero no se pudo actualizar el diseño.');
-					await refreshLinks();
+					
+                    const {data: updatedProfile, error: profileUpdateError } = await supabaseClient.from('profiles').update({ layout_order: newLayout }).eq('id', appState.currentUser.id).select().single();
+					
+                    if (profileUpdateError) {
+                        showAlert('Enlace eliminado, pero no se pudo actualizar el diseño.');
+                    } else {
+                        appState.myProfile = updatedProfile;
+                    }
+                    await refreshLinks();
+                    buildProfileLayout(appState.previewProfile || appState.myProfile, true);
 				}
 			}
 		});
@@ -1736,7 +1740,7 @@ function enterDesignMode() {
 	document.getElementById('user-actions').classList.add('hidden');
 	document.getElementById('layout-actions').classList.remove('hidden');
 
-	updateContainerVisibilityInDesignMode(appState.previewProfile || appState.myProfile);
+	updateContainerVisibility(appState.previewProfile || appState.myProfile);
 
 	const layoutContainer = document.getElementById('profile-layout-container');
 	if (appState.sortable.layout) appState.sortable.layout.destroy();
