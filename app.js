@@ -276,6 +276,7 @@ async function handleAuthStateChange(session) {
             document.getElementById('back-to-my-profile-btn').href = `${window.location.pathname}?user=${myProfile.username.substring(1)}`;
             await loadPublicProfile(publicUsername);
         } else {
+            appState.currentGalleryIndex = 0; 
             document.getElementById('back-to-my-profile-btn').classList.add('hidden');
             const { data: links } = await supabaseClient.from('links').select('*').eq('user_id', appState.currentUser.id).order('order_index', { ascending: true });
             appState.links = links || [];
@@ -287,7 +288,9 @@ async function handleAuthStateChange(session) {
                 }
                 renderProfile(myProfile, true);
                 renderLinksEditor(appState.links);
-                initGalleryEditor(appState.galleryImages);
+                if (typeof initGalleryEditor === 'function') {
+                    initGalleryEditor(appState.galleryImages);
+                }
                 listenToUserLinks(myProfile.id);
                 showPage('profile');
             } else {
@@ -330,7 +333,8 @@ async function loadPublicProfile(username) {
 		
         appState.links = links || [];
         appState.galleryImages = galleryImages || [];
-
+		appState.currentGalleryIndex = 0;
+		
 		const isOwner = appState.currentUser && appState.currentUser.id === profile.id;
 		renderProfile(profile, isOwner);
 		showPage('profile');
@@ -585,7 +589,9 @@ function renderProfile(profileData, isOwner) {
 
     const gallerySection = layoutContainer.querySelector('[data-section="gallery"]');
     if(gallerySection) {
-        renderPublicGallery(profileData, appState.galleryImages);
+        if (typeof renderPublicGallery === 'function') {
+            renderPublicGallery(profileData, appState.galleryImages);
+        }
     }
     
 	const socialButtonsContainer = layoutContainer.querySelector('#social-buttons-section');
@@ -1236,7 +1242,9 @@ function openSettingsPanel() {
 	
 	document.getElementById('private-profile-toggle').checked = profile.is_public;
     
-    initGalleryEditor(appState.galleryImages);
+    if (typeof initGalleryEditor === 'function') {
+        initGalleryEditor(appState.previewProfile.galleryImages);
+    }
 
 	DOMElements.settingsPanel.classList.add('open');
 	DOMElements.settingsOverlay.classList.remove('hidden');
@@ -2373,4 +2381,5 @@ window.onload = () => {
 	setupPasswordToggle('update-confirm-password-input', 'update-confirm-password-toggle');
 	setupPasswordToggle('delete-confirm-password-input', 'delete-confirm-password-toggle');
 };
+
 
