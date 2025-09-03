@@ -60,7 +60,7 @@ let appState = {
 	isDesignModeActive: false,
 	isRecoveringPassword: false,
     isProfileBuilt: false, 
-    currentlyViewingProfileId: null, // NUEVO: Para el "Contexto de Visualización"
+    currentlyViewingProfileId: null, 
 };
 
 // --- 3. REFERENCIAS A ELEMENTOS DEL DOM ---
@@ -1473,7 +1473,7 @@ document.getElementById('add-update-link-btn').addEventListener('click', async (
 		} else {
 			appState.links.push(newLink);
             
-            const defaultLayout = ["profile-image", "display-name", "username", "description", "featured-video", "social-buttons", "socials"];
+            const defaultLayout = ["profile-image", "display-name", "username", "description", "featured-video", "social-buttons", ...appState.links.map(l => `link_${l.id}`), "socials"];
             const currentLayout = (appState.myProfile.layout_order && appState.myProfile.layout_order.length > 0) ? [...appState.myProfile.layout_order] : defaultLayout;
 
             const lastLinkIndex = currentLayout.map(id => id.startsWith('link_')).lastIndexOf(true);
@@ -2157,7 +2157,19 @@ const stopDrag = () => {
 };
 dragger.addEventListener('touchstart', (e) => { e.preventDefault(); document.addEventListener('touchmove', handleDrag); document.addEventListener('touchend', stopDrag); });
 
-// --- 20. LÓGICA DEL TEXTAREA AUTO-AJUSTABLE ---
+// --- 20. LÓGICA DEL SCROLL INTELIGENTE PARA EL TECLADO MÓVIL ---
+
+let isKeyboardOpen = false;
+let initialViewportHeight = window.innerHeight;
+
+if ('visualViewport' in window) {
+    window.visualViewport.addEventListener('resize', () => {
+        const threshold = initialViewportHeight * 0.7;
+        isKeyboardOpen = window.visualViewport.height < threshold;
+    });
+}
+
+// --- 21. LÓGICA DEL TEXTAREA AUTO-AJUSTABLE ---
 function autoResizeTextarea(element) {
 	element.style.height = 'auto';
 	element.style.height = (element.scrollHeight) + 'px';
@@ -2165,11 +2177,13 @@ function autoResizeTextarea(element) {
 DOMElements.descriptionInput.addEventListener('input', function() { autoResizeTextarea(this); });
 DOMElements.settingsPanelContent.addEventListener('focusin', (e) => {
 	if (window.innerWidth < 640 && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) {
-		setTimeout(() => e.target.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300);
+		if (!isKeyboardOpen) {
+            setTimeout(() => e.target.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300);
+        }
 	}
 });
 
-// --- 21. LÓGICA DE CAMBIO DE CONTRASEÑA ---
+// --- 22. LÓGICA DE CAMBIO DE CONTRASEÑA ---
 const passwordModal = { current: document.getElementById('current-password-input'), new: document.getElementById('new-password-input'), confirm: document.getElementById('confirm-password-input'), currentError: document.getElementById('current-password-error'), newError: document.getElementById('new-password-error'), confirmError: document.getElementById('confirm-password-error') };
 function showPasswordError(field, message) {
 	passwordModal[field].classList.add('!border-red-500', '!ring-red-500');
@@ -2212,7 +2226,7 @@ document.getElementById('password-change-save-btn').addEventListener('click', as
 	}
 });
 
-// --- 22. LÓGICA PARA MOSTRAR/OCULTAR CONTRASEÑA ---
+// --- 23. LÓGICA PARA MOSTRAR/OCULTAR CONTRASEÑA ---
 function setupPasswordToggle(inputId, toggleId) {
 	const passwordInput = document.getElementById(inputId);
 	const toggleButton = document.getElementById(toggleId);
@@ -2225,7 +2239,7 @@ function setupPasswordToggle(inputId, toggleId) {
 	});
 }
 
-// --- 23. LÓGICA DE RECUPERACIÓN DE CONTRASEÑA ---
+// --- 24. LÓGICA DE RECUPERACIÓN DE CONTRASEÑA ---
 document.getElementById('forgot-password-link').addEventListener('click', (e) => { e.preventDefault(); showPage('forgotPassword'); });
 document.getElementById('back-to-login-link-from-forgot').addEventListener('click', (e) => { e.preventDefault(); appState.isRecoveringPassword = false; showPage('auth'); });
 
@@ -2252,7 +2266,7 @@ document.getElementById('update-password-btn').addEventListener('click', async (
 	}
 });
 
-// --- 24. LÓGICA DEL SELECTOR DE FUENTE PERSONALIZADO ---
+// --- 25. LÓGICA DEL SELECTOR DE FUENTE PERSONALIZADO ---
 function populateFontSelector() {
 	DOMElements.fontSelectorOptions.innerHTML = '';
 	for (const fontClass in fontMap) {
@@ -2301,7 +2315,7 @@ DOMElements.fontSelectorOptions.addEventListener('click', (e) => {
 
 document.addEventListener('click', () => toggleFontSelector(true));
 
-// --- 25. LÓGICA DE ELIMINACIÓN Y REACTIVACIÓN DE CUENTA ---
+// --- 26. LÓGICA DE ELIMINACIÓN Y REACTIVACIÓN DE CUENTA ---
 document.getElementById('delete-account-btn').addEventListener('click', () => {
 	document.getElementById('delete-account-confirm-modal').classList.remove('hidden');
 });
