@@ -813,9 +813,7 @@ function renderSocialButtons(buttons) {
 		section.appendChild(buttonEl);
 	});
 
-	// --- Lógica de alineación inteligente ---
 	const buttonCount = buttonList.length;
-	// Resetea los estilos en línea para empezar de cero
 	section.style.justifyContent = '';
 	section.style.gap = '';
 
@@ -1467,7 +1465,9 @@ document.getElementById('add-update-link-btn').addEventListener('click', async (
 		} else {
 			appState.links.push(newLink);
             
-            const currentLayout = [...(appState.myProfile.layout_order || [])];
+            const defaultLayout = ["profile-image", "display-name", "username", "description", "featured-video", "social-buttons", "socials"];
+            const currentLayout = appState.myProfile.layout_order && appState.myProfile.layout_order.length > 0 ? [...appState.myProfile.layout_order] : defaultLayout;
+
             const lastLinkIndex = currentLayout.map(id => id.startsWith('link_')).lastIndexOf(true);
             
             if (lastLinkIndex !== -1) {
@@ -1637,8 +1637,9 @@ document.getElementById('cropper-save-btn').addEventListener('click', () => {
         try {
             const compressedBlob = await imageCompression(blob, { maxSizeMB: 0.3, maxWidthOrHeight: 1024, useWebWorker: true });
             
-            // Determina en qué perfil guardar la imagen.
             const targetProfile = appState.previewProfile || appState.myProfile;
+            if (!targetProfile) throw new Error("No profile data available to update.");
+            
             const oldImagePath = targetProfile.profile_image_path;
             const filePath = `${appState.currentUser.id}/${Date.now()}.webp`;
 
@@ -1647,14 +1648,12 @@ document.getElementById('cropper-save-btn').addEventListener('click', () => {
 
             const { data: { publicUrl } } = supabaseClient.storage.from('profile-pictures').getPublicUrl(filePath);
             
-            // Si el panel de configuración está abierto, actualiza la previsualización.
             if (appState.previewProfile) {
                 appState.previewProfile.profile_image_url = publicUrl;
                 appState.previewProfile.profile_image_path = filePath;
                 markSettingsAsDirty();
                 updateLivePreview();
             } else {
-                // Si no, actualiza la base de datos directamente.
                 const { data: updatedProfile, error: updateError } = await supabaseClient
                     .from('profiles')
                     .update({ profile_image_url: publicUrl, profile_image_path: filePath })
