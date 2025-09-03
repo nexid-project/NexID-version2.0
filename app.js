@@ -59,6 +59,7 @@ let appState = {
 	isSettingsDirty: false,
 	isDesignModeActive: false,
 	isRecoveringPassword: false,
+    isProfileBuilt: false, // Bandera para el Plan de Renderizado Único
 };
 
 // --- 3. REFERENCIAS A ELEMENTOS DEL DOM ---
@@ -268,6 +269,7 @@ async function handleAuthStateChange(session) {
         const publicUsername = urlParams.get('user');
         
         if (publicUsername && myProfile.username && myProfile.username !== `@${publicUsername}`) {
+            appState.isProfileBuilt = false; // Forzar reconstrucción para el perfil público
             document.getElementById('back-to-my-profile-btn').classList.remove('hidden');
             document.getElementById('back-to-my-profile-btn').href = `${window.location.pathname}?user=${myProfile.username.substring(1)}`;
             await loadPublicProfile(publicUsername);
@@ -279,16 +281,24 @@ async function handleAuthStateChange(session) {
             if (myProfile && myProfile.username_set) {
                 if (window.location.protocol !== 'blob:') {
                     const profileUrl = `${window.location.pathname}?user=${myProfile.username.substring(1)}`;
-                    // Solo actualiza la URL si es diferente para evitar bucles.
                     if (window.location.href !== new URL(profileUrl, window.location.href).href) {
                         history.replaceState(null, '', profileUrl);
                     }
                 }
-                buildProfileLayout(myProfile, true);
+                
+                // --- LÓGICA DEL RENDERIZADO ÚNICO ---
+                if (!appState.isProfileBuilt) {
+                    buildProfileLayout(myProfile, true); 
+                    appState.isProfileBuilt = true;
+                } else {
+                    updateProfileContent(myProfile, true);
+                }
+
                 renderLinksEditor(appState.links);
                 listenToUserLinks(myProfile.id);
                 showPage('profile');
             } else {
+                appState.isProfileBuilt = false;
                 if (window.location.protocol !== 'blob:') {
                     history.replaceState(null, '', window.location.pathname);
                 }
@@ -296,6 +306,7 @@ async function handleAuthStateChange(session) {
             }
         }
     } else {
+        appState.isProfileBuilt = false;
         const urlParams = new URLSearchParams(window.location.search);
         const publicUsername = urlParams.get('user');
         
@@ -328,7 +339,9 @@ async function loadPublicProfile(username) {
 		appState.links = links || [];
 		
 		const isOwner = appState.currentUser && appState.currentUser.id === profile.id;
+        appState.isProfileBuilt = false; // Forzar reconstrucción para perfiles públicos
 		buildProfileLayout(profile, isOwner);
+        appState.isProfileBuilt = true;
 		showPage('profile');
 
 	} catch (error) {
@@ -454,13 +467,11 @@ function renderSingleLink(linkData, profileData) {
 	return `<a href="#" draggable="false" data-url="${linkData.url}" data-link-id="${linkData.id}" rel="noopener noreferrer" class="${linkClasses.join(' ')}">${linkContent}</a>`;
 }
 
-// NUEVA ARQUITECTURA: Construir una vez, actualizar selectivamente.
-
 function buildProfileLayout(profileData, isOwner) {
     updateProfileStyles(profileData);
 
     const layoutContainer = document.getElementById('profile-layout-container');
-    layoutContainer.innerHTML = ''; // Limpiar para construir desde cero
+    layoutContainer.innerHTML = ''; 
 
     const defaultBaseSections = ["profile-image", "display-name", "username", "description", "featured-video", "social-buttons", "socials"];
     const currentLinkIds = appState.links.map(l => `link_${l.id}`);
@@ -755,24 +766,21 @@ function getSocialIconForUrl(url) {
 function renderSocialIcons(socials, socialsOrder) {
 	const footer = document.getElementById('socials-footer');
 	if (!footer) return;
-	footer.innerHTML = ''; // Empezar limpio
+	footer.innerHTML = ''; 
 
-	if (!socials || Object.keys(socials).length === 0) return; // Salir si no hay datos sociales
+	if (!socials || Object.keys(socials).length === 0) return; 
 
 	const order = socialsOrder && socialsOrder.length > 0 ? socialsOrder : SOCIAL_ICON_ORDER;
 	
-    // Filtrar por claves que realmente existen en el objeto socials
     const validKeys = order.filter(key => socials[key]); 
 
-    if (validKeys.length === 0) return; // Salir si no hay iconos válidos para mostrar
+    if (validKeys.length === 0) return; 
 
-    // Ahora que sabemos que hay iconos, creamos el contenedor
     const wrapper = document.createElement('div');
     wrapper.className = 'social-icons-wrapper';
 	
 	validKeys.forEach(key => {
 		const username = socials[key];
-        // La comprobación `if (username && socialIcons[key])` es ahora redundante debido al filtro validKeys, pero la mantenemos por seguridad.
 		if (username && socialIcons[key]) {
 			const link = document.createElement('a');
 			link.href = `${socialBaseUrls[key]}${username}`;
@@ -792,9 +800,9 @@ function renderSocialButtons(buttons) {
 	const section = document.getElementById('social-buttons-section');
 	if (!section) return;
 	section.innerHTML = '';
-	const buttonList = buttons || []; // Asegurarse de que tenemos un array
+	const buttonList = buttons || []; 
 
-	if (buttonList.length === 0) return; // Salir si no hay botones
+	if (buttonList.length === 0) return; 
 
 	buttonList.forEach(buttonData => {
 		const info = getSocialInfoForUrl(buttonData.url);
@@ -860,7 +868,6 @@ function renderProfileActions(profileData) {
 
 // --- 7. MANEJADORES DE EVENTOS ---
 
-// NUEVO: Lógica para el modal de registro
 function closeRegisterModal() {
     DOMElements.registerModal.classList.add('hidden');
     DOMElements.registerPasswordInput.value = '';
@@ -868,10 +875,8 @@ function closeRegisterModal() {
 }
 
 DOMElements.showRegisterModalBtn.addEventListener('click', () => {
-    // Transfiere los datos del formulario de login al modal
     DOMElements.registerEmailInput.value = document.getElementById('email-input').value;
     DOMElements.registerPasswordInput.value = document.getElementById('password-input').value;
-    // Muestra el modal
     DOMElements.registerModal.classList.remove('hidden');
 });
 
@@ -988,7 +993,7 @@ completeSetupBtn.addEventListener('click', async () => {
 	if (error) {
 		showAlert(`Error al completar el perfil: ${error.message}`);
 	} else {
-		const updatedProfile = { ...appState.profile, ...updates };
+		const updatedProfile = { ...appState.myProfile, ...updates };
 		appState.myProfile = updatedProfile;
 
 		if (window.location.protocol !== 'blob:') {
@@ -1003,6 +1008,7 @@ completeSetupBtn.addEventListener('click', async () => {
 });
 
 document.getElementById('logout-btn').addEventListener('click', async () => {	
+    appState.isProfileBuilt = false; // Reiniciar la bandera al cerrar sesión
 	appState.isRecoveringPassword = false;
 	document.getElementById('email-input').value = '';
 	document.getElementById('password-input').value = '';
@@ -1077,7 +1083,6 @@ function markSettingsAsDirty() {
 	appState.isSettingsDirty = true;
 }
 
-// --- FASE 3: Nueva función para renderizar pestañas sociales ---
 function renderSocialTabs(container, mode, data) {
     container.innerHTML = `
         <div class="social-tabs-container">
@@ -1090,7 +1095,6 @@ function renderSocialTabs(container, mode, data) {
     const content = container.querySelector('.social-tabs-content');
 
     socialCategories.forEach((category, index) => {
-        // Crear botón de pestaña
         const button = document.createElement('button');
         button.className = `social-tab-button ${index === 0 ? 'active' : ''}`;
         button.dataset.tab = category.id;
@@ -1098,13 +1102,11 @@ function renderSocialTabs(container, mode, data) {
         button.innerHTML = `<i data-lucide="${category.icon}" class="w-5 h-5"></i>`;
         nav.appendChild(button);
 
-        // Crear panel de contenido
         const pane = document.createElement('div');
         pane.className = `social-tab-pane ${index === 0 ? 'active' : ''}`;
         pane.id = `${mode}-${category.id}`;
         content.appendChild(pane);
 
-        // Rellenar panel con inputs
         category.socials.forEach(key => {
             const item = document.createElement('div');
             const info = socialButtonStyles[key];
@@ -1130,7 +1132,6 @@ function renderSocialTabs(container, mode, data) {
     lucide.createIcons();
 }
 
-// --- FASE 3: Manejador de eventos para las pestañas ---
 DOMElements.settingsPanel.addEventListener('click', (e) => {
     const tabButton = e.target.closest('.social-tab-button');
     if (tabButton) {
@@ -1420,17 +1421,15 @@ function populateIconGrid() {
 	const gridContainer = document.getElementById('icon-grid-container');
 	if (!gridContainer) return;
 
-	gridContainer.innerHTML = ''; // Limpiar iconos previos
-
+	gridContainer.innerHTML = ''; 
 	iconTags.forEach(tag => {
 		const button = document.createElement('button');
-		button.type = 'button'; // Prevenir envío de formulario
+		button.type = 'button'; 
 		button.className = 'icon-option-btn';
 		button.dataset.iconValue = tag.value;
 		button.title = tag.label;
 
 		const icon = document.createElement('i');
-		// Usar un icono específico para la opción "Ninguno"
 		icon.dataset.lucide = tag.value || 'circle-slash';
 		icon.className = 'w-5 h-5';
 		
