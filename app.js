@@ -415,7 +415,6 @@ function parseVideoUrl(url) {
     return embedUrl;
 }
 
-// Lógica de renderizado inteligente para contenedores.
 const profileSectionTemplates = {
     'profile-image': () => `<div data-section="profile-image" class="draggable-item flex justify-center items-center p-2"><div class="relative"><img id="public-profile-img" alt="Foto de perfil" class="w-32 h-32 rounded-full border-4 shadow-lg object-cover"><div id="image-actions-container" class="absolute top-1/2 -translate-y-1/2 left-full ml-4 flex flex-col items-center gap-3"></div></div></div>`,
     'display-name': () => `<div data-section="display-name" class="text-center draggable-item p-2"></div>`,
@@ -703,7 +702,7 @@ const socialIcons = {
 	soundcloud: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M7,19a1,1,0,0,1-1-1V8A1,1,0,0,1,8,8V18A1,1,0,0,1,7,19ZM3,18a1,1,0,0,1-1-1V11a1,1,0,0,1,2,0v6A1,1,0,0,1,3,18Z"></path><path d="M18.76,10.2A7,7,0,0,0,12,5a5.89,5.89,0,0,0-1.18.11,1,1,0,0,0-.82,1V18a1,1,0,0,0,1,1h6.5a4.49,4.49,0,0,0,1.26-8.8Z"></path></svg>`,
 	telegram: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M20.71 3.655s1.942 -0.757 1.78 1.082c-0.053 0.757 -0.539 3.409 -0.917 6.277l-1.295 8.495s-0.108 1.244 -1.079 1.461c-0.971 0.216 -2.428 -0.757 -2.698 -0.974 -0.216 -0.163 -4.047 -2.598 -5.396 -3.788 -0.378 -0.325 -0.81 -0.974 0.054 -1.732L16.825 9.065c0.647 -0.65 1.295 -2.165 -1.403 -0.325l-7.555 5.14s-0.864 0.541 -2.482 0.054l-3.508 -1.083s-1.295 -0.811 0.917 -1.623c5.396 -2.543 12.034 -5.14 17.916 -7.575"/></svg>`,
 };
-const largeSocialIcons = { ...socialIcons }; // En este caso son los mismos, pero se mantiene la estructura por si se quiere cambiar en el futuro.
+const largeSocialIcons = { ...socialIcons }; 
 
 const socialBaseUrls = {
 	instagram: 'https://instagram.com/', twitter: 'https://twitter.com/', github: 'https://github.com/', linkedin: 'https://linkedin.com/in/',
@@ -738,7 +737,6 @@ const socialCategories = [
 ];
 
 const SOCIAL_ICON_ORDER = socialCategories.flatMap(category => category.socials);
-// --- FIN FASE 3 ---
 
 function getSocialInfoForUrl(url) {
 	if (!url) return null;
@@ -764,36 +762,34 @@ function getSocialIconForUrl(url) {
 }
 
 function renderSocialIcons(socials, socialsOrder) {
-	const footer = document.getElementById('socials-footer');
-	if (!footer) return;
-	footer.innerHTML = ''; 
+    const footer = document.getElementById('socials-footer');
+    if (!footer) return;
+    footer.innerHTML = ''; 
 
-	if (!socials || Object.keys(socials).length === 0) return; 
+    const socialsData = socials || {};
+    const order = socialsOrder && socialsOrder.length > 0 ? socialsOrder : SOCIAL_ICON_ORDER;
+    
+    const linksToRender = [];
+    order.forEach(key => {
+        const username = socialsData[key];
+        if (username && username.trim() !== '' && socialIcons[key]) {
+            const link = document.createElement('a');
+            link.href = `${socialBaseUrls[key]}${username}`;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            link.innerHTML = socialIcons[key];
+            link.className = 'opacity-70 hover:opacity-100 transition-opacity';
+            link.dataset.socialKey = key;
+            linksToRender.push(link);
+        }
+    });
 
-	const order = socialsOrder && socialsOrder.length > 0 ? socialsOrder : SOCIAL_ICON_ORDER;
-	
-    const validKeys = order.filter(key => socials[key]); 
-
-    if (validKeys.length === 0) return; 
-
-    const wrapper = document.createElement('div');
-    wrapper.className = 'social-icons-wrapper';
-	
-	validKeys.forEach(key => {
-		const username = socials[key];
-		if (username && socialIcons[key]) {
-			const link = document.createElement('a');
-			link.href = `${socialBaseUrls[key]}${username}`;
-			link.target = '_blank';
-			link.rel = 'noopener noreferrer';
-			link.innerHTML = socialIcons[key];
-			link.className = 'opacity-70 hover:opacity-100 transition-opacity';
-			link.dataset.socialKey = key;
-			wrapper.appendChild(link);
-		}
-	});
-
-    footer.appendChild(wrapper);
+    if (linksToRender.length > 0) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'social-icons-wrapper';
+        linksToRender.forEach(link => wrapper.appendChild(link));
+        footer.appendChild(wrapper);
+    }
 }
 
 function renderSocialButtons(buttons) {
@@ -1330,8 +1326,8 @@ function updateLivePreview() {
 	
     const oldButtonsCount = (appState.previewProfile.social_buttons || []).length;
     const newButtonsCount = newSocialButtons.length;
-    const oldSocialsCount = Object.values(appState.previewProfile.socials || {}).filter(v => v).length;
-    const newSocialsCount = Object.values(newSocials).filter(v => v).length;
+    const oldSocialsCount = Object.values(appState.previewProfile.socials || {}).filter(v => v && v.trim() !== '').length;
+    const newSocialsCount = Object.values(newSocials).filter(v => v && v.trim() !== '').length;
 
 	appState.previewProfile = {
 		...appState.previewProfile,
@@ -1629,44 +1625,64 @@ document.getElementById('cropper-cancel-btn').addEventListener('click', () => {
 });
 
 document.getElementById('cropper-save-btn').addEventListener('click', () => {
-	if (!appState.cropper) return;
+    if (!appState.cropper) return;
 
-	const saveBtn = document.getElementById('cropper-save-btn');
-	saveBtn.disabled = true;
-	saveBtn.innerHTML = `<div class="w-5 h-5 border-2 border-t-transparent border-white rounded-full animate-spin"></div><span>Procesando...</span>`;
+    const saveBtn = document.getElementById('cropper-save-btn');
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = `<div class="w-5 h-5 border-2 border-t-transparent border-white rounded-full animate-spin"></div><span>Procesando...</span>`;
 
-	appState.cropper.getCroppedCanvas({ width: 1024, height: 1024 }).toBlob(async (blob) => {
-		if (!appState.currentUser) return;
-		
-		try {
-			const compressedBlob = await imageCompression(blob, { maxSizeMB: 0.3, maxWidthOrHeight: 1024, useWebWorker: true });
-			const oldImagePath = appState.previewProfile.profile_image_path;
-			const filePath = `${appState.currentUser.id}/${Date.now()}.webp`;
+    appState.cropper.getCroppedCanvas({ width: 1024, height: 1024 }).toBlob(async (blob) => {
+        if (!appState.currentUser) return;
+        
+        try {
+            const compressedBlob = await imageCompression(blob, { maxSizeMB: 0.3, maxWidthOrHeight: 1024, useWebWorker: true });
+            
+            // Determina en qué perfil guardar la imagen.
+            const targetProfile = appState.previewProfile || appState.myProfile;
+            const oldImagePath = targetProfile.profile_image_path;
+            const filePath = `${appState.currentUser.id}/${Date.now()}.webp`;
 
-			const { error: uploadError } = await supabaseClient.storage.from('profile-pictures').upload(filePath, compressedBlob, { contentType: 'image/webp' });
-			if (uploadError) throw uploadError;
+            const { error: uploadError } = await supabaseClient.storage.from('profile-pictures').upload(filePath, compressedBlob, { contentType: 'image/webp' });
+            if (uploadError) throw uploadError;
 
-			const { data: { publicUrl } } = supabaseClient.storage.from('profile-pictures').getPublicUrl(filePath);
-			
-			// Actualizar el estado de previsualización
-            appState.previewProfile.profile_image_url = publicUrl;
-            appState.previewProfile.profile_image_path = filePath;
-            markSettingsAsDirty();
-            updateLivePreview();
-			
-			if (oldImagePath) { // Programar eliminación de la imagen antigua al guardar
-                // Esto podría requerir una lógica más compleja si el usuario cancela
+            const { data: { publicUrl } } = supabaseClient.storage.from('profile-pictures').getPublicUrl(filePath);
+            
+            // Si el panel de configuración está abierto, actualiza la previsualización.
+            if (appState.previewProfile) {
+                appState.previewProfile.profile_image_url = publicUrl;
+                appState.previewProfile.profile_image_path = filePath;
+                markSettingsAsDirty();
+                updateLivePreview();
+            } else {
+                // Si no, actualiza la base de datos directamente.
+                const { data: updatedProfile, error: updateError } = await supabaseClient
+                    .from('profiles')
+                    .update({ profile_image_url: publicUrl, profile_image_path: filePath })
+                    .eq('id', appState.currentUser.id)
+                    .select()
+                    .single();
+                
+                if (updateError) throw updateError;
+                
+                appState.myProfile = updatedProfile;
+                buildProfileLayout(appState.myProfile, true);
+                showAlert("Imagen de perfil actualizada.");
             }
-		} catch (error) {
-			showAlert(`Error al procesar la imagen: ${error.message}`);
-		} finally {
-			saveBtn.disabled = false;
-			saveBtn.textContent = 'Guardar Imagen';
-			DOMElements.cropperModal.classList.add('hidden');
-			if(appState.cropper) appState.cropper.destroy();
-			appState.cropper = null;
-		}
-	}, 'image/png');
+            
+            if (oldImagePath) {
+                await supabaseClient.storage.from('profile-pictures').remove([oldImagePath]);
+            }
+
+        } catch (error) {
+            showAlert(`Error al procesar la imagen: ${error.message}`);
+        } finally {
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Guardar Imagen';
+            DOMElements.cropperModal.classList.add('hidden');
+            if(appState.cropper) appState.cropper.destroy();
+            appState.cropper = null;
+        }
+    }, 'image/png');
 });
 
 // --- 11. LÓGICA DE GENERACIÓN CON IA (GEMINI) ---
@@ -2204,7 +2220,6 @@ function setupPasswordToggle(inputId, toggleId) {
 
 // --- 23. LÓGICA DE RECUPERACIÓN DE CONTRASEÑA ---
 document.getElementById('forgot-password-link').addEventListener('click', (e) => { e.preventDefault(); showPage('forgotPassword'); });
-// Actualizado para que el enlace de "volver" funcione desde la página de olvido de contraseña
 document.getElementById('back-to-login-link-from-forgot').addEventListener('click', (e) => { e.preventDefault(); appState.isRecoveringPassword = false; showPage('auth'); });
 
 document.getElementById('send-recovery-btn').addEventListener('click', async () => {
@@ -2350,10 +2365,8 @@ initializeApp();
 window.onload = () => { 
 	lucide.createIcons(); 
 	setupPasswordToggle('password-input', 'auth-password-toggle');
-    // Nuevos toggles para el modal de registro
     setupPasswordToggle('register-password-input', 'register-password-toggle');
     setupPasswordToggle('register-confirm-password-input', 'register-confirm-password-toggle');
-    // Toggles existentes
 	setupPasswordToggle('current-password-input', 'current-password-toggle');
 	setupPasswordToggle('new-password-input', 'new-password-toggle');
 	setupPasswordToggle('confirm-password-input', 'confirm-password-toggle');
