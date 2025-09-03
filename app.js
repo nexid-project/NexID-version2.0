@@ -59,7 +59,8 @@ let appState = {
 	isSettingsDirty: false,
 	isDesignModeActive: false,
 	isRecoveringPassword: false,
-    isProfileBuilt: false, // Bandera para el Plan de Renderizado Único
+    isProfileBuilt: false, 
+    currentlyViewingProfileId: null, // NUEVO: Para el "Contexto de Visualización"
 };
 
 // --- 3. REFERENCIAS A ELEMENTOS DEL DOM ---
@@ -207,7 +208,7 @@ function initializeApp() {
 		if (event === 'PASSWORD_RECOVERY') {
 			appState.isRecoveringPassword = true;
 			showPage('updatePassword');
-		} else if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+		} else if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
 			handleAuthStateChange(session);
 		} else {
             console.log(`onAuthStateChange event ignored: ${event}`);
@@ -269,7 +270,6 @@ async function handleAuthStateChange(session) {
         const publicUsername = urlParams.get('user');
         
         if (publicUsername && myProfile.username && myProfile.username !== `@${publicUsername}`) {
-            appState.isProfileBuilt = false; // Forzar reconstrucción para el perfil público
             document.getElementById('back-to-my-profile-btn').classList.remove('hidden');
             document.getElementById('back-to-my-profile-btn').href = `${window.location.pathname}?user=${myProfile.username.substring(1)}`;
             await loadPublicProfile(publicUsername);
@@ -286,10 +286,10 @@ async function handleAuthStateChange(session) {
                     }
                 }
                 
-                // --- LÓGICA DEL RENDERIZADO ÚNICO ---
-                if (!appState.isProfileBuilt) {
+                if (!appState.isProfileBuilt || appState.currentlyViewingProfileId !== myProfile.id) {
                     buildProfileLayout(myProfile, true); 
                     appState.isProfileBuilt = true;
+                    appState.currentlyViewingProfileId = myProfile.id;
                 } else {
                     updateProfileContent(myProfile, true);
                 }
@@ -299,6 +299,7 @@ async function handleAuthStateChange(session) {
                 showPage('profile');
             } else {
                 appState.isProfileBuilt = false;
+                appState.currentlyViewingProfileId = null;
                 if (window.location.protocol !== 'blob:') {
                     history.replaceState(null, '', window.location.pathname);
                 }
@@ -307,6 +308,7 @@ async function handleAuthStateChange(session) {
         }
     } else {
         appState.isProfileBuilt = false;
+        appState.currentlyViewingProfileId = null;
         const urlParams = new URLSearchParams(window.location.search);
         const publicUsername = urlParams.get('user');
         
@@ -339,9 +341,15 @@ async function loadPublicProfile(username) {
 		appState.links = links || [];
 		
 		const isOwner = appState.currentUser && appState.currentUser.id === profile.id;
-        appState.isProfileBuilt = false; // Forzar reconstrucción para perfiles públicos
-		buildProfileLayout(profile, isOwner);
-        appState.isProfileBuilt = true;
+        
+        if (!appState.isProfileBuilt || appState.currentlyViewingProfileId !== profile.id) {
+		    buildProfileLayout(profile, isOwner);
+            appState.isProfileBuilt = true;
+            appState.currentlyViewingProfileId = profile.id;
+        } else {
+            updateProfileContent(profile, isOwner);
+        }
+
 		showPage('profile');
 
 	} catch (error) {
@@ -1466,7 +1474,7 @@ document.getElementById('add-update-link-btn').addEventListener('click', async (
 			appState.links.push(newLink);
             
             const defaultLayout = ["profile-image", "display-name", "username", "description", "featured-video", "social-buttons", "socials"];
-            const currentLayout = appState.myProfile.layout_order && appState.myProfile.layout_order.length > 0 ? [...appState.myProfile.layout_order] : defaultLayout;
+            const currentLayout = (appState.myProfile.layout_order && appState.myProfile.layout_order.length > 0) ? [...appState.myProfile.layout_order] : defaultLayout;
 
             const lastLinkIndex = currentLayout.map(id => id.startsWith('link_')).lastIndexOf(true);
             
