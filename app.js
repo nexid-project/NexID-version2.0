@@ -1,10 +1,14 @@
-import { initializeGallery } from './gallery.js';
+// --- IMPORTACIONES DE MÓDULOS ---
+import { initializeGallery, renderGalleryEditor, renderPublicGallery } from './gallery.js';
 
 // --- 1. CONFIGURACIÓN E INICIALIZACIÓN ---
 const { createClient } = supabase;
 const SUPABASE_URL = 'https://ukowtlaytmqgdhjygulq.supabase.co';	
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVrb3d0bGF5dG1xZ2RoanlndWxxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM2NTEyMTgsImV4cCI6MjA2OTIyNzIxOH0.Kmg90Xdcu0RzAP55YwwuYfuRYj2U5LU90KAiKbEtLQg';
 const GEMINI_API_KEY = ""; // Replace with your Gemini API key
+
+// Exportaciones para que otros módulos puedan usarlas
+export { supabaseClient, appState, showAlert, buildProfileLayout };
 
 const backgroundLibraryUrls = [
 	'https://ukowtlaytmqgdhjygulq.supabase.co/storage/v1/object/public/library-backgrounds//wallpaperflare.com_wallpaper.jpg',
@@ -19,7 +23,6 @@ const backgroundLibraryUrls = [
 
 let supabaseClient;
 
-// --- Lógica de carga dinámica de fuentes ---
 const fontMap = {
 	'font-inter': { name: 'Inter (Sans-serif)', query: 'Inter:wght@400;500;700' },
 	'font-lora': { name: 'Lora (Serif)', query: 'Lora:wght@400;500;700' },
@@ -45,12 +48,12 @@ function loadFontIfNeeded(fontClass) {
 	loadedFonts.add(fontClass);
 }
 
-// --- 2. ESTADO GLOBAL DE LA APLICACIÓN ---
 let appState = {
 	currentUser: null,
-	myProfile: null, // El estado real guardado en la DB
-    previewProfile: null, // El estado temporal para la previsualización en vivo
+	myProfile: null,
+    previewProfile: null,
 	links: [],
+    galleryImages: [], // NUEVO: Estado para las imágenes de la galería
 	tempBackgroundImagePath: null,
 	tempLayoutOrder: null,
 	subscriptions: { auth: null, links: null },
@@ -64,7 +67,6 @@ let appState = {
     currentlyViewingProfileId: null, 
 };
 
-// --- 3. REFERENCIAS A ELEMENTOS DEL DOM ---
 const DOMElements = {
 	loadingPage: document.getElementById('loading-page'),
 	authPage: document.getElementById('auth-page'),
@@ -113,7 +115,6 @@ const DOMElements = {
     featuredVideoUrlInput: document.getElementById('featured-video-url-input'),
 };
 
-// --- 4. FUNCIONES DE UTILIDAD (MODALES, ETC.) ---
 const customAlert = document.getElementById('custom-alert');
 const customAlertMessage = document.getElementById('custom-alert-message');
 const customAlertClose = document.getElementById('custom-alert-close');
@@ -180,8 +181,6 @@ function extractUsername(input, socialKey) {
     return username.split('?')[0].replace(/[/]/g, '').replace('@', '');
 }
 
-// --- 5. LÓGICA PRINCIPAL DE LA APLICACIÓN ---
-
 function initializeApp() {
 	if (!SUPABASE_URL || !SUPABASE_ANON_KEY || SUPABASE_URL.includes('TU_SUPABASE_URL')) {
 		showAlert('CONFIGURACIÓN NECESARIA: Por favor, añade tus claves de API de Supabase en el código y sigue las instrucciones de la base de datos.');
@@ -204,7 +203,6 @@ function initializeApp() {
 	
 	appState.subscriptions.auth = supabaseClient.auth.onAuthStateChange((event, session) => {
         if (appState.previewProfile) {
-            console.log("Auth state changed but settings panel is open. Ignoring re-render.");
             return;
         }
 		if (event === 'PASSWORD_RECOVERY') {
@@ -212,9 +210,7 @@ function initializeApp() {
 			showPage('updatePassword');
 		} else if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
 			handleAuthStateChange(session);
-		} else {
-            console.log(`onAuthStateChange event ignored: ${event}`);
-        }
+		}
 	});
 }
 
@@ -222,8 +218,9 @@ async function fetchUserProfileWithRetry(userId, retries = 3, delay = 500) {
 	for (let i = 0; i < retries; i++) {
 		const { data: profile, error } = await supabaseClient
 			.from('profiles')
-			.select('*')
+			.select('*, gallery_images(*)') // Cargar imágenes de la galería junto con el perfil
 			.eq('id', userId)
+            .order('order_index', { foreignTable: 'gallery_images', ascending: true })
 			.single();
 
 		if (profile) {
@@ -259,6 +256,7 @@ async function handleAuthStateChange(session) {
         }
 
         appState.myProfile = myProfile;
+        appState.galleryImages = myProfile.gallery_images || [];
 
         if (myProfile.is_deactivated) {
             const deletionDate = new Date(myProfile.deletion_scheduled_at);
@@ -331,7 +329,13 @@ async function handleAuthStateChange(session) {
 
 async function loadPublicProfile(username) {
 	try {
-		const { data: profile, error: profileError } = await supabaseClient.from('profiles').select('*').eq('username', `@${username}`).single();
+		const { data: profile, error: profileError } = await supabaseClient
+            .from('profiles')
+            .select('*, gallery_images(*)')
+            .eq('username', `@${username}`)
+            .order('order_index', { foreignTable: 'gallery_images', ascending: true })
+            .single();
+
 		if (profileError || !profile || profile.is_deactivated) {
 			showPage('profile');
 			document.getElementById('profile-layout-container').innerHTML = '<h1 class="text-3xl font-bold text-center">Usuario no encontrado</h1>';
@@ -341,6 +345,7 @@ async function loadPublicProfile(username) {
 		const { data: links } = await supabaseClient.from('links').select('*').eq('user_id', profile.id).order('order_index', { ascending: true });
 
 		appState.links = links || [];
+        appState.galleryImages = profile.gallery_images || [];
 		
 		const isOwner = appState.currentUser && appState.currentUser.id === profile.id;
         
@@ -387,9 +392,6 @@ function listenToUserLinks(userId) {
 		.subscribe();
 }
 
-
-// --- 6. FUNCIONES DE RENDERIZADO ---
-
 function showPage(pageName) {
 	Object.values(DOMElements).forEach(el => {
 		if (el && el.id && (el.id.endsWith('-page'))) el.classList.add('hidden');
@@ -433,6 +435,12 @@ const profileSectionTemplates = {
     'featured-video': (profileData) => {
         if (parseVideoUrl(profileData.featured_video_url)) {
             return `<div data-section="featured-video" class="draggable-item p-2"></div>`;
+        }
+        return '';
+    },
+    'gallery': () => { // MODIFICADO: Usa appState para determinar si se crea el contenedor
+        if (appState.galleryImages && appState.galleryImages.length > 0) {
+            return `<div data-section="gallery" id="gallery-container" class="draggable-item p-2"></div>`;
         }
         return '';
     },
@@ -482,10 +490,10 @@ function buildProfileLayout(profileData, isOwner) {
     const layoutContainer = document.getElementById('profile-layout-container');
     layoutContainer.innerHTML = ''; 
 
-    const defaultBaseSections = ["profile-image", "display-name", "username", "description", "featured-video", "social-buttons", "socials"];
+    const defaultBaseSections = ["profile-image", "display-name", "username", "description", "featured-video", "gallery", "social-buttons", "socials"];
     const currentLinkIds = appState.links.map(l => `link_${l.id}`);
     
-    const defaultLayout = ["profile-image", "display-name", "username", "description", "featured-video", "social-buttons", ...currentLinkIds, "socials"];
+    const defaultLayout = ["profile-image", "display-name", "username", "description", "featured-video", "gallery", "social-buttons", ...currentLinkIds, "socials"];
     
     let layoutOrder = profileData.layout_order && profileData.layout_order.length > 0 ? profileData.layout_order : defaultLayout;
     
@@ -582,6 +590,11 @@ function updateProfileContent(profileData, isOwner) {
         } else {
             videoSection.innerHTML = '';
         }
+    }
+
+    const galleryContainer = document.querySelector('[data-section="gallery"]');
+    if (galleryContainer) {
+        renderPublicGallery(galleryContainer, profileData, appState.galleryImages);
     }
 
     appState.links.forEach(linkData => {
@@ -774,15 +787,22 @@ function getSocialIconForUrl(url) {
 function renderSocialIcons(socials, socialsOrder) {
     const footer = document.getElementById('socials-footer');
     if (!footer) return;
-    footer.innerHTML = ''; 
 
-    const socialsData = socials || {};
+    footer.innerHTML = ''; 
+    const hasIcons = socials && Object.keys(socials).length > 0;
+    
+    if (!hasIcons) {
+        return; 
+    }
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'social-icons-wrapper';
+    
     const order = socialsOrder && socialsOrder.length > 0 ? socialsOrder : SOCIAL_ICON_ORDER;
     
-    const linksToRender = [];
     order.forEach(key => {
-        const username = socialsData[key];
-        if (username && username.trim() !== '' && socialIcons[key]) {
+        const username = socials[key];
+        if (username && socialIcons[key]) {
             const link = document.createElement('a');
             link.href = `${socialBaseUrls[key]}${username}`;
             link.target = '_blank';
@@ -790,14 +810,11 @@ function renderSocialIcons(socials, socialsOrder) {
             link.innerHTML = socialIcons[key];
             link.className = 'opacity-70 hover:opacity-100 transition-opacity';
             link.dataset.socialKey = key;
-            linksToRender.push(link);
+            wrapper.appendChild(link);
         }
     });
 
-    if (linksToRender.length > 0) {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'social-icons-wrapper';
-        linksToRender.forEach(link => wrapper.appendChild(link));
+    if (wrapper.children.length > 0) {
         footer.appendChild(wrapper);
     }
 }
@@ -1199,6 +1216,7 @@ function openSettingsPanel() {
 
     renderSocialTabs(document.getElementById('social-buttons-inputs-container'), 'buttons', profile.social_buttons);
     renderSocialTabs(document.getElementById('socials-inputs-container'), 'icons', profile.socials);
+    renderGalleryEditor(appState.galleryImages); // Renderizar el editor de la galería
 
 	const contact = profile.contact_info || {};
 	document.querySelectorAll('#contact-inputs input').forEach(input => {
@@ -1266,6 +1284,7 @@ document.getElementById('save-changes-btn').addEventListener('click', async () =
 	const dataToSave = { ...appState.previewProfile }; // Usar los datos de la previsualización
 	delete dataToSave.id;
 	delete dataToSave.created_at;
+    delete dataToSave.gallery_images; // No guardamos las imágenes desde aquí
 	
 	const oldProfile = appState.myProfile;
 	const newImagePath = dataToSave.background_image_path;
@@ -1398,9 +1417,6 @@ DOMElements.themeTabsContainer.addEventListener('click', (e) => {
 		switchThemeTab(tabId);
 	}
 });
-
-
-// --- 9. LÓGICA DE GESTIÓN DE ENLACES ---
 
 const iconTags = [
 	{ label: 'Ninguno', value: '' },
