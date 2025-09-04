@@ -60,7 +60,6 @@ function closeEditModal() {
 
 /**
  * Maneja la selección de archivos del input de subida.
- * Por ahora, solo procesa el primer archivo seleccionado.
  * @param {Event} event - El evento de cambio del input.
  */
 function handleImageUpload(event) {
@@ -125,7 +124,7 @@ async function handleSaveImage() {
             thumbnail_path: thumbnailPath,
             caption: galleryDOMElements.captionInput.value,
             focus_point: focusPoint,
-            order_index: (appState.myProfile.gallery_images || []).length, // Asignar el siguiente índice
+            order_index: (appState.myProfile.gallery_images || []).length,
         };
 
         const { data: savedImage, error: insertError } = await supabaseClient
@@ -144,7 +143,7 @@ async function handleSaveImage() {
 
         showAlert('Imagen añadida a la galería.');
         closeEditModal();
-        buildProfileLayout(appState.previewProfile || appState.myProfile, true); // Reconstruir para mostrar la nueva imagen
+        buildProfileLayout(appState.previewProfile || appState.myProfile, true);
 
     } catch (error) {
         console.error("Error al guardar la imagen:", error);
@@ -154,7 +153,6 @@ async function handleSaveImage() {
         galleryDOMElements.saveBtn.textContent = 'Guardar';
     }
 }
-
 
 /**
  * Renderiza las miniaturas de las imágenes en el panel de configuración.
@@ -169,10 +167,74 @@ export function renderGalleryEditor(images = []) {
  * Renderiza la galería pública en el perfil del usuario.
  * @param {HTMLElement} container - El contenedor donde se renderizará la galería.
  * @param {Object} profileData - Los datos del perfil del usuario.
+ * @param {Array} images - Las imágenes de la galería.
  */
-export function renderPublicGallery(container, profileData) {
-    console.log("Renderizando la galería pública.");
-    // Próximamente: Lógica para mostrar la galería en el perfil.
+export function renderPublicGallery(container, profileData, images = []) {
+    container.innerHTML = '';
+    if (!images || images.length === 0) return;
+
+    const style = profileData.gallery_style || 'rectangular';
+    const mainImage = images[0];
+
+    const thumbnailsHTML = images.map((img, index) => `
+        <button class="gallery-thumbnail ${index === 0 ? 'active' : ''}" data-index="${index}">
+            <img src="${img.thumbnail_url}" alt="Miniatura ${index + 1}">
+        </button>
+    `).join('');
+
+    let galleryHTML = '';
+
+    if (style === 'cuadrada') {
+        galleryHTML = `
+            <div class="gallery-container-square">
+                <div class="gallery-main-image-square">
+                    <img id="gallery-main-img" src="${mainImage.image_url}" style="object-position: ${mainImage.focus_point || 'center'};" alt="Imagen principal de la galería">
+                    <p id="gallery-main-caption" class="gallery-caption">${mainImage.caption || ''}</p>
+                </div>
+                <div class="gallery-thumbnails-vertical">
+                    ${thumbnailsHTML}
+                </div>
+            </div>
+        `;
+    } else { // Estilo rectangular
+        galleryHTML = `
+            <div class="gallery-container-rectangular">
+                <div class="gallery-main-image">
+                    <img id="gallery-main-img" src="${mainImage.image_url}" style="object-position: ${mainImage.focus_point || 'center'};" alt="Imagen principal de la galería">
+                    <p id="gallery-main-caption" class="gallery-caption">${mainImage.caption || ''}</p>
+                </div>
+                <div class="gallery-thumbnails-strip">
+                    ${thumbnailsHTML}
+                </div>
+            </div>
+        `;
+    }
+
+    container.innerHTML = galleryHTML;
+
+    // Añadir interactividad
+    const mainImg = container.querySelector('#gallery-main-img');
+    const mainCaption = container.querySelector('#gallery-main-caption');
+    const thumbnailsContainer = container.querySelector('.gallery-thumbnails-strip, .gallery-thumbnails-vertical');
+
+    if (thumbnailsContainer) {
+        thumbnailsContainer.addEventListener('click', (e) => {
+            const thumbnail = e.target.closest('.gallery-thumbnail');
+            if (!thumbnail) return;
+
+            // Quitar clase activa de la miniatura anterior
+            thumbnailsContainer.querySelector('.active')?.classList.remove('active');
+            // Añadir clase activa a la nueva
+            thumbnail.classList.add('active');
+
+            const index = parseInt(thumbnail.dataset.index, 10);
+            const selectedImage = images[index];
+
+            mainImg.src = selectedImage.image_url;
+            mainImg.style.objectPosition = selectedImage.focus_point || 'center';
+            mainCaption.textContent = selectedImage.caption || '';
+        });
+    }
 }
 
 
@@ -185,7 +247,6 @@ function setupEventListeners() {
 
     galleryDOMElements.galleryImageUploadInput.addEventListener('change', handleImageUpload);
     
-    // Event listeners del modal
     galleryDOMElements.saveBtn.addEventListener('click', handleSaveImage);
     galleryDOMElements.cancelBtn.addEventListener('click', closeEditModal);
 }
