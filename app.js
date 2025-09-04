@@ -1,6 +1,7 @@
-const { createClient } = supabase;
+import { initializeGallery } from './gallery.js';
 
 // --- 1. CONFIGURACIÓN E INICIALIZACIÓN ---
+const { createClient } = supabase;
 const SUPABASE_URL = 'https://ukowtlaytmqgdhjygulq.supabase.co';	
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVrb3d0bGF5dG1xZ2RoanlndWxxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM2NTEyMTgsImV4cCI6MjA2OTIyNzIxOH0.Kmg90Xdcu0RzAP55YwwuYfuRYj2U5LU90KAiKbEtLQg';
 const GEMINI_API_KEY = ""; // Replace with your Gemini API key
@@ -191,6 +192,7 @@ function initializeApp() {
 	supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 	populateIconGrid();
 	populateFontSelector();
+	initializeGallery(); // Inicializar el módulo de la galería
 	
 	if (appState.subscriptions.auth) {
 		appState.subscriptions.auth.unsubscribe();
