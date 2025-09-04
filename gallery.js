@@ -1,3 +1,4 @@
+// --- Módulo de Galería para NexID ---
 // Este módulo ya no importa desde app.js para evitar dependencias circulares.
 // En su lugar, recibe las dependencias a través de la función initializeGallery.
 
@@ -19,6 +20,8 @@ const DOMElements = {
     galleryEditorList: document.getElementById('gallery-editor-list'),
     addGalleryImageBtn: document.getElementById('add-gallery-image-btn'),
     galleryImageUploadInput: document.getElementById('gallery-image-upload-input'),
+    
+    // Modal de Edición
     editModal: document.getElementById('gallery-edit-modal'),
     cropperImage: document.getElementById('gallery-cropper-image'),
     captionInput: document.getElementById('gallery-caption-input'),
@@ -77,7 +80,7 @@ function closeEditModal() {
 }
 
 async function handleSaveImage() {
-    if (!cropper || !currentFile) return;
+    if (!galleryCropper || !currentFile) return;
 
     DOMElements.saveBtn.disabled = true;
     DOMElements.saveBtn.innerHTML = `<div class="w-5 h-5 border-2 border-t-transparent border-white rounded-full animate-spin"></div>`;
@@ -86,7 +89,8 @@ async function handleSaveImage() {
         const { supabaseClient, appState, showAlert, buildProfileLayout } = dependencies;
         const userId = appState.currentUser.id;
 
-        const cropData = cropper.getData();
+        // 1. Obtener datos del recorte para el punto de enfoque
+        const cropData = galleryCropper.getData();
         const originalImage = new Image();
         originalImage.src = DOMElements.cropperImage.src;
         await new Promise(resolve => { originalImage.onload = resolve });
@@ -94,12 +98,15 @@ async function handleSaveImage() {
         const focusPointY = (cropData.y + cropData.height / 2) / originalImage.naturalHeight;
         const focusPoint = `50% ${Math.round(focusPointY * 100)}%`;
 
-        const thumbnailCanvas = cropper.getCroppedCanvas({ width: 512, height: 512 });
+        // 2. Generar y comprimir la miniatura (cuadrada)
+        const thumbnailCanvas = galleryCropper.getCroppedCanvas({ width: 512, height: 512 });
         const thumbnailBlob = await new Promise(resolve => thumbnailCanvas.toBlob(resolve, 'image/webp', 0.9));
         const compressedThumbnail = await imageCompression(thumbnailBlob, { maxSizeMB: 0.1, useWebWorker: true });
         
+        // 3. Comprimir la imagen original
         const compressedOriginal = await imageCompression(currentFile, { maxSizeMB: 1, maxWidthOrHeight: 1920, useWebWorker: true });
 
+        // 4. Subir ambas imágenes a Supabase Storage
         const originalPath = `${userId}/gallery/${Date.now()}_original.webp`;
         const thumbnailPath = `${userId}/gallery/${Date.now()}_thumb.webp`;
 
@@ -109,9 +116,11 @@ async function handleSaveImage() {
         const { error: thumbnailUploadError } = await supabaseClient.storage.from('gallery-images').upload(thumbnailPath, compressedThumbnail, { contentType: 'image/webp' });
         if (thumbnailUploadError) throw thumbnailUploadError;
 
+        // 5. Obtener URLs públicas
         const { data: { publicUrl: imageUrl } } = supabaseClient.storage.from('gallery-images').getPublicUrl(originalPath);
         const { data: { publicUrl: thumbnailUrl } } = supabaseClient.storage.from('gallery-images').getPublicUrl(thumbnailPath);
 
+        // 6. Insertar en la base de datos
         const newImage = {
             user_id: userId,
             image_url: imageUrl,
@@ -131,6 +140,7 @@ async function handleSaveImage() {
 
         if (insertError) throw insertError;
 
+        // 7. Actualizar el estado local y la UI
         appState.galleryImages.push(savedImage);
 
         showAlert('Imagen añadida a la galería.');
