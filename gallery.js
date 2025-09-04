@@ -1,19 +1,24 @@
-// --- IMPORTACIONES DESDE app.js ---
-import { supabaseClient, appState, showAlert, buildProfileLayout, DOMElements as appDOMElements } from './app.js';
+// Este módulo ya no importa desde app.js para evitar dependencias circulares.
+// En su lugar, recibe las dependencias a través de la función initializeGallery.
 
-// --- ESTADO LOCAL DEL MÓDULO DE GALERÍA ---
+// --- 1. DEPENDENCIAS Y ESTADO LOCAL ---
+let dependencies = {
+    supabaseClient: null,
+    appState: null,
+    showAlert: null,
+    buildProfileLayout: null,
+    DOMElements: null,
+};
 let galleryCropper = null;
 let currentFile = null;
 let editingImageId = null;
 
-// --- REFERENCIAS AL DOM DE LA GALERÍA ---
+// --- 2. REFERENCIAS AL DOM DE LA GALERÍA ---
 const DOMElements = {
     galleryStyleSelector: document.getElementById('gallery-style-selector'),
     galleryEditorList: document.getElementById('gallery-editor-list'),
     addGalleryImageBtn: document.getElementById('add-gallery-image-btn'),
     galleryImageUploadInput: document.getElementById('gallery-image-upload-input'),
-    
-    // Modal de Edición
     editModal: document.getElementById('gallery-edit-modal'),
     cropperImage: document.getElementById('gallery-cropper-image'),
     captionInput: document.getElementById('gallery-caption-input'),
@@ -22,24 +27,22 @@ const DOMElements = {
     saveBtn: document.getElementById('gallery-save-btn'),
 };
 
-// --- INICIALIZACIÓN DEL MÓDULO ---
-export function initializeGallery() {
-    DOMElements.addGalleryImageBtn.addEventListener('click', () => {
-        DOMElements.galleryImageUploadInput.click();
-    });
+// --- 3. FUNCIONES PRINCIPALES ---
 
-    DOMElements.galleryImageUploadInput.addEventListener('change', handleFileSelect);
-    DOMElements.saveBtn.addEventListener('click', handleSaveImage);
-    DOMElements.cancelBtn.addEventListener('click', closeEditModal);
+/**
+ * Inicializa el módulo de la galería, recibe las dependencias desde app.js.
+ * @param {object} appDependencies - Las dependencias que necesita el módulo.
+ */
+export function initializeGallery(appDependencies) {
+    dependencies = appDependencies;
+    setupEventListeners();
 }
-
-// --- LÓGICA DE SUBIDA Y EDICIÓN ---
 
 function handleFileSelect(e) {
     const file = e.target.files[0];
     if (!file) return;
 
-    editingImageId = null; // Es una nueva imagen
+    editingImageId = null; 
 
     const reader = new FileReader();
     reader.onload = (event) => {
@@ -64,16 +67,14 @@ function openEditModal(file) {
     DOMElements.editModal.classList.remove('hidden');
 }
 
-
 function closeEditModal() {
     DOMElements.editModal.classList.add('hidden');
     if (galleryCropper) galleryCropper.destroy();
     galleryCropper = null;
     currentFile = null;
     editingImageId = null;
-    DOMElements.galleryImageUploadInput.value = ''; // Reset input
+    DOMElements.galleryImageUploadInput.value = '';
 }
-
 
 async function handleSaveImage() {
     if (!cropper || !currentFile) return;
@@ -82,9 +83,9 @@ async function handleSaveImage() {
     DOMElements.saveBtn.innerHTML = `<div class="w-5 h-5 border-2 border-t-transparent border-white rounded-full animate-spin"></div>`;
 
     try {
+        const { supabaseClient, appState, showAlert, buildProfileLayout } = dependencies;
         const userId = appState.currentUser.id;
 
-        // 1. Obtener datos del recorte para el punto de enfoque
         const cropData = cropper.getData();
         const originalImage = new Image();
         originalImage.src = DOMElements.cropperImage.src;
@@ -93,15 +94,12 @@ async function handleSaveImage() {
         const focusPointY = (cropData.y + cropData.height / 2) / originalImage.naturalHeight;
         const focusPoint = `50% ${Math.round(focusPointY * 100)}%`;
 
-        // 2. Generar y comprimir la miniatura (cuadrada)
         const thumbnailCanvas = cropper.getCroppedCanvas({ width: 512, height: 512 });
         const thumbnailBlob = await new Promise(resolve => thumbnailCanvas.toBlob(resolve, 'image/webp', 0.9));
         const compressedThumbnail = await imageCompression(thumbnailBlob, { maxSizeMB: 0.1, useWebWorker: true });
         
-        // 3. Comprimir la imagen original
         const compressedOriginal = await imageCompression(currentFile, { maxSizeMB: 1, maxWidthOrHeight: 1920, useWebWorker: true });
 
-        // 4. Subir ambas imágenes a Supabase Storage
         const originalPath = `${userId}/gallery/${Date.now()}_original.webp`;
         const thumbnailPath = `${userId}/gallery/${Date.now()}_thumb.webp`;
 
@@ -111,11 +109,9 @@ async function handleSaveImage() {
         const { error: thumbnailUploadError } = await supabaseClient.storage.from('gallery-images').upload(thumbnailPath, compressedThumbnail, { contentType: 'image/webp' });
         if (thumbnailUploadError) throw thumbnailUploadError;
 
-        // 5. Obtener URLs públicas
         const { data: { publicUrl: imageUrl } } = supabaseClient.storage.from('gallery-images').getPublicUrl(originalPath);
         const { data: { publicUrl: thumbnailUrl } } = supabaseClient.storage.from('gallery-images').getPublicUrl(thumbnailPath);
 
-        // 6. Insertar en la base de datos
         const newImage = {
             user_id: userId,
             image_url: imageUrl,
@@ -124,7 +120,7 @@ async function handleSaveImage() {
             thumbnail_path: thumbnailPath,
             caption: DOMElements.captionInput.value,
             focus_point: focusPoint,
-            order_index: (appState.myProfile.gallery_images || []).length,
+            order_index: (appState.galleryImages || []).length,
         };
 
         const { data: savedImage, error: insertError } = await supabaseClient
@@ -135,7 +131,6 @@ async function handleSaveImage() {
 
         if (insertError) throw insertError;
 
-        // 7. Actualizar el estado local y la UI
         appState.galleryImages.push(savedImage);
 
         showAlert('Imagen añadida a la galería.');
@@ -144,21 +139,17 @@ async function handleSaveImage() {
 
     } catch (error) {
         console.error("Error al guardar la imagen:", error);
-        showAlert(`Error al guardar la imagen: ${error.message}`);
+        dependencies.showAlert(`Error al guardar la imagen: ${error.message}`);
     } finally {
         DOMElements.saveBtn.disabled = false;
         DOMElements.saveBtn.textContent = 'Guardar';
     }
 }
 
-/**
- * Renderiza las miniaturas de las imágenes en el panel de configuración.
- * @param {Array} images - Un array de objetos de imagen del perfil.
- */
 export function renderGalleryEditor(images = []) {
     const listEl = DOMElements.galleryEditorList;
     if (!listEl) return;
-    listEl.innerHTML = ''; // Limpiar la lista antes de renderizar
+    listEl.innerHTML = ''; 
 
     (images || []).forEach(image => {
         const item = document.createElement('div');
@@ -177,12 +168,6 @@ export function renderGalleryEditor(images = []) {
     lucide.createIcons();
 }
 
-/**
- * Renderiza la galería pública en el perfil del usuario.
- * @param {HTMLElement} container - El contenedor donde se renderizará la galería.
- * @param {Object} profileData - Los datos del perfil del usuario.
- * @param {Array} images - Las imágenes de la galería.
- */
 export function renderPublicGallery(container, profileData, images = []) {
     container.innerHTML = '';
     if (!images || images.length === 0) return;
@@ -210,7 +195,7 @@ export function renderPublicGallery(container, profileData, images = []) {
                 </div>
             </div>
         `;
-    } else { // Estilo rectangular
+    } else { 
         galleryHTML = `
             <div class="gallery-container-rectangular">
                 <div class="gallery-main-image">
@@ -226,7 +211,6 @@ export function renderPublicGallery(container, profileData, images = []) {
 
     container.innerHTML = galleryHTML;
 
-    // Añadir interactividad
     const mainImg = container.querySelector('#gallery-main-img');
     const mainCaption = container.querySelector('#gallery-main-caption');
     const thumbnailsContainer = container.querySelector('.gallery-thumbnails-strip, .gallery-thumbnails-vertical');
@@ -250,10 +234,20 @@ export function renderPublicGallery(container, profileData, images = []) {
 }
 
 function updateAddImageButtonState() {
-    const canUpload = (appState.galleryImages || []).length < 6;
+    const canUpload = (dependencies.appState.galleryImages || []).length < 6;
     DOMElements.addGalleryImageBtn.disabled = !canUpload;
     DOMElements.addGalleryImageBtn.textContent = canUpload 
-        ? `Añadir Imágenes (${(appState.galleryImages || []).length}/6)` 
+        ? `Añadir Imágenes (${(dependencies.appState.galleryImages || []).length}/6)` 
         : 'Galería Llena (6/6)';
+}
+
+function setupEventListeners() {
+    DOMElements.addGalleryImageBtn.addEventListener('click', () => {
+        DOMElements.galleryImageUploadInput.click();
+    });
+
+    DOMElements.galleryImageUploadInput.addEventListener('change', handleFileSelect);
+    DOMElements.saveBtn.addEventListener('click', handleSaveImage);
+    DOMElements.cancelBtn.addEventListener('click', closeEditModal);
 }
 
