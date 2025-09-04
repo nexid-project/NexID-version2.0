@@ -8,7 +8,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const GEMINI_API_KEY = ""; // Replace with your Gemini API key
 
 // Exportaciones para que otros módulos puedan usarlas
-export { supabaseClient, appState, showAlert, buildProfileLayout, DOMElements };
+export { supabaseClient, appState, showAlert, buildProfileLayout };
 
 const backgroundLibraryUrls = [
 	'https://ukowtlaytmqgdhjygulq.supabase.co/storage/v1/object/public/library-backgrounds//wallpaperflare.com_wallpaper.jpg',
@@ -2422,3 +2422,4 @@ window.onload = () => {
 	setupPasswordToggle('update-confirm-password-input', 'update-confirm-password-toggle');
 	setupPasswordToggle('delete-confirm-password-input', 'delete-confirm-password-toggle');
 };
+
