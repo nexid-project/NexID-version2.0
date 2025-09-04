@@ -53,7 +53,7 @@ let appState = {
 	myProfile: null,
     previewProfile: null,
 	links: [],
-    galleryImages: [], // NUEVO: Estado para las imágenes de la galería
+    galleryImages: [], 
 	tempBackgroundImagePath: null,
 	tempLayoutOrder: null,
 	subscriptions: { auth: null, links: null },
@@ -191,7 +191,7 @@ function initializeApp() {
 	supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 	populateIconGrid();
 	populateFontSelector();
-	initializeGallery(); // Inicializar el módulo de la galería
+	initializeGallery(); 
 	
 	if (appState.subscriptions.auth) {
 		appState.subscriptions.auth.unsubscribe();
@@ -218,7 +218,7 @@ async function fetchUserProfileWithRetry(userId, retries = 3, delay = 500) {
 	for (let i = 0; i < retries; i++) {
 		const { data: profile, error } = await supabaseClient
 			.from('profiles')
-			.select('*, gallery_images(*)') // Cargar imágenes de la galería junto con el perfil
+			.select('*, gallery_images(*)')
 			.eq('id', userId)
             .order('order_index', { foreignTable: 'gallery_images', ascending: true })
 			.single();
@@ -438,7 +438,7 @@ const profileSectionTemplates = {
         }
         return '';
     },
-    'gallery': () => { // MODIFICADO: Usa appState para determinar si se crea el contenedor
+    'gallery': () => {
         if (appState.galleryImages && appState.galleryImages.length > 0) {
             return `<div data-section="gallery" id="gallery-container" class="draggable-item p-2"></div>`;
         }
@@ -1417,6 +1417,9 @@ DOMElements.themeTabsContainer.addEventListener('click', (e) => {
 		switchThemeTab(tabId);
 	}
 });
+
+
+// --- 9. LÓGICA DE GESTIÓN DE ENLACES ---
 
 const iconTags = [
 	{ label: 'Ninguno', value: '' },
