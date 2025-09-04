@@ -1,13 +1,19 @@
-// --- Módulo de Galería para NexID ---
-// Importar dependencias y estado desde el módulo principal.
-import { supabaseClient, appState, showAlert, buildProfileLayout } from './app.js';
+// --- IMPORTACIONES DESDE app.js ---
+import { supabaseClient, appState, showAlert, buildProfileLayout, DOMElements as appDOMElements } from './app.js';
 
-// --- 1. REFERENCIAS A ELEMENTOS DEL DOM DE LA GALERÍA ---
-const galleryDOMElements = {
+// --- ESTADO LOCAL DEL MÓDULO DE GALERÍA ---
+let galleryCropper = null;
+let currentFile = null;
+let editingImageId = null;
+
+// --- REFERENCIAS AL DOM DE LA GALERÍA ---
+const DOMElements = {
     galleryStyleSelector: document.getElementById('gallery-style-selector'),
     galleryEditorList: document.getElementById('gallery-editor-list'),
     addGalleryImageBtn: document.getElementById('add-gallery-image-btn'),
     galleryImageUploadInput: document.getElementById('gallery-image-upload-input'),
+    
+    // Modal de Edición
     editModal: document.getElementById('gallery-edit-modal'),
     cropperImage: document.getElementById('gallery-cropper-image'),
     captionInput: document.getElementById('gallery-caption-input'),
@@ -16,28 +22,33 @@ const galleryDOMElements = {
     saveBtn: document.getElementById('gallery-save-btn'),
 };
 
-let cropper = null;
-let currentFile = null;
-let editingImageId = null;
+// --- INICIALIZACIÓN DEL MÓDULO ---
+export function initializeGallery() {
+    DOMElements.addGalleryImageBtn.addEventListener('click', () => {
+        DOMElements.galleryImageUploadInput.click();
+    });
 
-// --- 2. LÓGICA PRINCIPAL ---
+    DOMElements.galleryImageUploadInput.addEventListener('change', handleFileSelect);
+    DOMElements.saveBtn.addEventListener('click', handleSaveImage);
+    DOMElements.cancelBtn.addEventListener('click', closeEditModal);
+}
 
-/**
- * Abre el modal de edición para una nueva imagen.
- * @param {File} file - El archivo de imagen a editar.
- */
-function openEditModalForNewImage(file) {
-    currentFile = file;
-    editingImageId = null;
-    galleryDOMElements.captionInput.value = '';
-    galleryDOMElements.deleteBtn.classList.add('hidden');
+// --- LÓGICA DE SUBIDA Y EDICIÓN ---
+
+function handleFileSelect(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    editingImageId = null; // Es una nueva imagen
 
     const reader = new FileReader();
     reader.onload = (event) => {
-        galleryDOMElements.cropperImage.src = event.target.result;
-        galleryDOMElements.editModal.classList.remove('hidden');
-        if(cropper) cropper.destroy();
-        cropper = new Cropper(galleryDOMElements.cropperImage, {
+        DOMElements.cropperImage.src = event.target.result;
+        openEditModal(file);
+        
+        if (galleryCropper) galleryCropper.destroy();
+        
+        galleryCropper = new Cropper(DOMElements.cropperImage, {
             aspectRatio: 1,
             viewMode: 1,
             background: false,
@@ -46,40 +57,29 @@ function openEditModalForNewImage(file) {
     reader.readAsDataURL(file);
 }
 
-/**
- * Cierra y resetea el modal de edición.
- */
+function openEditModal(file) {
+    currentFile = file;
+    DOMElements.captionInput.value = '';
+    DOMElements.deleteBtn.classList.add('hidden');
+    DOMElements.editModal.classList.remove('hidden');
+}
+
+
 function closeEditModal() {
-    galleryDOMElements.editModal.classList.add('hidden');
-    if (cropper) cropper.destroy();
-    cropper = null;
+    DOMElements.editModal.classList.add('hidden');
+    if (galleryCropper) galleryCropper.destroy();
+    galleryCropper = null;
     currentFile = null;
     editingImageId = null;
-    galleryDOMElements.galleryImageUploadInput.value = ''; // Reset input
+    DOMElements.galleryImageUploadInput.value = ''; // Reset input
 }
 
-/**
- * Maneja la selección de archivos del input de subida.
- * @param {Event} event - El evento de cambio del input.
- */
-function handleImageUpload(event) {
-    const files = event.target.files;
-    if (!files.length) return;
 
-    // TODO: Implementar lógica para manejar múltiples archivos.
-    // Por ahora, solo tomamos el primero.
-    const firstFile = files[0];
-    openEditModalForNewImage(firstFile);
-}
-
-/**
- * Procesa y guarda la imagen editada.
- */
 async function handleSaveImage() {
     if (!cropper || !currentFile) return;
 
-    galleryDOMElements.saveBtn.disabled = true;
-    galleryDOMElements.saveBtn.innerHTML = `<div class="w-5 h-5 border-2 border-t-transparent border-white rounded-full animate-spin"></div>`;
+    DOMElements.saveBtn.disabled = true;
+    DOMElements.saveBtn.innerHTML = `<div class="w-5 h-5 border-2 border-t-transparent border-white rounded-full animate-spin"></div>`;
 
     try {
         const userId = appState.currentUser.id;
@@ -87,7 +87,7 @@ async function handleSaveImage() {
         // 1. Obtener datos del recorte para el punto de enfoque
         const cropData = cropper.getData();
         const originalImage = new Image();
-        originalImage.src = galleryDOMElements.cropperImage.src;
+        originalImage.src = DOMElements.cropperImage.src;
         await new Promise(resolve => { originalImage.onload = resolve });
 
         const focusPointY = (cropData.y + cropData.height / 2) / originalImage.naturalHeight;
@@ -122,7 +122,7 @@ async function handleSaveImage() {
             image_path: originalPath,
             thumbnail_url: thumbnailUrl,
             thumbnail_path: thumbnailPath,
-            caption: galleryDOMElements.captionInput.value,
+            caption: DOMElements.captionInput.value,
             focus_point: focusPoint,
             order_index: (appState.myProfile.gallery_images || []).length,
         };
@@ -136,10 +136,7 @@ async function handleSaveImage() {
         if (insertError) throw insertError;
 
         // 7. Actualizar el estado local y la UI
-        appState.myProfile.gallery_images = [...(appState.myProfile.gallery_images || []), savedImage];
-        if (appState.previewProfile) {
-            appState.previewProfile.gallery_images = appState.myProfile.gallery_images;
-        }
+        appState.galleryImages.push(savedImage);
 
         showAlert('Imagen añadida a la galería.');
         closeEditModal();
@@ -149,8 +146,8 @@ async function handleSaveImage() {
         console.error("Error al guardar la imagen:", error);
         showAlert(`Error al guardar la imagen: ${error.message}`);
     } finally {
-        galleryDOMElements.saveBtn.disabled = false;
-        galleryDOMElements.saveBtn.textContent = 'Guardar';
+        DOMElements.saveBtn.disabled = false;
+        DOMElements.saveBtn.textContent = 'Guardar';
     }
 }
 
@@ -159,8 +156,25 @@ async function handleSaveImage() {
  * @param {Array} images - Un array de objetos de imagen del perfil.
  */
 export function renderGalleryEditor(images = []) {
-    console.log("Renderizando el editor de la galería con:", images);
-    // Próximamente: Lógica para mostrar las imágenes en el panel.
+    const listEl = DOMElements.galleryEditorList;
+    if (!listEl) return;
+    listEl.innerHTML = ''; // Limpiar la lista antes de renderizar
+
+    (images || []).forEach(image => {
+        const item = document.createElement('div');
+        item.className = 'gallery-editor-thumbnail relative group';
+        item.dataset.id = image.id;
+        item.innerHTML = `
+            <img src="${image.thumbnail_url || image.image_url}" class="w-full h-full object-cover pointer-events-none">
+            <button class="delete-thumb-btn absolute top-1 right-1" data-id="${image.id}">
+                <i data-lucide="x-circle" class="w-5 h-5 pointer-events-none"></i>
+            </button>
+        `;
+        listEl.appendChild(item);
+    });
+    
+    updateAddImageButtonState();
+    lucide.createIcons();
 }
 
 /**
@@ -222,9 +236,7 @@ export function renderPublicGallery(container, profileData, images = []) {
             const thumbnail = e.target.closest('.gallery-thumbnail');
             if (!thumbnail) return;
 
-            // Quitar clase activa de la miniatura anterior
             thumbnailsContainer.querySelector('.active')?.classList.remove('active');
-            // Añadir clase activa a la nueva
             thumbnail.classList.add('active');
 
             const index = parseInt(thumbnail.dataset.index, 10);
@@ -237,25 +249,11 @@ export function renderPublicGallery(container, profileData, images = []) {
     }
 }
 
-
-// --- 3. INICIALIZACIÓN Y MANEJADORES DE EVENTOS ---
-
-function setupEventListeners() {
-    galleryDOMElements.addGalleryImageBtn.addEventListener('click', () => {
-        galleryDOMElements.galleryImageUploadInput.click();
-    });
-
-    galleryDOMElements.galleryImageUploadInput.addEventListener('change', handleImageUpload);
-    
-    galleryDOMElements.saveBtn.addEventListener('click', handleSaveImage);
-    galleryDOMElements.cancelBtn.addEventListener('click', closeEditModal);
-}
-
-/**
- * Función principal que se exporta para ser llamada desde app.js.
- */
-export function initializeGallery() {
-    console.log("Módulo de Galería Inicializado.");
-    setupEventListeners();
+function updateAddImageButtonState() {
+    const canUpload = (appState.galleryImages || []).length < 6;
+    DOMElements.addGalleryImageBtn.disabled = !canUpload;
+    DOMElements.addGalleryImageBtn.textContent = canUpload 
+        ? `Añadir Imágenes (${(appState.galleryImages || []).length}/6)` 
+        : 'Galería Llena (6/6)';
 }
 
