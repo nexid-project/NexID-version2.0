@@ -1,4 +1,4 @@
-// --- Módulo de Galería para NexID ---
+// --- IMPORTACIONES DESDE app.js ---
 // Este módulo ya no importa desde app.js para evitar dependencias circulares.
 // En su lugar, recibe las dependencias a través de la función initializeGallery.
 
@@ -89,7 +89,6 @@ async function handleSaveImage() {
         const { supabaseClient, appState, showAlert, buildProfileLayout } = dependencies;
         const userId = appState.currentUser.id;
 
-        // 1. Obtener datos del recorte para el punto de enfoque
         const cropData = galleryCropper.getData();
         const originalImage = new Image();
         originalImage.src = DOMElements.cropperImage.src;
@@ -98,29 +97,21 @@ async function handleSaveImage() {
         const focusPointY = (cropData.y + cropData.height / 2) / originalImage.naturalHeight;
         const focusPoint = `50% ${Math.round(focusPointY * 100)}%`;
 
-        // 2. Generar y comprimir la miniatura (cuadrada)
         const thumbnailCanvas = galleryCropper.getCroppedCanvas({ width: 512, height: 512 });
         const thumbnailBlob = await new Promise(resolve => thumbnailCanvas.toBlob(resolve, 'image/webp', 0.9));
         const compressedThumbnail = await imageCompression(thumbnailBlob, { maxSizeMB: 0.1, useWebWorker: true });
         
-        // 3. Comprimir la imagen original
         const compressedOriginal = await imageCompression(currentFile, { maxSizeMB: 1, maxWidthOrHeight: 1920, useWebWorker: true });
 
-        // 4. Subir ambas imágenes a Supabase Storage
         const originalPath = `${userId}/gallery/${Date.now()}_original.webp`;
         const thumbnailPath = `${userId}/gallery/${Date.now()}_thumb.webp`;
 
-        const { error: originalUploadError } = await supabaseClient.storage.from('gallery-images').upload(originalPath, compressedOriginal, { contentType: 'image/webp' });
-        if (originalUploadError) throw originalUploadError;
-        
-        const { error: thumbnailUploadError } = await supabaseClient.storage.from('gallery-images').upload(thumbnailPath, compressedThumbnail, { contentType: 'image/webp' });
-        if (thumbnailUploadError) throw thumbnailUploadError;
+        await supabaseClient.storage.from('gallery-images').upload(originalPath, compressedOriginal, { contentType: 'image/webp' });
+        await supabaseClient.storage.from('gallery-images').upload(thumbnailPath, compressedThumbnail, { contentType: 'image/webp' });
 
-        // 5. Obtener URLs públicas
         const { data: { publicUrl: imageUrl } } = supabaseClient.storage.from('gallery-images').getPublicUrl(originalPath);
         const { data: { publicUrl: thumbnailUrl } } = supabaseClient.storage.from('gallery-images').getPublicUrl(thumbnailPath);
 
-        // 6. Insertar en la base de datos
         const newImage = {
             user_id: userId,
             image_url: imageUrl,
@@ -140,16 +131,17 @@ async function handleSaveImage() {
 
         if (insertError) throw insertError;
 
-        // 7. Actualizar el estado local y la UI
         appState.galleryImages.push(savedImage);
-
+        
+        renderGalleryEditor(appState.galleryImages);
+        buildProfileLayout(appState.previewProfile || appState.myProfile, true);
+        
         showAlert('Imagen añadida a la galería.');
         closeEditModal();
-        buildProfileLayout(appState.previewProfile || appState.myProfile, true);
 
     } catch (error) {
         console.error("Error al guardar la imagen:", error);
-        dependencies.showAlert(`Error al guardar la imagen: ${error.message}`);
+        showAlert(`Error al guardar la imagen: ${error.message}`);
     } finally {
         DOMElements.saveBtn.disabled = false;
         DOMElements.saveBtn.textContent = 'Guardar';
@@ -166,7 +158,7 @@ export function renderGalleryEditor(images = []) {
         item.className = 'gallery-editor-thumbnail relative group';
         item.dataset.id = image.id;
         item.innerHTML = `
-            <img src="${image.thumbnail_url || image.image_url}" class="w-full h-full object-cover pointer-events-none">
+            <img src="${image.thumbnail_url || image.image_url}" class="w-full h-full object-cover pointer-events-none rounded-md">
             <button class="delete-thumb-btn absolute top-1 right-1" data-id="${image.id}">
                 <i data-lucide="x-circle" class="w-5 h-5 pointer-events-none"></i>
             </button>
@@ -244,10 +236,11 @@ export function renderPublicGallery(container, profileData, images = []) {
 }
 
 function updateAddImageButtonState() {
-    const canUpload = (dependencies.appState.galleryImages || []).length < 6;
+    const { appState } = dependencies;
+    const canUpload = (appState.galleryImages || []).length < 6;
     DOMElements.addGalleryImageBtn.disabled = !canUpload;
     DOMElements.addGalleryImageBtn.textContent = canUpload 
-        ? `Añadir Imágenes (${(dependencies.appState.galleryImages || []).length}/6)` 
+        ? `Añadir Imágenes (${(appState.galleryImages || []).length}/6)` 
         : 'Galería Llena (6/6)';
 }
 
