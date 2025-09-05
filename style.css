@@ -551,6 +551,15 @@
     gap: 0.5rem;
 }
 
+/* === INICIO DE LA CORRECCIÓN === */
+/* Esta nueva regla fuerza a la celda de la cuadrícula a contener a sus hijos */
+.gallery-container-square > div:last-child {
+    overflow: hidden;
+    display: flex;
+}
+/* === FIN DE LA CORRECCIÓN === */
+
+
 .gallery-main-image-square {
     position: relative;
     width: 100%;
@@ -576,7 +585,7 @@
     min-height: 0; 
 }
 
-/* === INICIO: NUEVOS ESTILOS DE SCROLLBAR PARA GALERÍA === */
+/* === ESTILOS DE SCROLLBAR PARA GALERÍA === */
 .gallery-thumbnails-vertical::-webkit-scrollbar {
     width: 6px;
 }
@@ -592,12 +601,10 @@
     scrollbar-width: thin;
     scrollbar-color: #4b5563 transparent;
 }
-/* === FIN: NUEVOS ESTILOS DE SCROLLBAR PARA GALERÍA === */
-
 
 /* Estilos comunes para las miniaturas */
 .gallery-thumbnail {
-    flex-shrink: 0; /* <-- CORRECCIÓN: Evita que las miniaturas se encojan */
+    flex-shrink: 0; 
     width: 64px;
     height: 64px;
     border-radius: 0.5rem;
