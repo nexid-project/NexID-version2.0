@@ -1,8 +1,9 @@
 import { initializeGallery, renderGalleryEditor, renderPublicGallery } from './gallery.js';
 
-// --- 1. CONFIGURACIÓN E INICIALIZACIÓN ---
 const { createClient } = supabase;
-const SUPABASE_URL = 'https://ukowtlaytmqgdhjygulq.supabase.co';	
+
+// --- 1. CONFIGURACIÓN E INICIALIZACIÓN ---
+const SUPABASE_URL = 'https://ukowtlaytmqgdhjygulq.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVrb3d0bGF5dG1xZ2RoanlndWxxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM2NTEyMTgsImV4cCI6MjA2OTIyNzIxOH0.Kmg90Xdcu0RzAP55YwwuYfuRYj2U5LU90KAiKbEtLQg';
 const GEMINI_API_KEY = ""; // Replace with your Gemini API key
 
@@ -51,19 +52,18 @@ let appState = {
 	myProfile: null, // El estado real guardado en la DB
     previewProfile: null, // El estado temporal para la previsualización en vivo
 	links: [],
-    galleryImages: [],
+    galleryImages: [], // <<-- AÑADIDO para la galería
 	tempBackgroundImagePath: null,
 	tempLayoutOrder: null,
 	subscriptions: { auth: null, links: null },
-	sortable: { layout: null, gallery: null },
+	sortable: { layout: null },
 	cropper: null,
-    thumbnailCropper: null,
-    editingGalleryImageId: null,
 	isUsernameAvailable: false,
 	isSettingsDirty: false,
 	isDesignModeActive: false,
 	isRecoveringPassword: false,
-	currentGalleryIndex: 0,
+    isProfileBuilt: false,
+    currentlyViewingProfileId: null,
 };
 
 // --- 3. REFERENCIAS A ELEMENTOS DEL DOM ---
@@ -82,9 +82,6 @@ const DOMElements = {
 	imageUploadInput: document.getElementById('image-upload-input'),
 	cropperModal: document.getElementById('cropper-modal'),
 	cropperImage: document.getElementById('cropper-image'),
-    thumbnailCropperModal: document.getElementById('thumbnail-cropper-modal'),
-    thumbnailCropperImage: document.getElementById('thumbnail-cropper-image'),
-    galleryEditModal: document.getElementById('gallery-edit-modal'),
 	geminiModal: document.getElementById('gemini-modal'),
 	uploadBackgroundBtn: document.getElementById('upload-background-btn'),
 	backgroundUploadInput: document.getElementById('background-upload-input'),
@@ -116,6 +113,7 @@ const DOMElements = {
     registerPasswordInput: document.getElementById('register-password-input'),
     registerConfirmPasswordInput: document.getElementById('register-confirm-password-input'),
     featuredVideoUrlInput: document.getElementById('featured-video-url-input'),
+    // <<-- AÑADIDO para la galería
     galleryEditorList: document.getElementById('gallery-editor-list'),
     addGalleryImageBtn: document.getElementById('add-gallery-image-btn'),
     galleryImageUploadInput: document.getElementById('gallery-image-upload-input'),
@@ -138,7 +136,7 @@ const customConfirmCancel = document.getElementById('custom-confirm-cancel');
 function showConfirm(message, onConfirm) {
 	customConfirmMessage.textContent = message;
 	customConfirm.classList.remove('hidden');
-	
+
 	const handleOk = () => {
 		customConfirm.classList.add('hidden');
 		onConfirm(true);
@@ -196,12 +194,13 @@ function initializeApp() {
 		showPage('auth');
 		return;
 	}
-	
+
 	supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 	populateIconGrid();
 	populateFontSelector();
-	initializeGallery({ supabaseClient, appState, showAlert, DOMElements });
-	
+    // <<-- AÑADIDO para la galería
+    initializeGallery({ supabaseClient, appState, showAlert, DOMElements, buildProfileLayout });
+
 	if (appState.subscriptions.auth) {
 		appState.subscriptions.auth.unsubscribe();
 	}
@@ -209,7 +208,7 @@ function initializeApp() {
 	if (window.location.hash.includes('type=recovery')) {
 		appState.isRecoveringPassword = true;
 	}
-	
+
 	appState.subscriptions.auth = supabaseClient.auth.onAuthStateChange((event, session) => {
         if (appState.previewProfile) {
             console.log("Auth state changed but settings panel is open. Ignoring re-render.");
@@ -218,7 +217,7 @@ function initializeApp() {
 		if (event === 'PASSWORD_RECOVERY') {
 			appState.isRecoveringPassword = true;
 			showPage('updatePassword');
-		} else if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+		} else if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
 			handleAuthStateChange(session);
 		} else {
             console.log(`onAuthStateChange event ignored: ${event}`);
@@ -237,7 +236,7 @@ async function fetchUserProfileWithRetry(userId, retries = 3, delay = 500) {
 		if (profile) {
 			return { profile, error: null };
 		}
-		
+
 		if (error && error.code === 'PGRST116') {
 			await new Promise(res => setTimeout(res, delay));
 		} else {
@@ -275,34 +274,45 @@ async function handleAuthStateChange(session) {
             showPage('reactivateAccount');
             return;
         }
-        
+
+        // <<-- AÑADIDO para la galería
         const { data: galleryImages } = await supabaseClient.from('gallery_images').select('*').eq('user_id', appState.currentUser.id).order('order_index', { ascending: true });
         appState.galleryImages = galleryImages || [];
 
         const urlParams = new URLSearchParams(window.location.search);
         const publicUsername = urlParams.get('user');
-        
+
         if (publicUsername && myProfile.username && myProfile.username !== `@${publicUsername}`) {
             document.getElementById('back-to-my-profile-btn').classList.remove('hidden');
             document.getElementById('back-to-my-profile-btn').href = `${window.location.pathname}?user=${myProfile.username.substring(1)}`;
             await loadPublicProfile(publicUsername);
         } else {
-            appState.currentGalleryIndex = 0; // CORRECTO: Resetear solo aquí
             document.getElementById('back-to-my-profile-btn').classList.add('hidden');
             const { data: links } = await supabaseClient.from('links').select('*').eq('user_id', appState.currentUser.id).order('order_index', { ascending: true });
             appState.links = links || [];
-            
+
             if (myProfile && myProfile.username_set) {
                 if (window.location.protocol !== 'blob:') {
                     const profileUrl = `${window.location.pathname}?user=${myProfile.username.substring(1)}`;
-                    history.replaceState(null, '', profileUrl);
+                    if (window.location.href !== new URL(profileUrl, window.location.href).href) {
+                        history.replaceState(null, '', profileUrl);
+                    }
                 }
-                renderProfile(myProfile, true);
+
+                if (!appState.isProfileBuilt || appState.currentlyViewingProfileId !== myProfile.id) {
+                    buildProfileLayout(myProfile, true);
+                    appState.isProfileBuilt = true;
+                    appState.currentlyViewingProfileId = myProfile.id;
+                } else {
+                    updateProfileContent(myProfile, true);
+                }
+
                 renderLinksEditor(appState.links);
-                renderGalleryEditor();
                 listenToUserLinks(myProfile.id);
                 showPage('profile');
             } else {
+                appState.isProfileBuilt = false;
+                appState.currentlyViewingProfileId = null;
                 if (window.location.protocol !== 'blob:') {
                     history.replaceState(null, '', window.location.pathname);
                 }
@@ -310,9 +320,11 @@ async function handleAuthStateChange(session) {
             }
         }
     } else {
+        appState.isProfileBuilt = false;
+        appState.currentlyViewingProfileId = null;
         const urlParams = new URLSearchParams(window.location.search);
         const publicUsername = urlParams.get('user');
-        
+
         document.getElementById('main-header').classList.add('hidden');
         if (publicUsername) {
             await loadPublicProfile(publicUsername);
@@ -320,7 +332,7 @@ async function handleAuthStateChange(session) {
             document.getElementById('email-input').value = '';
             document.getElementById('password-input').value = '';
             showPage('auth');
-            
+
             if (urlParams.get('action') === 'register') {
                 DOMElements.registerModal.classList.remove('hidden');
             }
@@ -336,16 +348,24 @@ async function loadPublicProfile(username) {
 			document.getElementById('profile-layout-container').innerHTML = '<h1 class="text-3xl font-bold text-center">Usuario no encontrado</h1>';
 			return;
 		}
-		
+
 		const { data: links } = await supabaseClient.from('links').select('*').eq('user_id', profile.id).order('order_index', { ascending: true });
+        // <<-- AÑADIDO para la galería
         const { data: galleryImages } = await supabaseClient.from('gallery_images').select('*').eq('user_id', profile.id).order('order_index', { ascending: true });
 
 		appState.links = links || [];
         appState.galleryImages = galleryImages || [];
-		appState.currentGalleryIndex = 0; // CORRECTO: Resetear solo aquí
-		
+
 		const isOwner = appState.currentUser && appState.currentUser.id === profile.id;
-		renderProfile(profile, isOwner);
+
+        if (!appState.isProfileBuilt || appState.currentlyViewingProfileId !== profile.id) {
+		    buildProfileLayout(profile, isOwner);
+            appState.isProfileBuilt = true;
+            appState.currentlyViewingProfileId = profile.id;
+        } else {
+            updateProfileContent(profile, isOwner);
+        }
+
 		showPage('profile');
 
 	} catch (error) {
@@ -365,16 +385,16 @@ async function refreshLinks() {
         console.error("Error refreshing links:", linksError);
         return;
     }
-	
+
 	appState.links = linksData || [];
-	
+
 	renderLinksEditor(appState.links);
     updateLivePreview();
 }
 
 function listenToUserLinks(userId) {
 	if (appState.subscriptions.links) appState.subscriptions.links.unsubscribe();
-	
+
 	appState.subscriptions.links = supabaseClient
 		.channel(`public:links:user_id=eq.${userId}`)
 		.on('postgres_changes',	{ event: '*', schema: 'public', table: 'links' },	() => refreshLinks())
@@ -420,42 +440,34 @@ function parseVideoUrl(url) {
 }
 
 const profileSectionTemplates = {
-	'profile-image': (profileData, isOwner) => `
-		<div data-section="profile-image" class="draggable-item flex justify-center items-center p-2">
-			<div class="relative">
-				<img id="public-profile-img" src="${profileData.profile_image_url || 'https://placehold.co/128x128/7f9cf5/1F2937?text=...'}" alt="Foto de perfil" class="w-32 h-32 rounded-full border-4 shadow-lg object-cover">
-				${isOwner ? `<button id="edit-profile-img-btn" class="absolute bottom-1 right-1 bg-gray-800 bg-opacity-70 p-2 rounded-full text-white hover:bg-opacity-100 transition-colors"><i data-lucide="camera" class="w-5 h-5"></i></button>` : ''}
-				<div id="image-actions-container" class="absolute top-1/2 -translate-y-1/2 left-full ml-4 flex flex-col items-center gap-3"></div>
-			</div>
-		</div>`,
-	'display-name': (profileData) => {
-		if (profileData.display_name && profileData.display_name.trim() !== '' && profileData.display_name.trim() !== 'Nombre de Perfil') {
-			return `<div data-section="display-name" class="text-center draggable-item p-2"><h1 id="public-display-name" class="text-3xl font-bold">${profileData.display_name}</h1></div>`;
-		}
-		return '';
-	},
-	'username': (profileData) => `<div data-section="username" class="text-center draggable-item p-2"><p id="public-username" class="text-lg opacity-80">${profileData.username || ''}</p></div>`,
-	'description': (profileData) => `<div data-section="description" class="text-center draggable-item p-2"><p id="public-description" class="opacity-90">${profileData.description || ''}</p></div>`,
+    'profile-image': () => `<div data-section="profile-image" class="draggable-item flex justify-center items-center p-2"><div class="relative"><img id="public-profile-img" alt="Foto de perfil" class="w-32 h-32 rounded-full border-4 shadow-lg object-cover"><div id="image-actions-container" class="absolute top-1/2 -translate-y-1/2 left-full ml-4 flex flex-col items-center gap-3"></div></div></div>`,
+    'display-name': () => `<div data-section="display-name" class="text-center draggable-item p-2"></div>`,
+    'username': () => `<div data-section="username" class="text-center draggable-item p-2"></div>`,
+    'description': () => `<div data-section="description" class="text-center draggable-item p-2"></div>`,
     'featured-video': (profileData) => {
         if (parseVideoUrl(profileData.featured_video_url)) {
             return `<div data-section="featured-video" class="draggable-item p-2"></div>`;
         }
         return '';
     },
+    // <<-- AÑADIDO para la galería
     'gallery': () => {
         if (appState.galleryImages && appState.galleryImages.length > 0) {
             return `<div data-section="gallery" id="gallery-container" class="draggable-item p-2"></div>`;
         }
         return '';
     },
-	'social-buttons': (profileData) => {
-        if (profileData.social_buttons && profileData.social_buttons.length > 0) {
+    'social-buttons': (profileData) => {
+        const buttons = profileData.social_buttons || [];
+        if (buttons.length > 0) {
             return `<section id="social-buttons-section" data-section="social-buttons" class="draggable-item p-2"></section>`;
         }
         return '';
     },
-	'socials': (profileData) => {
-        if (profileData.socials && Object.keys(profileData.socials).length > 0) {
+    'socials': (profileData) => {
+        const socials = profileData.socials || {};
+        const validSocials = Object.values(socials).some(value => value && value.trim() !== '');
+        if (validSocials) {
             return `<footer id="socials-footer" data-section="socials" class="pt-4 pb-2 draggable-item p-2"></footer>`;
         }
         return '';
@@ -465,7 +477,7 @@ const profileSectionTemplates = {
 function renderSingleLink(linkData, profileData) {
 	const buttonStyle = profileData.button_style || 'filled';
 	const buttonShape = profileData.button_shape_style || 'rounded-lg';
-	
+
 	let iconHtml = '';
 	if (linkData.icon_tag) {
 		iconHtml = `<i data-lucide="${linkData.icon_tag}" class="w-6 h-6"></i>`;
@@ -477,28 +489,75 @@ function renderSingleLink(linkData, profileData) {
 	let linkClasses = ['public-link-button', 'font-medium', 'py-3', 'px-5', 'w-full', 'flex', 'items-center'];
 	if (buttonShape !== 'underline') linkClasses.push(`btn-${buttonStyle}`);
 	linkClasses.push(buttonShape);
-	
-	const linkContent = iconHtml 
+
+	const linkContent = iconHtml
 		? `<span class="w-6 h-6">${iconHtml}</span><span class="flex-grow text-center">${linkData.title}</span><span class="w-6 h-6"></span>`
 		: `<span class="flex-grow text-center">${linkData.title}</span>`;
 
-	const linkHtml = `<a href="#" draggable="false" data-url="${linkData.url}" data-link-id="${linkData.id}" rel="noopener noreferrer" class="${linkClasses.join(' ')}">${linkContent}</a>`;
-
-	return `<div data-section="link_${linkData.id}" class="draggable-item my-2">${linkHtml}</div>`;
+	return `<a href="#" draggable="false" data-url="${linkData.url}" data-link-id="${linkData.id}" rel="noopener noreferrer" class="${linkClasses.join(' ')}">${linkContent}</a>`;
 }
 
-function renderProfile(profileData, isOwner) {
-	if (!profileData) return;
+function buildProfileLayout(profileData, isOwner) {
+    updateProfileStyles(profileData);
 
-	// 1. Actualizar estilos globales
-	const theme = profileData.theme || 'grafito';
+    const layoutContainer = document.getElementById('profile-layout-container');
+    layoutContainer.innerHTML = '';
+
+    // <<-- AÑADIDO 'gallery' a la lista de secciones base
+    const defaultBaseSections = ["profile-image", "display-name", "username", "description", "featured-video", "gallery", "social-buttons", "socials"];
+    const currentLinkIds = appState.links.map(l => `link_${l.id}`);
+
+    const defaultLayout = ["profile-image", "display-name", "username", "description", "featured-video", "gallery", "social-buttons", ...currentLinkIds, "socials"];
+
+    let layoutOrder = profileData.layout_order && profileData.layout_order.length > 0 ? profileData.layout_order : defaultLayout;
+
+    currentLinkIds.forEach(linkId => {
+        if (!layoutOrder.includes(linkId)) {
+             const socialButtonsIndex = layoutOrder.indexOf('social-buttons');
+             if (socialButtonsIndex !== -1) {
+                 layoutOrder.splice(socialButtonsIndex + 1, 0, linkId);
+             } else {
+                 layoutOrder.push(linkId);
+             }
+        }
+    });
+
+    const fragment = document.createDocumentFragment();
+
+    layoutOrder.forEach(sectionId => {
+        if (!appState.links.find(l => `link_${l.id}` === sectionId) && sectionId.startsWith('link_')) {
+             return;
+        }
+
+        const tempDiv = document.createElement('div');
+        if (profileSectionTemplates[sectionId]) {
+            const templateHtml = profileSectionTemplates[sectionId](profileData, isOwner);
+            if (templateHtml) {
+                tempDiv.innerHTML = templateHtml;
+                fragment.appendChild(tempDiv.firstChild);
+            }
+        } else if (sectionId.startsWith('link_')) {
+            const linkPlaceholder = document.createElement('div');
+            linkPlaceholder.dataset.section = sectionId;
+            linkPlaceholder.className = 'draggable-item my-2';
+            fragment.appendChild(linkPlaceholder);
+        }
+    });
+
+    layoutContainer.appendChild(fragment);
+
+    updateProfileContent(profileData, isOwner);
+}
+
+function updateProfileStyles(profileData) {
+    const theme = profileData.theme || 'grafito';
 	const font = profileData.font_family || 'font-inter';
 	loadFontIfNeeded(font);
 	document.body.className = `bg-gray-900 text-white min-h-screen overflow-x-hidden theme-${theme}`;
 	DOMElements.globalBackground.className = `theme-${theme}`;
 	DOMElements.profilePage.className = `px-4 sm:px-6 ${font}`;
 	if (appState.isDesignModeActive) DOMElements.profilePage.classList.add('design-mode');
-	
+
 	const backgroundImageUrl = profileData.background_image_url || '';
 	const overlayOpacity = profileData.background_overlay_opacity ?? 0.4;
 	if (backgroundImageUrl) {
@@ -507,85 +566,36 @@ function renderProfile(profileData, isOwner) {
 		DOMElements.globalBackground.style.backgroundImage = 'none';
 		DOMElements.globalBackground.style.backgroundColor = 'var(--background)';
 	}
+}
 
-	const layoutContainer = document.getElementById('profile-layout-container');
-
-	// 2. Construir el layout deseado
-	const allBaseSections = ["profile-image", "display-name", "username", "description", "featured-video", "gallery", "social-buttons", "socials"];
-	let baseLayout = appState.tempLayoutOrder || profileData.layout_order || [...allBaseSections];
-	
-    let cleanLayout = baseLayout.filter(id => !id.startsWith('link_'));
-	const linkIds = appState.links.map(link => `link_${link.id}`);
-	
-    const linksIndex = cleanLayout.indexOf('links');
-    if (linksIndex !== -1) {
-		cleanLayout.splice(linksIndex, 1, ...linkIds);
-	} else {
-        const socialsIndex = cleanLayout.indexOf('socials');
-        if (socialsIndex !== -1) {
-            cleanLayout.splice(socialsIndex, 0, ...linkIds);
-        } else {
-            cleanLayout.push(...linkIds);
-        }
+function updateProfileContent(profileData, isOwner) {
+    const displayNameContainer = document.querySelector('[data-section="display-name"]');
+    if (displayNameContainer) {
+        displayNameContainer.innerHTML = (profileData.display_name) ? `<h1 id="public-display-name" class="text-3xl font-bold">${profileData.display_name}</h1>` : '';
     }
-    const desiredLayoutOrder = cleanLayout;
-    
-    // 3. Reconciliación del DOM
-    const existingElements = new Map(Array.from(layoutContainer.children).map(el => [el.dataset.section, el]));
-    const elementsToKeep = new Set();
-    
-    desiredLayoutOrder.forEach(sectionId => {
-        elementsToKeep.add(sectionId);
-        let element = existingElements.get(sectionId);
-        
-        if (!element) {
-            const tempDiv = document.createElement('div');
-            let elementHtml = '';
-            if (profileSectionTemplates[sectionId]) {
-                elementHtml = profileSectionTemplates[sectionId](profileData, isOwner);
-            } else if (sectionId.startsWith('link_')) {
-                const linkId = sectionId.replace('link_', '');
-                const linkData = appState.links.find(l => String(l.id) === linkId);
-                if (linkData) elementHtml = renderSingleLink(linkData, profileData);
-            }
-            if (elementHtml) {
-                tempDiv.innerHTML = elementHtml;
-                element = tempDiv.firstElementChild;
-            }
-        } else {
-             if (existingElements.has(sectionId)) {
-                switch (sectionId) {
-                    case 'display-name': element.querySelector('#public-display-name').textContent = profileData.display_name; break;
-                    case 'username': element.querySelector('#public-username').textContent = profileData.username || ''; break;
-                    case 'description': element.querySelector('#public-description').textContent = profileData.description || ''; break;
-                    case 'profile-image': element.querySelector('#public-profile-img').src = profileData.profile_image_url || 'https://placehold.co/128x128/7f9cf5/1F2937?text=...'; break;
-                }
-                if (sectionId.startsWith('link_')) {
-                    const linkId = sectionId.replace('link_', '');
-                    const linkData = appState.links.find(l => String(l.id) === linkId);
-                    const tempDiv = document.createElement('div');
-                    tempDiv.innerHTML = renderSingleLink(linkData, profileData);
-                    element.innerHTML = tempDiv.firstElementChild.innerHTML;
-                    element.className = tempDiv.firstElementChild.className;
-                }
-            }
-        }
-        
-        if (element) {
-            layoutContainer.appendChild(element);
-        }
-    });
-    
-    existingElements.forEach((element, sectionId) => {
-        if (!elementsToKeep.has(sectionId)) {
-            element.remove();
-        }
-    });
 
-    // 4. Renderizar/Actualizar componentes complejos
-    const videoSection = layoutContainer.querySelector('[data-section="featured-video"]');
+    const usernameContainer = document.querySelector('[data-section="username"]');
+    if(usernameContainer) {
+        usernameContainer.innerHTML = (profileData.username) ? `<p id="public-username" class="text-lg opacity-80">${profileData.username}</p>` : '';
+    }
+
+    const descriptionContainer = document.querySelector('[data-section="description"]');
+    if(descriptionContainer) {
+        descriptionContainer.innerHTML = (profileData.description) ? `<p id="public-description" class="opacity-90">${profileData.description}</p>` : '';
+    }
+
+    const profileImgEl = document.getElementById('public-profile-img');
+    if (profileImgEl) profileImgEl.src = profileData.profile_image_url || 'https://placehold.co/128x128/7f9cf5/1F2937?text=...';
+
+    const editBtnContainer = profileImgEl ? profileImgEl.parentElement : null;
+    if(isOwner && editBtnContainer && !editBtnContainer.querySelector('#edit-profile-img-btn')) {
+        editBtnContainer.insertAdjacentHTML('beforeend', `<button id="edit-profile-img-btn" class="absolute bottom-1 right-1 bg-gray-800 bg-opacity-70 p-2 rounded-full text-white hover:bg-opacity-100 transition-colors"><i data-lucide="camera" class="w-5 h-5"></i></button>`);
+        document.getElementById('edit-profile-img-btn').addEventListener('click', (e) => { e.stopPropagation(); DOMElements.imageUploadInput.click(); });
+    }
+
+    const embedUrl = parseVideoUrl(profileData.featured_video_url);
+    const videoSection = document.querySelector('[data-section="featured-video"]');
     if (videoSection) {
-        const embedUrl = parseVideoUrl(profileData.featured_video_url);
         const iframe = videoSection.querySelector('iframe');
         if (embedUrl) {
             if (!iframe || iframe.src !== embedUrl) {
@@ -595,61 +605,62 @@ function renderProfile(profileData, isOwner) {
             videoSection.innerHTML = '';
         }
     }
-    
-    const gallerySection = layoutContainer.querySelector('[data-section="gallery"]');
-    if (gallerySection) {
-        renderPublicGallery(gallerySection, profileData, appState.galleryImages);
-    }
-    
-	const socialButtonsContainer = layoutContainer.querySelector('#social-buttons-section');
-    if (socialButtonsContainer) renderSocialButtons(profileData.social_buttons);
-    
-    const socialsFooterContainer = layoutContainer.querySelector('#socials-footer');
-    if (socialsFooterContainer) renderSocialIcons(profileData.socials, profileData.socials_order);
 
-	if (isOwner) {
-		const editProfileImgBtn = document.getElementById('edit-profile-img-btn');
-		if(editProfileImgBtn) editProfileImgBtn.addEventListener('click', (e) => { e.stopPropagation(); DOMElements.imageUploadInput.click(); });
-	}
-	renderProfileActions(profileData);
-	updateContainerVisibilityInDesignMode(profileData);
-	const isDesignMode = DOMElements.profilePage.classList.contains('design-mode');
+    // <<-- AÑADIDO para la galería
+    const galleryContainer = document.querySelector('[data-section="gallery"]');
+    if (galleryContainer) {
+        renderPublicGallery(galleryContainer, profileData, appState.galleryImages);
+    }
+
+    appState.links.forEach(linkData => {
+        const linkPlaceholder = document.querySelector(`[data-section="link_${linkData.id}"]`);
+        if (linkPlaceholder) {
+            linkPlaceholder.innerHTML = renderSingleLink(linkData, profileData);
+        }
+    });
+
+    renderSocialButtons(profileData.social_buttons);
+    renderSocialIcons(profileData.socials, profileData.socials_order);
+    renderProfileActions(profileData);
+	updateContainerVisibility(profileData);
+
+    const isDesignMode = DOMElements.profilePage.classList.contains('design-mode');
 	document.getElementById('user-actions').classList.toggle('hidden', !isOwner || isDesignMode);
 	document.getElementById('layout-actions').classList.toggle('hidden', !isDesignMode);
 
-	if (!appState.currentUser && !layoutContainer.querySelector('.join-nexid-button')) {
-		layoutContainer.insertAdjacentHTML('beforeend', `
+    if (!appState.currentUser && !document.querySelector('.join-nexid-button')) {
+        document.getElementById('profile-layout-container').insertAdjacentHTML('beforeend', `
 			<div class="mt-8 text-center">
 				 <a href="/app.html" class="join-nexid-button inline-flex items-center justify-center py-3 px-8 font-bold text-lg rounded-full transition-transform duration-200 hover:scale-110">
 					Únete a NexID
 				</a>
 			</div>
 		`);
-	} else if (appState.currentUser) {
-        const joinButton = layoutContainer.querySelector('.join-nexid-button');
+    } else if (appState.currentUser) {
+        const joinButton = document.querySelector('.join-nexid-button');
         if (joinButton) joinButton.parentElement.remove();
     }
 
 	lucide.createIcons();
 }
 
-function updateContainerVisibilityInDesignMode(profileData) {
-	if (!appState.isDesignModeActive) return;
-	
-    const isEmpty = (data) => !data || (Array.isArray(data) && data.length === 0) || (typeof data === 'object' && Object.keys(data).length === 0);
+
+function updateContainerVisibility(profileData) {
+    const isEmpty = (data) => !data || (Array.isArray(data) && data.length === 0) || (typeof data === 'object' && Object.keys(data).length === 0) || (typeof data === 'string' && data.trim() === '');
 
     const descriptionContainer = document.querySelector('[data-section="description"]');
-	if (descriptionContainer) descriptionContainer.classList.toggle('is-empty', !profileData.description || profileData.description.trim() === '');
-	
+    if (descriptionContainer) descriptionContainer.classList.toggle('is-empty', isEmpty(profileData.description || ''));
+
     const socialButtonsContainer = document.querySelector('[data-section="social-buttons"]');
-	if (socialButtonsContainer) socialButtonsContainer.classList.toggle('is-empty', isEmpty(profileData.social_buttons));
-	
+    if (socialButtonsContainer) socialButtonsContainer.classList.toggle('is-empty', socialButtonsContainer.children.length === 0);
+
     const socialsFooterContainer = document.querySelector('[data-section="socials"]');
-	if (socialsFooterContainer) socialsFooterContainer.classList.toggle('is-empty', isEmpty(profileData.socials));
-    
+    if (socialsFooterContainer) socialsFooterContainer.classList.toggle('is-empty', socialsFooterContainer.children.length === 0);
+
     const videoContainer = document.querySelector('[data-section="featured-video"]');
     if(videoContainer) videoContainer.classList.toggle('is-empty', !parseVideoUrl(profileData.featured_video_url));
 
+    // <<-- AÑADIDO para la galería
     const galleryContainer = document.querySelector('[data-section="gallery"]');
     if(galleryContainer) galleryContainer.classList.toggle('is-empty', isEmpty(appState.galleryImages));
 }
@@ -661,7 +672,7 @@ function renderLinksEditor(links) {
 		const linkEl = document.createElement('div');
 		linkEl.className = 'flex items-center justify-between bg-gray-700 p-3 rounded-md';
 		linkEl.dataset.id = link.id;
-		
+
 		let iconHtml = '';
 		if (link.icon_tag) {
 			iconHtml = `<i data-lucide="${link.icon_tag}" class="w-5 h-5"></i>`;
@@ -690,7 +701,7 @@ function renderLinksEditor(links) {
 
 		editTrigger.appendChild(titleDiv);
 		editTrigger.appendChild(urlP);
-		
+
 		if (iconHtml) {
 			const iconWrapper = document.createElement('div');
 			iconWrapper.className = 'flex-shrink-0 text-white';
@@ -724,7 +735,7 @@ const socialIcons = {
 	tiktok: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" fill="currentColor"><path d="M448 209.9a210.1 210.1 0 0 1 -122.8-39.3V349.4A162.6 162.6 0 1 1 185 188.3V278.2a74.6 74.6 0 1 0 52.2 71.2V0l88 0a121.2 121.2 0 0 0 122.8 122.8V209.9z"/></svg>`,
 	youtube: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg>`,
 	facebook: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>`,
-	whatsapp: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor"><path d="M13.601 2.326A7.85 7.85 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.9 7.9 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.9 7.9 0 0 0 13.6 2.326zM7.994 14.521a6.6 6.6 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.56 6.56 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592m3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.31-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.73.73 0 0 0-.529.247c-.182.198-.691.677-.691 1.654s.71 1.916.81 2.049c.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232"/></svg>`, 
+	whatsapp: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor"><path d="M13.601 2.326A7.85 7.85 0 0 0 7.994 0C3.627 0 .068 3.558.064 7.926c0 1.399.366 2.76 1.057 3.965L0 16l4.204-1.102a7.9 7.9 0 0 0 3.79.965h.004c4.368 0 7.926-3.558 7.93-7.93A7.9 7.9 0 0 0 13.6 2.326zM7.994 14.521a6.6 6.6 0 0 1-3.356-.92l-.24-.144-2.494.654.666-2.433-.156-.251a6.56 6.56 0 0 1-1.007-3.505c0-3.626 2.957-6.584 6.591-6.584a6.56 6.56 0 0 1 4.66 1.931 6.56 6.56 0 0 1 1.928 4.66c-.004 3.639-2.961 6.592-6.592 6.592m3.615-4.934c-.197-.099-1.17-.578-1.353-.646-.182-.065-.315-.099-.445.099-.133.197-.513.646-.627.775-.114.133-.232.148-.43.05-.197-.1-.836-.31-1.592-.985-.59-.525-.985-1.175-1.103-1.372-.114-.198-.011-.304.088-.403.087-.088.197-.232.296-.346.1-.114.133-.198.198-.33.065-.134.034-.248-.015-.347-.05-.099-.445-1.076-.612-1.47-.16-.389-.323-.335-.445-.34-.114-.007-.247-.007-.38-.007a.73.73 0 0 0-.529.247c-.182.198-.691.677-.691 1.654s.71 1.916.81 2.049c.098.133 1.394 2.132 3.383 2.992.47.205.84.326 1.129.418.475.152.904.129 1.246.08.38-.058 1.171-.48 1.338-.943.164-.464.164-.86.114-.943-.049-.084-.182-.133-.38-.232"/></svg>`,
 	behance: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M20.07,6.35H15V7.76h5.09ZM19,16.05a2.23,2.23,0,0,1-1.3.37A2.23,2.23,0,0,1,16,15.88a2.49,2.49,0,0,1-.62-1.76H22a6.47,6.47,0,0,0-.17-2,5.08,5.08,0,0,0-.8-1.73,4.17,4.17,0,0,0-1.42-1.21,4.37,4.37,0,0,0-2-.45,4.88,4.88,0,0,0-1.9.37,4.51,4.51,0,0,0-1.47,1,4.4,4.4,0,0,0-.95,1.52,5.4,5.4,0,0,0-.33,1.91,5.52,5.52,0,0,0,.32,1.94A4.46,4.46,0,0,0,14.16,17a4,4,0,0,0,1.46,1,5.2,5.2,0,0,0,1.94.34,4.77,4.77,0,0,0,2.64-.7,4.21,4.21,0,0,0,1.63-2.35H19.62A1.54,1.54,0,0,1,19,16.05Zm-3.43-4.12a1.87,1.87,0,0,1,1-1.14,2.28,2.28,0,0,1,1-.2,1.73,1.73,0,0,1,1.36.49,2.91,2.91,0,0,1,.63,1.45H15.41A3,3,0,0,1,15.52,11.93Zm-5.29-.48a3.06,3.06,0,0,0,1.28-1,2.72,2.72,0,0,0,.43-1.58,3.28,3.28,0,0,0-.29-1.48,2.4,2.4,0,0,0-.82-1,3.24,3.24,0,0,0-1.27-.52,7.54,7.54,0,0,0-1.64-.16H2V18.29H8.1a6.55,6.55,0,0,0,1.65-.21,4.55,4.55,0,0,0,1.43-.65,3.13,3.13,0,0,0,1-1.14,3.41,3.41,0,0,0,.37-1.65,3.47,3.47,0,0,0-.57-2A3,3,0,0,0,10.23,11.45ZM4.77,7.86H7.36a4.17,4.17,0,0,1,.71.06,1.64,1.64,0,0,1,.61.22,1.05,1.05,0,0,1,.42.44,1.42,1.42,0,0,1,.16.72,1.36,1.36,0,0,1-.47,1.15,2,2,0,0,1-1.22.35H4.77ZM9.61,15.3a1.28,1.28,0,0,1-.45.5,2,2,0,0,1-.65.26,3.33,3.33,0,0,1-.78.08h-3V12.69h3a2.4,2.4,0,0,1,1.45.41,1.65,1.65,0,0,1,.54,1.39A1.77,1.77,0,0,1,9.61,15.3Z"/></svg>`,
 	pinterest: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12.018 0C5.381 0 0 5.368 0 11.988c0 5.078 3.166 9.416 7.637 11.16 -0.106 -0.948 -0.199 -2.402 0.041 -3.438 0.22 -0.936 1.41 -5.957 1.41 -5.957s-0.36 -0.72 -0.36 -1.781c0 -1.663 0.97 -2.911 2.173 -2.911 1.026 0 1.522 0.768 1.522 1.687 0 1.03 -0.654 2.568 -0.995 3.992 -0.286 1.193 0.602 2.165 1.78 2.165 2.134 0 3.778 -2.244 3.778 -5.486 0 -2.861 -2.068 -4.87 -5.021 -4.87 -3.418 0 -5.422 2.562 -5.422 5.2 0 1.032 0.395 2.143 0.89 2.741 0.1 0.12 0.113 0.226 0.085 0.346 -0.09 0.374 -0.293 1.199 -0.335 1.362 -0.053 0.226 -0.172 0.271 -0.402 0.166 -1.499 -0.69 -2.438 -2.878 -2.438 -4.646 0 -3.775 2.755 -7.252 7.939 -7.252 4.169 0 7.41 2.966 7.41 6.923 0 4.135 -2.614 7.462 -6.248 7.462 -1.217 0 -2.359 -0.629 -2.765 -1.379l-0.75 2.849c-0.27 1.044 -1.008 2.352 -1.502 3.145A12 12 0 0 0 11.986 24C18.61 24 24 18.636 24 12.012 24 5.392 18.608 0.028 11.986 0.028z"/></svg>`,
 	twitch: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M2.149 0l-2.149 4.773v16.454h5.741v2.773h3.223l2.773-2.773h5.292l6.219-6.219v-14.227h-21.099zm18.378 13.59l-3.223 3.223h-5.741l-2.773 2.773v-2.773h-4.654v-14.89h16.391v11.667zm-5.292-7.371v5.546h-2.149v-5.546h2.149zm-5.291 0v5.546h-2.149v-5.546h2.149z"/></svg>`,
@@ -733,7 +744,7 @@ const socialIcons = {
 	soundcloud: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M7,19a1,1,0,0,1-1-1V8A1,1,0,0,1,8,8V18A1,1,0,0,1,7,19ZM3,18a1,1,0,0,1-1-1V11a1,1,0,0,1,2,0v6A1,1,0,0,1,3,18Z"></path><path d="M18.76,10.2A7,7,0,0,0,12,5a5.89,5.89,0,0,0-1.18.11,1,1,0,0,0-.82,1V18a1,1,0,0,0,1,1h6.5a4.49,4.49,0,0,0,1.26-8.8Z"></path></svg>`,
 	telegram: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M20.71 3.655s1.942 -0.757 1.78 1.082c-0.053 0.757 -0.539 3.409 -0.917 6.277l-1.295 8.495s-0.108 1.244 -1.079 1.461c-0.971 0.216 -2.428 -0.757 -2.698 -0.974 -0.216 -0.163 -4.047 -2.598 -5.396 -3.788 -0.378 -0.325 -0.81 -0.974 0.054 -1.732L16.825 9.065c0.647 -0.65 1.295 -2.165 -1.403 -0.325l-7.555 5.14s-0.864 0.541 -2.482 0.054l-3.508 -1.083s-1.295 -0.811 0.917 -1.623c5.396 -2.543 12.034 -5.14 17.916 -7.575"/></svg>`,
 };
-const largeSocialIcons = { ...socialIcons }; 
+const largeSocialIcons = { ...socialIcons };
 
 const socialBaseUrls = {
 	instagram: 'https://instagram.com/', twitter: 'https://twitter.com/', github: 'https://github.com/', linkedin: 'https://linkedin.com/in/',
@@ -795,22 +806,15 @@ function getSocialIconForUrl(url) {
 function renderSocialIcons(socials, socialsOrder) {
     const footer = document.getElementById('socials-footer');
     if (!footer) return;
+    footer.innerHTML = '';
 
-    footer.innerHTML = ''; 
-    const hasIcons = socials && Object.keys(socials).length > 0;
-    
-    if (!hasIcons) {
-        return; 
-    }
-
-    const wrapper = document.createElement('div');
-    wrapper.className = 'social-icons-wrapper';
-    
+    const socialsData = socials || {};
     const order = socialsOrder && socialsOrder.length > 0 ? socialsOrder : SOCIAL_ICON_ORDER;
-    
+
+    const linksToRender = [];
     order.forEach(key => {
-        const username = socials[key];
-        if (username && socialIcons[key]) {
+        const username = socialsData[key];
+        if (username && username.trim() !== '' && socialIcons[key]) {
             const link = document.createElement('a');
             link.href = `${socialBaseUrls[key]}${username}`;
             link.target = '_blank';
@@ -818,11 +822,14 @@ function renderSocialIcons(socials, socialsOrder) {
             link.innerHTML = socialIcons[key];
             link.className = 'opacity-70 hover:opacity-100 transition-opacity';
             link.dataset.socialKey = key;
-            wrapper.appendChild(link);
+            linksToRender.push(link);
         }
     });
 
-    if (wrapper.children.length > 0) {
+    if (linksToRender.length > 0) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'social-icons-wrapper';
+        linksToRender.forEach(link => wrapper.appendChild(link));
         footer.appendChild(wrapper);
     }
 }
@@ -831,9 +838,9 @@ function renderSocialButtons(buttons) {
 	const section = document.getElementById('social-buttons-section');
 	if (!section) return;
 	section.innerHTML = '';
-	const buttonList = buttons || []; 
+	const buttonList = buttons || [];
 
-	if (buttonList.length === 0) return; 
+	if (buttonList.length === 0) return;
 
 	buttonList.forEach(buttonData => {
 		const info = getSocialInfoForUrl(buttonData.url);
@@ -881,7 +888,7 @@ function renderProfileActions(profileData) {
 		shareButton.addEventListener('click', () => handleShare(profileData));
 		container.appendChild(shareButton);
 	}
-	
+
 	const contact = profileData.contact_info || {};
 	if (contact.name || contact.phone || contact.email || contact.website) {
 		const vcardButton = document.createElement('button');
@@ -951,9 +958,9 @@ document.getElementById('login-btn').addEventListener('click', async () => {
 	const email = document.getElementById('email-input').value;
 	const password = document.getElementById('password-input').value;
 	if (!email || !password) return showAlert("Por favor, completa ambos campos.");
-	
+
 	const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-	
+
 	if (error) {
 		if (error.message.includes('Invalid login credentials')) {
 			showAlert('Correo o contraseña incorrectos. Por favor, inténtalo de nuevo.');
@@ -964,7 +971,7 @@ document.getElementById('login-btn').addEventListener('click', async () => {
 });
 
 document.getElementById('google-login-btn').addEventListener('click', async () => {
-	const { error } = await supabaseClient.auth.signInWithOAuth({ 
+	const { error } = await supabaseClient.auth.signInWithOAuth({
 		provider: 'google',
 		options: {
 			redirectTo: `${window.location.origin}${window.location.pathname}`
@@ -1007,7 +1014,7 @@ completeSetupBtn.addEventListener('click', async () => {
 	}
 	const usernameValue = welcomeUsernameInput.value.trim().toLowerCase();
 	const displayName = document.getElementById('welcome-display-name-input').value.trim();
-	
+
 	const updates = {
 		username: `@${usernameValue}`,
 		display_name: displayName || usernameValue,
@@ -1029,19 +1036,19 @@ completeSetupBtn.addEventListener('click', async () => {
 			const profileUrl = `${window.location.pathname}?user=${updatedProfile.username.substring(1)}`;
 			history.replaceState(null, '', profileUrl);
 		}
-		
+
 		buildProfileLayout(updatedProfile, true);
 		listenToUserLinks(updatedProfile.id);
 		showPage('profile');
 	}
 });
 
-document.getElementById('logout-btn').addEventListener('click', async () => {	
+document.getElementById('logout-btn').addEventListener('click', async () => {
     appState.isProfileBuilt = false; // Reiniciar la bandera al cerrar sesión
 	appState.isRecoveringPassword = false;
 	document.getElementById('email-input').value = '';
 	document.getElementById('password-input').value = '';
-	await supabaseClient.auth.signOut({ scope: 'local' });	
+	await supabaseClient.auth.signOut({ scope: 'local' });
 	window.location.replace('/index.html');
 });
 document.getElementById('configure-btn').addEventListener('click', openSettingsPanel);
@@ -1049,12 +1056,12 @@ document.getElementById('close-settings-btn').addEventListener('click', closeSet
 DOMElements.settingsOverlay.addEventListener('click', closeSettingsPanel);
 
 async function handleShare(profileData) {
-	const shareData = {	
-		title: `Perfil de ${profileData.display_name || profileData.username || 'NexID'}`,	
-		text: `Mira mi perfil de NexID: ${profileData.description || ''}`,	
+	const shareData = {
+		title: `Perfil de ${profileData.display_name || profileData.username || 'NexID'}`,
+		text: `Mira mi perfil de NexID: ${profileData.description || ''}`,
 		url: `${window.location.origin}${window.location.pathname}?user=${profileData.username.substring(1)}`
 	};
-	
+
 	const fallbackCopy = () => {
 		const textArea = document.createElement("textarea");
 		textArea.value = shareData.url;
@@ -1139,7 +1146,7 @@ function renderSocialTabs(container, mode, data) {
         category.socials.forEach(key => {
             const item = document.createElement('div');
             const info = socialButtonStyles[key];
-            
+
             if (mode === 'icons') {
                 const value = data?.[key] || '';
                 item.className = 'flex items-center bg-gray-200 rounded-md focus-within:ring-2 focus-within:ring-cyan-500 w-full';
@@ -1179,25 +1186,25 @@ DOMElements.settingsPanel.addEventListener('click', (e) => {
 
 function openSettingsPanel() {
 	if (!appState.myProfile) return;
-	
+
 	appState.isSettingsDirty = false;
 	appState.tempBackgroundImagePath = null;
 	appState.previewProfile = JSON.parse(JSON.stringify(appState.myProfile)); // Crear copia para previsualización
-	
+
 	const profile = appState.previewProfile;
-	
+
 	document.getElementById('display-name-input').value = profile.display_name || '';
 	document.getElementById('username-input').value = profile.username ? profile.username.substring(1) : '';
 	document.getElementById('description-input').value = profile.description || '';
-	
+
 	setTimeout(() => autoResizeTextarea(DOMElements.descriptionInput), 50);
 
 	document.getElementById('background-image-url-input').value = profile.background_image_url || '';
 	document.getElementById('background-image-path-input').value = profile.background_image_path || '';
-	
+
 	const opacitySlider = document.getElementById('background-opacity-slider');
 	const opacityControls = document.getElementById('background-controls');
-	
+
 	if (profile.background_image_url) {
 		opacityControls.classList.remove('hidden');
 		opacitySlider.value = profile.background_overlay_opacity ?? 0.4;
@@ -1216,7 +1223,7 @@ function openSettingsPanel() {
 	document.querySelectorAll('.theme-option').forEach(opt => opt.classList.toggle('selected', opt.dataset.theme === currentTheme));
 	document.querySelector(`input[name="buttonStyle"][value="${profile.button_style || 'filled'}"]`).checked = true;
 	document.querySelector(`input[name="buttonShape"][value="${profile.button_shape_style || 'rounded-lg'}"]`).checked = true;
-	
+
 	const currentFont = profile.font_family || 'font-inter';
 	DOMElements.fontFamilyValue.value = currentFont;
 	DOMElements.fontSelectorLabel.textContent = fontMap[currentFont].name;
@@ -1224,7 +1231,8 @@ function openSettingsPanel() {
 
     renderSocialTabs(document.getElementById('social-buttons-inputs-container'), 'buttons', profile.social_buttons);
     renderSocialTabs(document.getElementById('socials-inputs-container'), 'icons', profile.socials);
-    renderGalleryEditor(appState.galleryImages); // Renderizar el editor de la galería
+    // <<-- AÑADIDO para la galería
+    renderGalleryEditor(appState.galleryImages);
 
 	const contact = profile.contact_info || {};
 	document.querySelectorAll('#contact-inputs input').forEach(input => {
@@ -1234,13 +1242,13 @@ function openSettingsPanel() {
 			input.value = contact[input.dataset.contact] || '';
 		}
 	});
-	
+
     DOMElements.featuredVideoUrlInput.value = profile.featured_video_url || '';
 	document.getElementById('private-profile-toggle').checked = profile.is_public;
 
 	DOMElements.settingsPanel.classList.add('open');
 	DOMElements.settingsOverlay.classList.remove('hidden');
-	
+
 	if (window.innerWidth < 640) {
 		document.body.classList.add('panel-is-open');
 		const initialPanelHeight = DOMElements.settingsPanel.offsetHeight;
@@ -1261,14 +1269,14 @@ async function forceCloseSettingsPanel() {
 	appState.previewProfile = null; // Descartar la copia de previsualización
 	DOMElements.settingsPanel.classList.remove('open');
 	DOMElements.settingsOverlay.classList.add('hidden');
-	
+
 	document.body.classList.remove('panel-is-open');
-	
+
 	if (DOMElements.profilePage) {
 		DOMElements.profilePage.style.paddingBottom = '0px';
 	}
-	DOMElements.settingsPanel.style.height = '';	
-	
+	DOMElements.settingsPanel.style.height = '';
+
 	setTimeout(() => {
 		DOMElements.settingsAccordion.querySelectorAll('.accordion-item').forEach(item => {
 			item.classList.remove('open');
@@ -1292,8 +1300,7 @@ document.getElementById('save-changes-btn').addEventListener('click', async () =
 	const dataToSave = { ...appState.previewProfile }; // Usar los datos de la previsualización
 	delete dataToSave.id;
 	delete dataToSave.created_at;
-    delete dataToSave.gallery_images; // No guardamos las imágenes desde aquí
-	
+
 	const oldProfile = appState.myProfile;
 	const newImagePath = dataToSave.background_image_path;
 	const oldImagePath = oldProfile.background_image_path;
@@ -1320,7 +1327,7 @@ document.getElementById('save-changes-btn').addEventListener('click', async () =
 
 function updateLivePreview() {
 	if (!appState.previewProfile) return;
-	
+
 	const backgroundUrlInput = document.getElementById('background-image-url-input');
 	const opacitySlider = document.getElementById('background-opacity-slider');
 	const opacityControls = document.getElementById('background-controls');
@@ -1330,7 +1337,7 @@ function updateLivePreview() {
 	} else {
 		opacityControls.classList.add('hidden');
 	}
-	
+
 	const newSocialButtons = [];
 	document.querySelectorAll('#social-buttons-inputs-container input[data-social-button]').forEach(input => {
 		const value = input.value.trim();
@@ -1358,7 +1365,7 @@ function updateLivePreview() {
 
 	const selectedFont = DOMElements.fontFamilyValue.value;
 	loadFontIfNeeded(selectedFont);
-	
+
     const oldButtonsCount = (appState.previewProfile.social_buttons || []).length;
     const newButtonsCount = newSocialButtons.length;
     const oldSocialsCount = Object.values(appState.previewProfile.socials || {}).filter(v => v && v.trim() !== '').length;
@@ -1380,16 +1387,19 @@ function updateLivePreview() {
 		contact_info: {},
         featured_video_url: DOMElements.featuredVideoUrlInput.value.trim(),
 	};
-	
+
 	 document.querySelectorAll('#contact-inputs input').forEach(input => {
 		if (input.value.trim() !== '') appState.previewProfile.contact_info[input.dataset.contact] = input.value.trim();
 	});
-	
+
     const needsRebuild = (oldButtonsCount === 0 && newButtonsCount > 0) || (oldSocialsCount === 0 && newSocialsCount > 0);
 
-    // FIX: Replaced calls to non-existent functions with a single call to renderProfile.
-    // This ensures the live preview updates correctly without errors.
-    renderProfile(appState.previewProfile, true);
+    if (needsRebuild) {
+        buildProfileLayout(appState.previewProfile, true);
+    } else {
+        updateProfileStyles(appState.previewProfile);
+        updateProfileContent(appState.previewProfile, true);
+    }
 }
 
 DOMElements.settingsPanel.addEventListener('input', updateLivePreview);
@@ -1449,10 +1459,10 @@ function populateIconGrid() {
 	const gridContainer = document.getElementById('icon-grid-container');
 	if (!gridContainer) return;
 
-	gridContainer.innerHTML = ''; 
+	gridContainer.innerHTML = '';
 	iconTags.forEach(tag => {
 		const button = document.createElement('button');
-		button.type = 'button'; 
+		button.type = 'button';
 		button.className = 'icon-option-btn';
 		button.dataset.iconValue = tag.value;
 		button.title = tag.label;
@@ -1460,7 +1470,7 @@ function populateIconGrid() {
 		const icon = document.createElement('i');
 		icon.dataset.lucide = tag.value || 'circle-slash';
 		icon.className = 'w-5 h-5';
-		
+
 		button.appendChild(icon);
 		gridContainer.appendChild(button);
 	});
@@ -1498,19 +1508,19 @@ document.getElementById('add-update-link-btn').addEventListener('click', async (
 			showAlert(`Error al crear enlace: ${error.message}`);
 		} else {
 			appState.links.push(newLink);
-            
+
             const defaultLayout = ["profile-image", "display-name", "username", "description", "featured-video", "social-buttons", ...appState.links.map(l => `link_${l.id}`), "socials"];
             const currentLayout = (appState.myProfile.layout_order && appState.myProfile.layout_order.length > 0) ? [...appState.myProfile.layout_order] : defaultLayout;
 
             const lastLinkIndex = currentLayout.map(id => id.startsWith('link_')).lastIndexOf(true);
-            
+
             if (lastLinkIndex !== -1) {
                 currentLayout.splice(lastLinkIndex + 1, 0, `link_${newLink.id}`);
             } else {
                 const socialButtonsIndex = currentLayout.indexOf('social-buttons');
                 currentLayout.splice(socialButtonsIndex !== -1 ? socialButtonsIndex + 1 : currentLayout.length, 0, `link_${newLink.id}`);
             }
-			
+
 			const { data: updatedProfile, error: profileUpdateError } = await supabaseClient
 				.from('profiles')
 				.update({ layout_order: currentLayout })
@@ -1548,9 +1558,9 @@ document.getElementById('links-list-editor').addEventListener('click', (e) => {
 				} else {
 					const currentLayout = appState.myProfile.layout_order || [];
 					const newLayout = currentLayout.filter(item => item !== `link_${linkId}`);
-					
+
                     const {data: updatedProfile, error: profileUpdateError } = await supabaseClient.from('profiles').update({ layout_order: newLayout }).eq('id', appState.currentUser.id).select().single();
-					
+
                     if (profileUpdateError) {
                         showAlert('Enlace eliminado, pero no se pudo actualizar el diseño.');
                     } else {
@@ -1578,7 +1588,7 @@ DOMElements.profilePage.addEventListener('click', (e) => {
 		let url = linkButton.dataset.url;
 		if (url && !url.startsWith('http://') && !url.startsWith('https://')) url = `https://${url}`;
 		window.open(url, '_blank');
-		
+
 		const linkId = linkButton.dataset.linkId;
 		if (linkId) {
 			supabaseClient.rpc('increment_click_count', { link_id_to_increment: linkId }).then(({ error }) => {
@@ -1586,7 +1596,7 @@ DOMElements.profilePage.addEventListener('click', (e) => {
 			});
 		}
 	}
-    
+
     const profileImage = e.target.closest('#public-profile-img');
     if (profileImage && !e.target.closest('#edit-profile-img-btn')) {
         openImageZoomModal([{ image_url: profileImage.src }], 0);
@@ -1598,7 +1608,7 @@ function enterEditMode(id, title, url, icon) {
 	document.getElementById('editing-link-id').value = id;
 	document.getElementById('link-title-input').value = title;
 	document.getElementById('link-url-input').value = url;
-	
+
 	document.getElementById('link-icon-value').value = icon;
 	document.querySelectorAll('#icon-grid-container .icon-option-btn').forEach(btn => btn.classList.remove('selected-icon'));
 	const iconButtonToSelect = document.querySelector(`.icon-option-btn[data-icon-value="${icon}"]`);
@@ -1613,7 +1623,7 @@ function exitEditMode() {
 	document.getElementById('editing-link-id').value = '';
 	document.getElementById('link-title-input').value = '';
 	document.getElementById('link-url-input').value = '';
-	
+
 	document.getElementById('link-icon-value').value = '';
 	const selectedButton = document.querySelector('#icon-grid-container .selected-icon');
 	if (selectedButton) selectedButton.classList.remove('selected-icon');
@@ -1667,13 +1677,13 @@ document.getElementById('cropper-save-btn').addEventListener('click', () => {
 
     appState.cropper.getCroppedCanvas({ width: 1024, height: 1024 }).toBlob(async (blob) => {
         if (!appState.currentUser) return;
-        
+
         try {
             const compressedBlob = await imageCompression(blob, { maxSizeMB: 0.3, maxWidthOrHeight: 1024, useWebWorker: true });
-            
+
             const targetProfile = appState.previewProfile || appState.myProfile;
             if (!targetProfile) throw new Error("No profile data available to update.");
-            
+
             const oldImagePath = targetProfile.profile_image_path;
             const filePath = `${appState.currentUser.id}/${Date.now()}.webp`;
 
@@ -1681,7 +1691,7 @@ document.getElementById('cropper-save-btn').addEventListener('click', () => {
             if (uploadError) throw uploadError;
 
             const { data: { publicUrl } } = supabaseClient.storage.from('profile-pictures').getPublicUrl(filePath);
-            
+
             if (appState.previewProfile) {
                 appState.previewProfile.profile_image_url = publicUrl;
                 appState.previewProfile.profile_image_path = filePath;
@@ -1694,14 +1704,14 @@ document.getElementById('cropper-save-btn').addEventListener('click', () => {
                     .eq('id', appState.currentUser.id)
                     .select()
                     .single();
-                
+
                 if (updateError) throw updateError;
-                
+
                 appState.myProfile = updatedProfile;
                 buildProfileLayout(appState.myProfile, true);
                 showAlert("Imagen de perfil actualizada.");
             }
-            
+
             if (oldImagePath) {
                 await supabaseClient.storage.from('profile-pictures').remove([oldImagePath]);
             }
@@ -1764,9 +1774,9 @@ document.getElementById('gemini-generate-btn').addEventListener('click', async (
 	geminiLoader.classList.remove('hidden');
 
 	const prompt = `Basado en estas palabras clave: "${keywords}", genera 3 descripciones de perfil cortas y profesionales (biografías). Cada una debe tener un tono ligeramente diferente (por ejemplo: una profesional, una casual, una creativa).`;
-	
+
 	try {
-		const payload = {	
+		const payload = {
 			contents: [{ role: "user", parts: [{ text: prompt }] }],
 			generationConfig: {
 				responseMimeType: "application/json",
@@ -1775,7 +1785,7 @@ document.getElementById('gemini-generate-btn').addEventListener('click', async (
 		};
 		const apiKey = "";
 		const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
-		
+
 		const fetchWithRetry = async (url, options, retries = 3) => {
 			for (let i = 0; i < retries; i++) {
 				try {
@@ -1800,7 +1810,7 @@ document.getElementById('gemini-generate-btn').addEventListener('click', async (
 
 		const response = await fetchWithRetry(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
 		const result = await response.json();
-		
+
 		if (result.candidates && result.candidates.length > 0) {
 			const text = result.candidates[0].content.parts[0].text;
 			const parsedJson = JSON.parse(text);
@@ -1833,20 +1843,20 @@ function enterDesignMode() {
 
 	const layoutContainer = document.getElementById('profile-layout-container');
 	if (appState.sortable.layout) appState.sortable.layout.destroy();
-	
+
 	appState.sortable.layout = new Sortable(layoutContainer, {
 		animation: 150,
 		draggable: '.draggable-item',
 		forceFallback: true,
 		fallbackOnBody: true,
-		
+
 		onStart: (evt) => {
 			const rect = evt.item.getBoundingClientRect();
 
 			setTimeout(() => {
 				DOMElements.profilePage.classList.add('panorama-active');
 				const fallbackEl = document.querySelector('.sortable-fallback');
-				
+
 				if (fallbackEl) {
 					const bodyClasses = document.body.className.split(' ');
 					const profilePageClasses = DOMElements.profilePage.className.split(' ');
@@ -1854,12 +1864,12 @@ function enterDesignMode() {
 					const fontClass = profilePageClasses.find(c => c.startsWith('font-'));
 					if (themeClass) fallbackEl.classList.add(themeClass);
 					if (fontClass) fallbackEl.classList.add(fontClass);
-					
+
 					fallbackEl.style.width = `${rect.width}px`;
 					fallbackEl.style.height = `${rect.height}px`;
 					fallbackEl.style.top = `${rect.top}px`;
 					fallbackEl.style.left = `${rect.left}px`;
-					
+
 					fallbackEl.style.transform = 'scale(0.85)';
 					fallbackEl.style.transformOrigin = 'top left';
 				}
@@ -1889,7 +1899,7 @@ function exitDesignMode(shouldRevert = false) {
 	document.querySelectorAll('.draggable-item.is-empty').forEach(el => el.classList.remove('is-empty'));
 
 	if (appState.sortable.layout) { appState.sortable.layout.destroy(); appState.sortable.layout = null; }
-	
+
 	if (shouldRevert) {
         if (appState.previewProfile) {
             appState.previewProfile.layout_order = appState.myProfile.layout_order;
@@ -1904,15 +1914,15 @@ async function saveDesignChanges() {
 	if (!appState.currentUser) return;
 
 	const newLayoutOrder = appState.tempLayoutOrder || (appState.previewProfile || appState.myProfile).layout_order;
-    
+
     if (appState.previewProfile) {
         appState.previewProfile.layout_order = newLayoutOrder;
     }
-	
+
 	try {
 		const { data: updatedProfile, error } = await supabaseClient.from('profiles').update({ layout_order: newLayoutOrder }).eq('id', appState.currentUser.id).select().single();
 		if (error) throw error;
-		
+
 		showAlert("Diseño guardado con éxito.");
 		appState.myProfile = updatedProfile;
         if (appState.previewProfile) {
@@ -1951,7 +1961,7 @@ DOMElements.backgroundUploadInput.addEventListener('change', async (e) => {
 		if (uploadError) throw uploadError;
 
 		const { data: { publicUrl } } = supabaseClient.storage.from('background-images').getPublicUrl(filePath);
-		
+
 		appState.tempBackgroundImagePath = filePath;
 		document.getElementById('background-image-url-input').value = publicUrl;
 		document.getElementById('background-image-path-input').value = filePath;
@@ -2041,14 +2051,14 @@ function openImageZoomModal(images, startIndex) {
         modal.remove();
         document.removeEventListener('keydown', handleKeyDown);
     }
-    
+
     function nextImage() {
         if (currentIndex < images.length - 1) {
             currentIndex++;
             updateZoomedImage();
         }
     }
-    
+
     function prevImage() {
         if (currentIndex > 0) {
             currentIndex--;
@@ -2328,11 +2338,11 @@ DOMElements.fontSelectorOptions.addEventListener('click', (e) => {
 	if (option) {
 		const selectedValue = option.dataset.value;
 		const selectedName = fontMap[selectedValue].name;
-		
+
 		DOMElements.fontFamilyValue.value = selectedValue;
 		DOMElements.fontSelectorLabel.textContent = selectedName;
 		DOMElements.fontSelectorLabel.className = selectedValue;
-		
+
 		toggleFontSelector(true);
 		markSettingsAsDirty();
 		updateLivePreview();
@@ -2370,12 +2380,12 @@ document.getElementById('delete-account-confirm-btn').addEventListener('click', 
 		errorEl.textContent = 'La contraseña es incorrecta.';
 		return;
 	}
-	
+
 	const { error: updateError } = await supabaseClient
 		.from('profiles')
-		.update({ 
-			is_deactivated: true, 
-			deletion_scheduled_at: new Date().toISOString() 
+		.update({
+			is_deactivated: true,
+			deletion_scheduled_at: new Date().toISOString()
 		})
 		.eq('id', appState.currentUser.id);
 
@@ -2409,8 +2419,8 @@ document.getElementById('logout-for-deletion-btn').addEventListener('click', asy
 
 // --- INICIALIZACIÓN ---
 initializeApp();
-window.onload = () => { 
-	lucide.createIcons(); 
+window.onload = () => {
+	lucide.createIcons();
 	setupPasswordToggle('password-input', 'auth-password-toggle');
     setupPasswordToggle('register-password-input', 'register-password-toggle');
     setupPasswordToggle('register-confirm-password-input', 'register-confirm-password-toggle');
@@ -2421,6 +2431,4 @@ window.onload = () => {
 	setupPasswordToggle('update-confirm-password-input', 'update-confirm-password-toggle');
 	setupPasswordToggle('delete-confirm-password-input', 'delete-confirm-password-toggle');
 };
-
-
 
