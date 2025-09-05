@@ -1387,12 +1387,9 @@ function updateLivePreview() {
 	
     const needsRebuild = (oldButtonsCount === 0 && newButtonsCount > 0) || (oldSocialsCount === 0 && newSocialsCount > 0);
 
-    if (needsRebuild) {
-        buildProfileLayout(appState.previewProfile, true);
-    } else {
-        updateProfileStyles(appState.previewProfile);
-        updateProfileContent(appState.previewProfile, true);
-    }
+    // FIX: Replaced calls to non-existent functions with a single call to renderProfile.
+    // This ensures the live preview updates correctly without errors.
+    renderProfile(appState.previewProfile, true);
 }
 
 DOMElements.settingsPanel.addEventListener('input', updateLivePreview);
@@ -2424,3 +2421,6 @@ window.onload = () => {
 	setupPasswordToggle('update-confirm-password-input', 'update-confirm-password-toggle');
 	setupPasswordToggle('delete-confirm-password-input', 'delete-confirm-password-toggle');
 };
+
+
+
