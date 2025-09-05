@@ -197,7 +197,7 @@ function initializeApp() {
 	supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 	populateIconGrid();
 	populateFontSelector();
-    initializeGallery({ supabaseClient, appState, showAlert, DOMElements, buildProfileLayout });
+    initializeGallery({ supabaseClient, appState, showAlert, DOMElements, buildProfileLayout, updateLivePreview, markSettingsAsDirty });
 
 	if (appState.subscriptions.auth) {
 		appState.subscriptions.auth.unsubscribe();
@@ -1249,6 +1249,11 @@ function openSettingsPanel() {
     renderSocialTabs(document.getElementById('socials-inputs-container'), 'icons', profile.socials);
     renderGalleryEditor(appState.galleryImages);
 
+    const currentGalleryStyle = profile.gallery_style || 'rectangular';
+    document.querySelectorAll('#gallery-style-selector .gallery-style-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.value === currentGalleryStyle);
+    });
+
 	const contact = profile.contact_info || {};
 	document.querySelectorAll('#contact-inputs input').forEach(input => {
 		if (input.dataset.contact === 'name') {
@@ -1401,6 +1406,7 @@ function updateLivePreview() {
 		socials_order: newSocialsOrder,
 		contact_info: {},
         featured_video_url: DOMElements.featuredVideoUrlInput.value.trim(),
+        gallery_style: document.querySelector('#gallery-style-selector .active')?.dataset.value || 'rectangular',
 	};
 
 	 document.querySelectorAll('#contact-inputs input').forEach(input => {
@@ -2446,4 +2452,5 @@ window.onload = () => {
 	setupPasswordToggle('update-confirm-password-input', 'update-confirm-password-toggle');
 	setupPasswordToggle('delete-confirm-password-input', 'delete-confirm-password-toggle');
 };
+
 
