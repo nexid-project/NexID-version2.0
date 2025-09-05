@@ -538,14 +538,15 @@
 .gallery-thumbnails-strip {
     display: flex;
     gap: 0.5rem;
-    overflow-x: auto;
+    /* overflow-x: auto; */ /* Se elimina para que el flexbox haga el cálculo */
     padding-bottom: 0.5rem;
 }
 
 .gallery-thumbnail {
     flex-shrink: 0;
-    width: 64px;
-    height: 64px;
+    /* Se usa calc para que 6 miniaturas ocupen el 100% del ancho con sus gaps */
+    width: calc((100% - (5 * 0.5rem)) / 6);
+    aspect-ratio: 1 / 1;
     border-radius: 0.5rem;
     overflow: hidden;
     cursor: pointer;
