@@ -7,11 +7,12 @@ let dependencies = {
     supabaseClient: null,
     appState: null,
     showAlert: null,
+    showConfirm: null, // <<-- AÑADIDO para confirmación
     buildProfileLayout: null,
     DOMElements: null,
     updateLivePreview: null,
     markSettingsAsDirty: null,
-    openImageZoomModal: null, // <<-- AÑADIDO para abrir el modal
+    openImageZoomModal: null,
 };
 let galleryCropper = null;
 let currentFile = null;
@@ -191,7 +192,6 @@ export function renderPublicGallery(container, profileData, images = []) {
 
     } else { // Estilo rectangular
         const mainImage = images[0];
-        // <<-- CORRECCIÓN: Genera las miniaturas solo si hay más de una imagen
         const thumbnailsHTML = images.length > 1 ? images.map((img, index) => `
             <button class="gallery-thumbnail ${index === 0 ? 'active' : ''}" data-index="${index}">
                 <img src="${img.thumbnail_url}" alt="Miniatura ${index + 1}">
@@ -263,6 +263,42 @@ function updateAddImageButtonState() {
         : 'Galería Llena (6/6)';
 }
 
+async function handleDeleteImage(imageId) {
+    const { supabaseClient, appState, showAlert, showConfirm, buildProfileLayout } = dependencies;
+    const imageToDelete = appState.galleryImages.find(img => img.id == imageId);
+    if (!imageToDelete) return;
+
+    showConfirm("¿Estás seguro de que quieres eliminar esta imagen?", async (confirmed) => {
+        if (!confirmed) return;
+
+        try {
+            // 1. Eliminar archivos del Storage
+            const pathsToRemove = [imageToDelete.image_path, imageToDelete.thumbnail_path].filter(Boolean);
+            if (pathsToRemove.length > 0) {
+                const { error: storageError } = await supabaseClient.storage.from('gallery-images').remove(pathsToRemove);
+                if (storageError) console.error("Error eliminando archivos de Storage:", storageError); // Log error but continue
+            }
+
+            // 2. Eliminar registro de la base de datos
+            const { error: dbError } = await supabaseClient.from('gallery_images').delete().eq('id', imageId);
+            if (dbError) throw dbError;
+
+            // 3. Actualizar estado local
+            appState.galleryImages = appState.galleryImages.filter(img => img.id != imageId);
+
+            // 4. Refrescar la UI
+            renderGalleryEditor(appState.galleryImages);
+            buildProfileLayout(appState.previewProfile || appState.myProfile, true);
+
+            showAlert('Imagen eliminada correctamente.');
+
+        } catch (error) {
+            console.error("Error al eliminar la imagen:", error);
+            showAlert(`No se pudo eliminar la imagen: ${error.message}`);
+        }
+    });
+}
+
 function setupEventListeners() {
     DOMElements.addGalleryImageBtn.addEventListener('click', () => {
         DOMElements.galleryImageUploadInput.click();
@@ -286,6 +322,16 @@ function setupEventListeners() {
             appState.previewProfile.gallery_style = button.dataset.value;
             markSettingsAsDirty();
             updateLivePreview();
+        });
+    }
+
+    if (DOMElements.galleryEditorList) {
+        DOMElements.galleryEditorList.addEventListener('click', (e) => {
+            const deleteButton = e.target.closest('.delete-thumb-btn');
+            if (deleteButton) {
+                const imageId = deleteButton.dataset.id;
+                handleDeleteImage(imageId);
+            }
         });
     }
 }
