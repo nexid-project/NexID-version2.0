@@ -531,8 +531,7 @@
     transition: opacity 0.3s ease;
 }
 
-.gallery-main-image:hover .gallery-caption,
-.gallery-main-image-square:hover .gallery-caption {
+.gallery-main-image:hover .gallery-caption {
     opacity: 1;
 }
 
@@ -543,68 +542,8 @@
     padding-bottom: 0.5rem;
 }
 
-/* Estilo Cuadrado (con miniaturas verticales) */
-.gallery-container-square {
-    width: 100%;
-    display: grid;
-    grid-template-columns: 3fr 1fr;
-    gap: 0.5rem;
-}
-
-/* === INICIO DE LA CORRECCIÓN === */
-/* Esta nueva regla fuerza a la celda de la cuadrícula a contener a sus hijos */
-.gallery-container-square > div:last-child {
-    overflow: hidden;
-    display: flex;
-}
-/* === FIN DE LA CORRECCIÓN === */
-
-
-.gallery-main-image-square {
-    position: relative;
-    width: 100%;
-    aspect-ratio: 1 / 1;
-    border-radius: 0.75rem;
-    overflow: hidden;
-    background-color: #374151;
-}
-
-.gallery-main-image-square img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: transform 0.3s ease;
-}
-
-.gallery-thumbnails-vertical {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    max-height: 100%;
-    overflow-y: auto;
-    min-height: 0; 
-}
-
-/* === ESTILOS DE SCROLLBAR PARA GALERÍA === */
-.gallery-thumbnails-vertical::-webkit-scrollbar {
-    width: 6px;
-}
-.gallery-thumbnails-vertical::-webkit-scrollbar-track {
-    background: transparent;
-    border-radius: 3px;
-}
-.gallery-thumbnails-vertical::-webkit-scrollbar-thumb {
-    background-color: #4b5563; /* Usamos un gris del tema */
-    border-radius: 3px;
-}
-.gallery-thumbnails-vertical {
-    scrollbar-width: thin;
-    scrollbar-color: #4b5563 transparent;
-}
-
-/* Estilos comunes para las miniaturas */
 .gallery-thumbnail {
-    flex-shrink: 0; 
+    flex-shrink: 0;
     width: 64px;
     height: 64px;
     border-radius: 0.5rem;
@@ -615,18 +554,12 @@
     opacity: 0.7;
 }
 
-.gallery-thumbnails-vertical .gallery-thumbnail {
-    width: 100%;
-    height: auto;
-    aspect-ratio: 1 / 1;
-}
-
 .gallery-thumbnail:hover {
     opacity: 1;
 }
 
 .gallery-thumbnail.active {
-    border-color: var(--accent); 
+    border-color: var(--accent);
     opacity: 1;
 }
 
@@ -636,20 +569,37 @@
     object-fit: cover;
 }
 
-/* Adaptación a móviles para el estilo cuadrado */
-@media (max-width: 640px) {
-    .gallery-container-square {
-        grid-template-columns: 1fr;
-    }
-    .gallery-thumbnails-vertical {
-        flex-direction: row;
-        overflow-x: auto;
-        padding-bottom: 0.5rem;
-    }
-    .gallery-thumbnails-vertical .gallery-thumbnail {
-        width: 64px;
-        height: 64px;
-        flex-shrink: 0;
+
+/* === INICIO: NUEVOS ESTILOS PARA GALERÍA CUADRADA (GRID) === */
+.gallery-grid-container {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+}
+
+.gallery-grid-item {
+    position: relative;
+    aspect-ratio: 1 / 1;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.2s ease-in-out;
+}
+
+.gallery-grid-item:hover {
+    transform: scale(1.05);
+}
+
+.gallery-grid-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+@media (min-width: 640px) {
+    .gallery-grid-container {
+        grid-template-columns: repeat(3, 1fr);
     }
 }
+/* === FIN: NUEVOS ESTILOS PARA GALERÍA CUADRADA (GRID) === */
 
