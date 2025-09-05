@@ -52,7 +52,7 @@ let appState = {
 	myProfile: null, // El estado real guardado en la DB
     previewProfile: null, // El estado temporal para la previsualización en vivo
 	links: [],
-    galleryImages: [],
+    galleryImages: [], // <<-- AÑADIDO para la galería
 	tempBackgroundImagePath: null,
 	tempLayoutOrder: null,
 	subscriptions: { auth: null, links: null },
@@ -113,6 +113,7 @@ const DOMElements = {
     registerPasswordInput: document.getElementById('register-password-input'),
     registerConfirmPasswordInput: document.getElementById('register-confirm-password-input'),
     featuredVideoUrlInput: document.getElementById('featured-video-url-input'),
+    // <<-- AÑADIDO para la galería
     galleryEditorList: document.getElementById('gallery-editor-list'),
     addGalleryImageBtn: document.getElementById('add-gallery-image-btn'),
     galleryImageUploadInput: document.getElementById('gallery-image-upload-input'),
@@ -197,6 +198,7 @@ function initializeApp() {
 	supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 	populateIconGrid();
 	populateFontSelector();
+    // <<-- AÑADIDO para la galería
     initializeGallery({ supabaseClient, appState, showAlert, DOMElements, buildProfileLayout, updateLivePreview, markSettingsAsDirty });
 
 	if (appState.subscriptions.auth) {
@@ -273,6 +275,7 @@ async function handleAuthStateChange(session) {
             return;
         }
 
+        // <<-- AÑADIDO para la galería
         const { data: galleryImages } = await supabaseClient.from('gallery_images').select('*').eq('user_id', appState.currentUser.id).order('order_index', { ascending: true });
         appState.galleryImages = galleryImages || [];
 
@@ -347,6 +350,7 @@ async function loadPublicProfile(username) {
 		}
 
 		const { data: links } = await supabaseClient.from('links').select('*').eq('user_id', profile.id).order('order_index', { ascending: true });
+        // <<-- AÑADIDO para la galería
         const { data: galleryImages } = await supabaseClient.from('gallery_images').select('*').eq('user_id', profile.id).order('order_index', { ascending: true });
 
 		appState.links = links || [];
@@ -446,9 +450,10 @@ const profileSectionTemplates = {
         }
         return '';
     },
+    // <<-- MODIFICADO para la galería: Se quita padding p-2
     'gallery': () => {
         if (appState.galleryImages && appState.galleryImages.length > 0) {
-            return `<div data-section="gallery" id="gallery-container" class="draggable-item p-2"></div>`;
+            return `<div data-section="gallery" id="gallery-container" class="draggable-item"></div>`;
         }
         return '';
     },
@@ -498,47 +503,46 @@ function buildProfileLayout(profileData, isOwner) {
     const layoutContainer = document.getElementById('profile-layout-container');
     layoutContainer.innerHTML = '';
 
-    const currentLinkIds = appState.links.map(l => `link_${l.id}`);
-
-    // <<-- ACTUALIZADO: Nuevo orden por defecto.
+    // <<-- MODIFICADO para usar el nuevo orden
     const defaultLayout = [
-        "profile-image",
-        "display-name",
-        "username",
-        "description",
-        "social-buttons",
-        "featured-video",
-        "gallery",
-        ...currentLinkIds,
-        "socials"
+        "profile-image", "display-name", "username", "description",
+        "social-buttons", "featured-video", "gallery", "links", "socials"
     ];
-
-    let layoutOrder = profileData.layout_order && profileData.layout_order.length > 0 ? profileData.layout_order : defaultLayout;
-
-    // <<-- AÑADIDO: Lógica de migración para perfiles antiguos
-    // Si el layout guardado no incluye la galería, la insertamos en la posición por defecto.
+    
+    let layoutOrder = profileData.layout_order && profileData.layout_order.length > 0 ? [...profileData.layout_order] : defaultLayout;
+    
+    // <<-- MODIFICADO Lógica de migración para perfiles antiguos
     if (!layoutOrder.includes('gallery')) {
         const videoIndex = layoutOrder.indexOf('featured-video');
         if (videoIndex !== -1) {
-            // Insertar después del video
             layoutOrder.splice(videoIndex + 1, 0, 'gallery');
         } else {
-            // Si no hay video, insertar después de los botones sociales
             const socialButtonsIndex = layoutOrder.indexOf('social-buttons');
-            layoutOrder.splice(socialButtonsIndex + 1, 0, 'gallery');
+            if (socialButtonsIndex !== -1) {
+                layoutOrder.splice(socialButtonsIndex + 1, 0, 'gallery');
+            } else {
+                layoutOrder.splice(5, 0, 'gallery'); // Fallback position
+            }
         }
     }
 
-    currentLinkIds.forEach(linkId => {
-        if (!layoutOrder.includes(linkId)) {
-             const socialButtonsIndex = layoutOrder.indexOf('social-buttons');
-             if (socialButtonsIndex !== -1) {
-                 layoutOrder.splice(socialButtonsIndex + 1, 0, linkId);
-             } else {
-                 layoutOrder.push(linkId);
-             }
-        }
-    });
+    const currentLinkIds = appState.links.map(l => `link_${l.id}`);
+    const linksIndex = layoutOrder.indexOf('links');
+    if (linksIndex !== -1) {
+        layoutOrder.splice(linksIndex, 1, ...currentLinkIds);
+    } else {
+         currentLinkIds.forEach(linkId => {
+            if (!layoutOrder.includes(linkId)) {
+                const socialsIndex = layoutOrder.indexOf('socials');
+                if (socialsIndex !== -1) {
+                    layoutOrder.splice(socialsIndex, 0, linkId);
+                } else {
+                    layoutOrder.push(linkId);
+                }
+            }
+        });
+    }
+
 
     const fragment = document.createDocumentFragment();
 
@@ -624,6 +628,7 @@ function updateProfileContent(profileData, isOwner) {
         }
     }
 
+    // <<-- AÑADIDO para la galería
     const galleryContainer = document.querySelector('[data-section="gallery"]');
     if (galleryContainer) {
         renderPublicGallery(galleryContainer, profileData, appState.galleryImages);
@@ -677,6 +682,7 @@ function updateContainerVisibility(profileData) {
     const videoContainer = document.querySelector('[data-section="featured-video"]');
     if(videoContainer) videoContainer.classList.toggle('is-empty', !parseVideoUrl(profileData.featured_video_url));
 
+    // <<-- AÑADIDO para la galería
     const galleryContainer = document.querySelector('[data-section="gallery"]');
     if(galleryContainer) galleryContainer.classList.toggle('is-empty', isEmpty(appState.galleryImages));
 }
@@ -1247,12 +1253,8 @@ function openSettingsPanel() {
 
     renderSocialTabs(document.getElementById('social-buttons-inputs-container'), 'buttons', profile.social_buttons);
     renderSocialTabs(document.getElementById('socials-inputs-container'), 'icons', profile.socials);
+    // <<-- AÑADIDO para la galería
     renderGalleryEditor(appState.galleryImages);
-
-    const currentGalleryStyle = profile.gallery_style || 'rectangular';
-    document.querySelectorAll('#gallery-style-selector .gallery-style-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.value === currentGalleryStyle);
-    });
 
 	const contact = profile.contact_info || {};
 	document.querySelectorAll('#contact-inputs input').forEach(input => {
@@ -1406,7 +1408,6 @@ function updateLivePreview() {
 		socials_order: newSocialsOrder,
 		contact_info: {},
         featured_video_url: DOMElements.featuredVideoUrlInput.value.trim(),
-        gallery_style: document.querySelector('#gallery-style-selector .active')?.dataset.value || 'rectangular',
 	};
 
 	 document.querySelectorAll('#contact-inputs input').forEach(input => {
@@ -2452,5 +2453,4 @@ window.onload = () => {
 	setupPasswordToggle('update-confirm-password-input', 'update-confirm-password-toggle');
 	setupPasswordToggle('delete-confirm-password-input', 'delete-confirm-password-toggle');
 };
-
 
