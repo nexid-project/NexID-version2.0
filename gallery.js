@@ -11,6 +11,7 @@ let dependencies = {
     DOMElements: null,
     updateLivePreview: null,
     markSettingsAsDirty: null,
+    openImageZoomModal: null, // <<-- AÑADIDO para abrir el modal
 };
 let galleryCropper = null;
 let currentFile = null;
@@ -177,35 +178,28 @@ export function renderPublicGallery(container, profileData, images = []) {
     if (!images || images.length === 0) return;
 
     const style = profileData.gallery_style || 'rectangular';
-    const mainImage = images[0];
-
-    const thumbnailsHTML = images.map((img, index) => `
-        <button class="gallery-thumbnail ${index === 0 ? 'active' : ''}" data-index="${index}">
-            <img src="${img.thumbnail_url}" alt="Miniatura ${index + 1}">
-        </button>
-    `).join('');
-
     let galleryHTML = '';
 
     if (style === 'cuadrada') {
-        // <<-- CORRECCIÓN: Se añade un div intermedio para que el scroll funcione
-        galleryHTML = `
-            <div class="gallery-container-square">
-                <div class="gallery-main-image-square">
-                    <img id="gallery-main-img" src="${mainImage.image_url}" style="object-position: ${mainImage.focus_point || 'center'};" alt="Imagen principal de la galería">
-                    <p id="gallery-main-caption" class="gallery-caption">${mainImage.caption || ''}</p>
-                </div>
-                <div>
-                    <div class="gallery-thumbnails-vertical">
-                        ${thumbnailsHTML}
-                    </div>
-                </div>
+        const gridItemsHTML = images.slice(0, 6).map((img, index) => `
+            <div class="gallery-grid-item" data-index="${index}" title="${img.caption || ''}">
+                <img src="${img.thumbnail_url || img.image_url}" alt="${img.caption || `Imagen ${index + 1}`}">
             </div>
-        `;
-    } else {
+        `).join('');
+
+        galleryHTML = `<div class="gallery-grid-container">${gridItemsHTML}</div>`;
+
+    } else { // Estilo rectangular
+        const mainImage = images[0];
+        const thumbnailsHTML = images.map((img, index) => `
+            <button class="gallery-thumbnail ${index === 0 ? 'active' : ''}" data-index="${index}">
+                <img src="${img.thumbnail_url}" alt="Miniatura ${index + 1}">
+            </button>
+        `).join('');
+
         galleryHTML = `
             <div class="gallery-container-rectangular">
-                <div class="gallery-main-image">
+                <div class="gallery-main-image" data-index="0">
                     <img id="gallery-main-img" src="${mainImage.image_url}" style="object-position: ${mainImage.focus_point || 'center'};" alt="Imagen principal de la galería">
                     <p id="gallery-main-caption" class="gallery-caption">${mainImage.caption || ''}</p>
                 </div>
@@ -218,27 +212,48 @@ export function renderPublicGallery(container, profileData, images = []) {
 
     container.innerHTML = galleryHTML;
 
-    const mainImg = container.querySelector('#gallery-main-img');
-    const mainCaption = container.querySelector('#gallery-main-caption');
-    const thumbnailsContainer = container.querySelector('.gallery-thumbnails-strip, .gallery-thumbnails-vertical');
-
-    if (thumbnailsContainer) {
-        thumbnailsContainer.addEventListener('click', (e) => {
-            const thumbnail = e.target.closest('.gallery-thumbnail');
-            if (!thumbnail) return;
-
-            thumbnailsContainer.querySelector('.active')?.classList.remove('active');
-            thumbnail.classList.add('active');
-
-            const index = parseInt(thumbnail.dataset.index, 10);
-            const selectedImage = images[index];
-
-            mainImg.src = selectedImage.image_url;
-            mainImg.style.objectPosition = selectedImage.focus_point || 'center';
-            mainCaption.textContent = selectedImage.caption || '';
+    // Lógica de Event Listeners
+    if (style === 'cuadrada') {
+        container.addEventListener('click', (e) => {
+            const gridItem = e.target.closest('.gallery-grid-item');
+            if (gridItem) {
+                const index = parseInt(gridItem.dataset.index, 10);
+                dependencies.openImageZoomModal(images, index);
+            }
         });
+    } else {
+        const mainImgContainer = container.querySelector('.gallery-main-image');
+        const mainImg = container.querySelector('#gallery-main-img');
+        const mainCaption = container.querySelector('#gallery-main-caption');
+        const thumbnailsContainer = container.querySelector('.gallery-thumbnails-strip');
+
+        if (mainImgContainer) {
+            mainImgContainer.addEventListener('click', () => {
+                 const index = parseInt(mainImgContainer.dataset.index, 10);
+                 dependencies.openImageZoomModal(images, index);
+            });
+        }
+        
+        if (thumbnailsContainer) {
+            thumbnailsContainer.addEventListener('click', (e) => {
+                const thumbnail = e.target.closest('.gallery-thumbnail');
+                if (!thumbnail) return;
+
+                thumbnailsContainer.querySelector('.active')?.classList.remove('active');
+                thumbnail.classList.add('active');
+
+                const index = parseInt(thumbnail.dataset.index, 10);
+                const selectedImage = images[index];
+
+                mainImgContainer.dataset.index = index;
+                mainImg.src = selectedImage.image_url;
+                mainImg.style.objectPosition = selectedImage.focus_point || 'center';
+                mainCaption.textContent = selectedImage.caption || '';
+            });
+        }
     }
 }
+
 
 function updateAddImageButtonState() {
     const { appState } = dependencies;
@@ -258,7 +273,6 @@ function setupEventListeners() {
     DOMElements.saveBtn.addEventListener('click', handleSaveImage);
     DOMElements.cancelBtn.addEventListener('click', closeEditModal);
 
-    // <<-- AÑADIDO: Event Listener para los botones de estilo de galería
     if (DOMElements.galleryStyleSelector) {
         DOMElements.galleryStyleSelector.addEventListener('click', (e) => {
             const button = e.target.closest('.gallery-style-btn');
