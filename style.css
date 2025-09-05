@@ -538,8 +538,8 @@
 .gallery-thumbnails-strip {
     display: flex;
     gap: 0.5rem;
-    /* overflow-x: auto; */ /* Se elimina para que el flexbox haga el cálculo */
     padding-bottom: 0.5rem;
+    justify-content: center; /* Centra las miniaturas si son menos de 6 */
 }
 
 .gallery-thumbnail {
