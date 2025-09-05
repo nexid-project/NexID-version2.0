@@ -9,7 +9,10 @@ let dependencies = {
     showAlert: null,
     buildProfileLayout: null,
     DOMElements: null,
+    updateLivePreview: null,
+    markSettingsAsDirty: null,
 };
+
 let galleryCropper = null;
 let currentFile = null;
 let editingImageId = null;
@@ -252,5 +255,22 @@ function setupEventListeners() {
     DOMElements.galleryImageUploadInput.addEventListener('change', handleFileSelect);
     DOMElements.saveBtn.addEventListener('click', handleSaveImage);
     DOMElements.cancelBtn.addEventListener('click', closeEditModal);
+
+    DOMElements.galleryStyleSelector.addEventListener('click', (e) => {
+        const button = e.target.closest('.gallery-style-btn');
+        if (!button) return;
+
+        const { appState, updateLivePreview, markSettingsAsDirty } = dependencies;
+        if (!appState.previewProfile) return;
+
+        DOMElements.galleryStyleSelector.querySelectorAll('.gallery-style-btn').forEach(btn => btn.classList.remove('active'));
+        button.classList.add('active');
+
+        const newStyle = button.dataset.value;
+        appState.previewProfile.gallery_style = newStyle;
+
+        markSettingsAsDirty();
+        updateLivePreview();
+    });
 }
 
