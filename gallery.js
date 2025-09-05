@@ -12,7 +12,6 @@ let dependencies = {
     updateLivePreview: null,
     markSettingsAsDirty: null,
 };
-
 let galleryCropper = null;
 let currentFile = null;
 let editingImageId = null;
@@ -23,7 +22,7 @@ const DOMElements = {
     galleryEditorList: document.getElementById('gallery-editor-list'),
     addGalleryImageBtn: document.getElementById('add-gallery-image-btn'),
     galleryImageUploadInput: document.getElementById('gallery-image-upload-input'),
-    
+
     // Modal de Edición
     editModal: document.getElementById('gallery-edit-modal'),
     cropperImage: document.getElementById('gallery-cropper-image'),
@@ -48,15 +47,15 @@ function handleFileSelect(e) {
     const file = e.target.files[0];
     if (!file) return;
 
-    editingImageId = null; 
+    editingImageId = null;
 
     const reader = new FileReader();
     reader.onload = (event) => {
         DOMElements.cropperImage.src = event.target.result;
         openEditModal(file);
-        
+
         if (galleryCropper) galleryCropper.destroy();
-        
+
         galleryCropper = new Cropper(DOMElements.cropperImage, {
             aspectRatio: 1,
             viewMode: 1,
@@ -103,7 +102,7 @@ async function handleSaveImage() {
         const thumbnailCanvas = galleryCropper.getCroppedCanvas({ width: 512, height: 512 });
         const thumbnailBlob = await new Promise(resolve => thumbnailCanvas.toBlob(resolve, 'image/webp', 0.9));
         const compressedThumbnail = await imageCompression(thumbnailBlob, { maxSizeMB: 0.1, useWebWorker: true });
-        
+
         const compressedOriginal = await imageCompression(currentFile, { maxSizeMB: 1, maxWidthOrHeight: 1920, useWebWorker: true });
 
         const originalPath = `${userId}/gallery/${Date.now()}_original.webp`;
@@ -135,10 +134,10 @@ async function handleSaveImage() {
         if (insertError) throw insertError;
 
         appState.galleryImages.push(savedImage);
-        
+
         renderGalleryEditor(appState.galleryImages);
         buildProfileLayout(appState.previewProfile || appState.myProfile, true);
-        
+
         showAlert('Imagen añadida a la galería.');
         closeEditModal();
 
@@ -154,7 +153,7 @@ async function handleSaveImage() {
 export function renderGalleryEditor(images = []) {
     const listEl = DOMElements.galleryEditorList;
     if (!listEl) return;
-    listEl.innerHTML = ''; 
+    listEl.innerHTML = '';
 
     (images || []).forEach(image => {
         const item = document.createElement('div');
@@ -168,7 +167,7 @@ export function renderGalleryEditor(images = []) {
         `;
         listEl.appendChild(item);
     });
-    
+
     updateAddImageButtonState();
     lucide.createIcons();
 }
@@ -189,18 +188,21 @@ export function renderPublicGallery(container, profileData, images = []) {
     let galleryHTML = '';
 
     if (style === 'cuadrada') {
+        // <<-- CORRECCIÓN: Se añade un div intermedio para que el scroll funcione
         galleryHTML = `
             <div class="gallery-container-square">
                 <div class="gallery-main-image-square">
                     <img id="gallery-main-img" src="${mainImage.image_url}" style="object-position: ${mainImage.focus_point || 'center'};" alt="Imagen principal de la galería">
                     <p id="gallery-main-caption" class="gallery-caption">${mainImage.caption || ''}</p>
                 </div>
-                <div class="gallery-thumbnails-vertical">
-                    ${thumbnailsHTML}
+                <div>
+                    <div class="gallery-thumbnails-vertical">
+                        ${thumbnailsHTML}
+                    </div>
                 </div>
             </div>
         `;
-    } else { 
+    } else {
         galleryHTML = `
             <div class="gallery-container-rectangular">
                 <div class="gallery-main-image">
@@ -242,8 +244,8 @@ function updateAddImageButtonState() {
     const { appState } = dependencies;
     const canUpload = (appState.galleryImages || []).length < 6;
     DOMElements.addGalleryImageBtn.disabled = !canUpload;
-    DOMElements.addGalleryImageBtn.textContent = canUpload 
-        ? `Añadir Imágenes (${(appState.galleryImages || []).length}/6)` 
+    DOMElements.addGalleryImageBtn.textContent = canUpload
+        ? `Añadir Imágenes (${(appState.galleryImages || []).length}/6)`
         : 'Galería Llena (6/6)';
 }
 
@@ -256,21 +258,22 @@ function setupEventListeners() {
     DOMElements.saveBtn.addEventListener('click', handleSaveImage);
     DOMElements.cancelBtn.addEventListener('click', closeEditModal);
 
-    DOMElements.galleryStyleSelector.addEventListener('click', (e) => {
-        const button = e.target.closest('.gallery-style-btn');
-        if (!button) return;
+    // <<-- AÑADIDO: Event Listener para los botones de estilo de galería
+    if (DOMElements.galleryStyleSelector) {
+        DOMElements.galleryStyleSelector.addEventListener('click', (e) => {
+            const button = e.target.closest('.gallery-style-btn');
+            if (!button) return;
 
-        const { appState, updateLivePreview, markSettingsAsDirty } = dependencies;
-        if (!appState.previewProfile) return;
+            const { updateLivePreview, markSettingsAsDirty, appState } = dependencies;
+            if (!appState.previewProfile) return;
 
-        DOMElements.galleryStyleSelector.querySelectorAll('.gallery-style-btn').forEach(btn => btn.classList.remove('active'));
-        button.classList.add('active');
+            DOMElements.galleryStyleSelector.querySelectorAll('.gallery-style-btn').forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
 
-        const newStyle = button.dataset.value;
-        appState.previewProfile.gallery_style = newStyle;
-
-        markSettingsAsDirty();
-        updateLivePreview();
-    });
+            appState.previewProfile.gallery_style = button.dataset.value;
+            markSettingsAsDirty();
+            updateLivePreview();
+        });
+    }
 }
 
