@@ -52,7 +52,7 @@ let appState = {
 	myProfile: null, // El estado real guardado en la DB
     previewProfile: null, // El estado temporal para la previsualización en vivo
 	links: [],
-    galleryImages: [], // <<-- AÑADIDO para la galería
+    galleryImages: [],
 	tempBackgroundImagePath: null,
 	tempLayoutOrder: null,
 	subscriptions: { auth: null, links: null },
@@ -113,7 +113,6 @@ const DOMElements = {
     registerPasswordInput: document.getElementById('register-password-input'),
     registerConfirmPasswordInput: document.getElementById('register-confirm-password-input'),
     featuredVideoUrlInput: document.getElementById('featured-video-url-input'),
-    // <<-- AÑADIDO para la galería
     galleryEditorList: document.getElementById('gallery-editor-list'),
     addGalleryImageBtn: document.getElementById('add-gallery-image-btn'),
     galleryImageUploadInput: document.getElementById('gallery-image-upload-input'),
@@ -198,8 +197,18 @@ function initializeApp() {
 	supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 	populateIconGrid();
 	populateFontSelector();
-    // <<-- AÑADIDO para la galería
-    initializeGallery({ supabaseClient, appState, showAlert, DOMElements, buildProfileLayout, updateLivePreview, markSettingsAsDirty });
+    // <<-- CORRECCIÓN: Se pasan todas las dependencias necesarias a gallery.js
+    initializeGallery({
+        supabaseClient,
+        appState,
+        showAlert,
+        showConfirm,
+        DOMElements,
+        buildProfileLayout,
+        updateLivePreview,
+        markSettingsAsDirty,
+        openImageZoomModal
+    });
 
 	if (appState.subscriptions.auth) {
 		appState.subscriptions.auth.unsubscribe();
@@ -275,7 +284,6 @@ async function handleAuthStateChange(session) {
             return;
         }
 
-        // <<-- AÑADIDO para la galería
         const { data: galleryImages } = await supabaseClient.from('gallery_images').select('*').eq('user_id', appState.currentUser.id).order('order_index', { ascending: true });
         appState.galleryImages = galleryImages || [];
 
@@ -350,7 +358,6 @@ async function loadPublicProfile(username) {
 		}
 
 		const { data: links } = await supabaseClient.from('links').select('*').eq('user_id', profile.id).order('order_index', { ascending: true });
-        // <<-- AÑADIDO para la galería
         const { data: galleryImages } = await supabaseClient.from('gallery_images').select('*').eq('user_id', profile.id).order('order_index', { ascending: true });
 
 		appState.links = links || [];
@@ -450,7 +457,6 @@ const profileSectionTemplates = {
         }
         return '';
     },
-    // <<-- MODIFICADO para la galería: Se quita padding p-2
     'gallery': () => {
         if (appState.galleryImages && appState.galleryImages.length > 0) {
             return `<div data-section="gallery" id="gallery-container" class="draggable-item"></div>`;
@@ -503,16 +509,17 @@ function buildProfileLayout(profileData, isOwner) {
     const layoutContainer = document.getElementById('profile-layout-container');
     layoutContainer.innerHTML = '';
 
-    // <<-- MODIFICADO para usar el nuevo orden
+    const currentLinkIds = appState.links.map(l => `link_${l.id}`);
     const defaultLayout = [
         "profile-image", "display-name", "username", "description",
-        "social-buttons", "featured-video", "gallery", "links", "socials"
+        "social-buttons", "featured-video", "gallery",
+        ...currentLinkIds, "socials"
     ];
-    
+
     let layoutOrder = profileData.layout_order && profileData.layout_order.length > 0 ? [...profileData.layout_order] : defaultLayout;
-    
-    // <<-- MODIFICADO Lógica de migración para perfiles antiguos
-    if (!layoutOrder.includes('gallery')) {
+
+    // Lógica de Migración Automática para perfiles antiguos
+    if (!layoutOrder.includes('gallery') && appState.galleryImages.length > 0) {
         const videoIndex = layoutOrder.indexOf('featured-video');
         if (videoIndex !== -1) {
             layoutOrder.splice(videoIndex + 1, 0, 'gallery');
@@ -521,28 +528,21 @@ function buildProfileLayout(profileData, isOwner) {
             if (socialButtonsIndex !== -1) {
                 layoutOrder.splice(socialButtonsIndex + 1, 0, 'gallery');
             } else {
-                layoutOrder.splice(5, 0, 'gallery'); // Fallback position
+                layoutOrder.splice(4, 0, 'gallery'); // Fallback position
             }
         }
     }
 
-    const currentLinkIds = appState.links.map(l => `link_${l.id}`);
-    const linksIndex = layoutOrder.indexOf('links');
-    if (linksIndex !== -1) {
-        layoutOrder.splice(linksIndex, 1, ...currentLinkIds);
-    } else {
-         currentLinkIds.forEach(linkId => {
-            if (!layoutOrder.includes(linkId)) {
-                const socialsIndex = layoutOrder.indexOf('socials');
-                if (socialsIndex !== -1) {
-                    layoutOrder.splice(socialsIndex, 0, linkId);
-                } else {
-                    layoutOrder.push(linkId);
-                }
-            }
-        });
-    }
-
+    currentLinkIds.forEach(linkId => {
+        if (!layoutOrder.includes(linkId)) {
+             const socialButtonsIndex = layoutOrder.indexOf('social-buttons');
+             if (socialButtonsIndex !== -1) {
+                 layoutOrder.splice(socialButtonsIndex + 1, 0, linkId);
+             } else {
+                 layoutOrder.push(linkId);
+             }
+        }
+    });
 
     const fragment = document.createDocumentFragment();
 
@@ -628,7 +628,6 @@ function updateProfileContent(profileData, isOwner) {
         }
     }
 
-    // <<-- AÑADIDO para la galería
     const galleryContainer = document.querySelector('[data-section="gallery"]');
     if (galleryContainer) {
         renderPublicGallery(galleryContainer, profileData, appState.galleryImages);
@@ -682,7 +681,6 @@ function updateContainerVisibility(profileData) {
     const videoContainer = document.querySelector('[data-section="featured-video"]');
     if(videoContainer) videoContainer.classList.toggle('is-empty', !parseVideoUrl(profileData.featured_video_url));
 
-    // <<-- AÑADIDO para la galería
     const galleryContainer = document.querySelector('[data-section="gallery"]');
     if(galleryContainer) galleryContainer.classList.toggle('is-empty', isEmpty(appState.galleryImages));
 }
@@ -1253,7 +1251,6 @@ function openSettingsPanel() {
 
     renderSocialTabs(document.getElementById('social-buttons-inputs-container'), 'buttons', profile.social_buttons);
     renderSocialTabs(document.getElementById('socials-inputs-container'), 'icons', profile.socials);
-    // <<-- AÑADIDO para la galería
     renderGalleryEditor(appState.galleryImages);
 
 	const contact = profile.contact_info || {};
