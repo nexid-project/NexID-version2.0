@@ -1,4 +1,3 @@
-// --- IMPORTACIONES DE MÓDULOS ---
 import { initializeGallery, renderGalleryEditor, renderPublicGallery } from './gallery.js';
 
 // --- 1. CONFIGURACIÓN E INICIALIZACIÓN ---
@@ -6,9 +5,6 @@ const { createClient } = supabase;
 const SUPABASE_URL = 'https://ukowtlaytmqgdhjygulq.supabase.co';	
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVrb3d0bGF5dG1xZ2RoanlndWxxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM2NTEyMTgsImV4cCI6MjA2OTIyNzIxOH0.Kmg90Xdcu0RzAP55YwwuYfuRYj2U5LU90KAiKbEtLQg';
 const GEMINI_API_KEY = ""; // Replace with your Gemini API key
-
-// Exportaciones para que otros módulos puedan usarlas
-export { supabaseClient, appState, showAlert, buildProfileLayout };
 
 const backgroundLibraryUrls = [
 	'https://ukowtlaytmqgdhjygulq.supabase.co/storage/v1/object/public/library-backgrounds//wallpaperflare.com_wallpaper.jpg',
@@ -23,6 +19,7 @@ const backgroundLibraryUrls = [
 
 let supabaseClient;
 
+// --- Lógica de carga dinámica de fuentes ---
 const fontMap = {
 	'font-inter': { name: 'Inter (Sans-serif)', query: 'Inter:wght@400;500;700' },
 	'font-lora': { name: 'Lora (Serif)', query: 'Lora:wght@400;500;700' },
@@ -48,25 +45,28 @@ function loadFontIfNeeded(fontClass) {
 	loadedFonts.add(fontClass);
 }
 
+// --- 2. ESTADO GLOBAL DE LA APLICACIÓN ---
 let appState = {
 	currentUser: null,
-	myProfile: null,
-    previewProfile: null,
+	myProfile: null, // El estado real guardado en la DB
+    previewProfile: null, // El estado temporal para la previsualización en vivo
 	links: [],
-    galleryImages: [], 
+    galleryImages: [],
 	tempBackgroundImagePath: null,
 	tempLayoutOrder: null,
 	subscriptions: { auth: null, links: null },
-	sortable: { layout: null },
+	sortable: { layout: null, gallery: null },
 	cropper: null,
+    thumbnailCropper: null,
+    editingGalleryImageId: null,
 	isUsernameAvailable: false,
 	isSettingsDirty: false,
 	isDesignModeActive: false,
 	isRecoveringPassword: false,
-    isProfileBuilt: false, 
-    currentlyViewingProfileId: null, 
+	currentGalleryIndex: 0,
 };
 
+// --- 3. REFERENCIAS A ELEMENTOS DEL DOM ---
 const DOMElements = {
 	loadingPage: document.getElementById('loading-page'),
 	authPage: document.getElementById('auth-page'),
@@ -82,6 +82,9 @@ const DOMElements = {
 	imageUploadInput: document.getElementById('image-upload-input'),
 	cropperModal: document.getElementById('cropper-modal'),
 	cropperImage: document.getElementById('cropper-image'),
+    thumbnailCropperModal: document.getElementById('thumbnail-cropper-modal'),
+    thumbnailCropperImage: document.getElementById('thumbnail-cropper-image'),
+    galleryEditModal: document.getElementById('gallery-edit-modal'),
 	geminiModal: document.getElementById('gemini-modal'),
 	uploadBackgroundBtn: document.getElementById('upload-background-btn'),
 	backgroundUploadInput: document.getElementById('background-upload-input'),
@@ -113,8 +116,12 @@ const DOMElements = {
     registerPasswordInput: document.getElementById('register-password-input'),
     registerConfirmPasswordInput: document.getElementById('register-confirm-password-input'),
     featuredVideoUrlInput: document.getElementById('featured-video-url-input'),
+    galleryEditorList: document.getElementById('gallery-editor-list'),
+    addGalleryImageBtn: document.getElementById('add-gallery-image-btn'),
+    galleryImageUploadInput: document.getElementById('gallery-image-upload-input'),
 };
 
+// --- 4. FUNCIONES DE UTILIDAD (MODALES, ETC.) ---
 const customAlert = document.getElementById('custom-alert');
 const customAlertMessage = document.getElementById('custom-alert-message');
 const customAlertClose = document.getElementById('custom-alert-close');
@@ -181,6 +188,8 @@ function extractUsername(input, socialKey) {
     return username.split('?')[0].replace(/[/]/g, '').replace('@', '');
 }
 
+// --- 5. LÓGICA PRINCIPAL DE LA APLICACIÓN ---
+
 function initializeApp() {
 	if (!SUPABASE_URL || !SUPABASE_ANON_KEY || SUPABASE_URL.includes('TU_SUPABASE_URL')) {
 		showAlert('CONFIGURACIÓN NECESARIA: Por favor, añade tus claves de API de Supabase en el código y sigue las instrucciones de la base de datos.');
@@ -191,13 +200,7 @@ function initializeApp() {
 	supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 	populateIconGrid();
 	populateFontSelector();
-	initializeGallery({
-        supabaseClient,
-        appState,
-        showAlert,
-        buildProfileLayout,
-        DOMElements,
-    }); 
+	initializeGallery({ supabaseClient, appState, showAlert, DOMElements });
 	
 	if (appState.subscriptions.auth) {
 		appState.subscriptions.auth.unsubscribe();
@@ -209,14 +212,17 @@ function initializeApp() {
 	
 	appState.subscriptions.auth = supabaseClient.auth.onAuthStateChange((event, session) => {
         if (appState.previewProfile) {
+            console.log("Auth state changed but settings panel is open. Ignoring re-render.");
             return;
         }
 		if (event === 'PASSWORD_RECOVERY') {
 			appState.isRecoveringPassword = true;
 			showPage('updatePassword');
-		} else if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+		} else if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
 			handleAuthStateChange(session);
-		}
+		} else {
+            console.log(`onAuthStateChange event ignored: ${event}`);
+        }
 	});
 }
 
@@ -224,9 +230,8 @@ async function fetchUserProfileWithRetry(userId, retries = 3, delay = 500) {
 	for (let i = 0; i < retries; i++) {
 		const { data: profile, error } = await supabaseClient
 			.from('profiles')
-			.select('*, gallery_images(*)')
+			.select('*')
 			.eq('id', userId)
-            .order('order_index', { foreignTable: 'gallery_images', ascending: true })
 			.single();
 
 		if (profile) {
@@ -262,7 +267,6 @@ async function handleAuthStateChange(session) {
         }
 
         appState.myProfile = myProfile;
-        appState.galleryImages = myProfile.gallery_images || [];
 
         if (myProfile.is_deactivated) {
             const deletionDate = new Date(myProfile.deletion_scheduled_at);
@@ -272,6 +276,9 @@ async function handleAuthStateChange(session) {
             return;
         }
         
+        const { data: galleryImages } = await supabaseClient.from('gallery_images').select('*').eq('user_id', appState.currentUser.id).order('order_index', { ascending: true });
+        appState.galleryImages = galleryImages || [];
+
         const urlParams = new URLSearchParams(window.location.search);
         const publicUsername = urlParams.get('user');
         
@@ -280,6 +287,7 @@ async function handleAuthStateChange(session) {
             document.getElementById('back-to-my-profile-btn').href = `${window.location.pathname}?user=${myProfile.username.substring(1)}`;
             await loadPublicProfile(publicUsername);
         } else {
+            appState.currentGalleryIndex = 0; // CORRECTO: Resetear solo aquí
             document.getElementById('back-to-my-profile-btn').classList.add('hidden');
             const { data: links } = await supabaseClient.from('links').select('*').eq('user_id', appState.currentUser.id).order('order_index', { ascending: true });
             appState.links = links || [];
@@ -287,25 +295,14 @@ async function handleAuthStateChange(session) {
             if (myProfile && myProfile.username_set) {
                 if (window.location.protocol !== 'blob:') {
                     const profileUrl = `${window.location.pathname}?user=${myProfile.username.substring(1)}`;
-                    if (window.location.href !== new URL(profileUrl, window.location.href).href) {
-                        history.replaceState(null, '', profileUrl);
-                    }
+                    history.replaceState(null, '', profileUrl);
                 }
-                
-                if (!appState.isProfileBuilt || appState.currentlyViewingProfileId !== myProfile.id) {
-                    buildProfileLayout(myProfile, true); 
-                    appState.isProfileBuilt = true;
-                    appState.currentlyViewingProfileId = myProfile.id;
-                } else {
-                    updateProfileContent(myProfile, true);
-                }
-
+                renderProfile(myProfile, true);
                 renderLinksEditor(appState.links);
+                renderGalleryEditor();
                 listenToUserLinks(myProfile.id);
                 showPage('profile');
             } else {
-                appState.isProfileBuilt = false;
-                appState.currentlyViewingProfileId = null;
                 if (window.location.protocol !== 'blob:') {
                     history.replaceState(null, '', window.location.pathname);
                 }
@@ -313,8 +310,6 @@ async function handleAuthStateChange(session) {
             }
         }
     } else {
-        appState.isProfileBuilt = false;
-        appState.currentlyViewingProfileId = null;
         const urlParams = new URLSearchParams(window.location.search);
         const publicUsername = urlParams.get('user');
         
@@ -335,13 +330,7 @@ async function handleAuthStateChange(session) {
 
 async function loadPublicProfile(username) {
 	try {
-		const { data: profile, error: profileError } = await supabaseClient
-            .from('profiles')
-            .select('*, gallery_images(*)')
-            .eq('username', `@${username}`)
-            .order('order_index', { foreignTable: 'gallery_images', ascending: true })
-            .single();
-
+		const { data: profile, error: profileError } = await supabaseClient.from('profiles').select('*').eq('username', `@${username}`).single();
 		if (profileError || !profile || profile.is_deactivated) {
 			showPage('profile');
 			document.getElementById('profile-layout-container').innerHTML = '<h1 class="text-3xl font-bold text-center">Usuario no encontrado</h1>';
@@ -349,20 +338,14 @@ async function loadPublicProfile(username) {
 		}
 		
 		const { data: links } = await supabaseClient.from('links').select('*').eq('user_id', profile.id).order('order_index', { ascending: true });
+        const { data: galleryImages } = await supabaseClient.from('gallery_images').select('*').eq('user_id', profile.id).order('order_index', { ascending: true });
 
 		appState.links = links || [];
-        appState.galleryImages = profile.gallery_images || [];
+        appState.galleryImages = galleryImages || [];
+		appState.currentGalleryIndex = 0; // CORRECTO: Resetear solo aquí
 		
 		const isOwner = appState.currentUser && appState.currentUser.id === profile.id;
-        
-        if (!appState.isProfileBuilt || appState.currentlyViewingProfileId !== profile.id) {
-		    buildProfileLayout(profile, isOwner);
-            appState.isProfileBuilt = true;
-            appState.currentlyViewingProfileId = profile.id;
-        } else {
-            updateProfileContent(profile, isOwner);
-        }
-
+		renderProfile(profile, isOwner);
 		showPage('profile');
 
 	} catch (error) {
@@ -397,6 +380,9 @@ function listenToUserLinks(userId) {
 		.on('postgres_changes',	{ event: '*', schema: 'public', table: 'links' },	() => refreshLinks())
 		.subscribe();
 }
+
+
+// --- 6. FUNCIONES DE RENDERIZADO ---
 
 function showPage(pageName) {
 	Object.values(DOMElements).forEach(el => {
@@ -434,10 +420,22 @@ function parseVideoUrl(url) {
 }
 
 const profileSectionTemplates = {
-    'profile-image': () => `<div data-section="profile-image" class="draggable-item flex justify-center items-center p-2"><div class="relative"><img id="public-profile-img" alt="Foto de perfil" class="w-32 h-32 rounded-full border-4 shadow-lg object-cover"><div id="image-actions-container" class="absolute top-1/2 -translate-y-1/2 left-full ml-4 flex flex-col items-center gap-3"></div></div></div>`,
-    'display-name': () => `<div data-section="display-name" class="text-center draggable-item p-2"></div>`,
-    'username': () => `<div data-section="username" class="text-center draggable-item p-2"></div>`,
-    'description': () => `<div data-section="description" class="text-center draggable-item p-2"></div>`,
+	'profile-image': (profileData, isOwner) => `
+		<div data-section="profile-image" class="draggable-item flex justify-center items-center p-2">
+			<div class="relative">
+				<img id="public-profile-img" src="${profileData.profile_image_url || 'https://placehold.co/128x128/7f9cf5/1F2937?text=...'}" alt="Foto de perfil" class="w-32 h-32 rounded-full border-4 shadow-lg object-cover">
+				${isOwner ? `<button id="edit-profile-img-btn" class="absolute bottom-1 right-1 bg-gray-800 bg-opacity-70 p-2 rounded-full text-white hover:bg-opacity-100 transition-colors"><i data-lucide="camera" class="w-5 h-5"></i></button>` : ''}
+				<div id="image-actions-container" class="absolute top-1/2 -translate-y-1/2 left-full ml-4 flex flex-col items-center gap-3"></div>
+			</div>
+		</div>`,
+	'display-name': (profileData) => {
+		if (profileData.display_name && profileData.display_name.trim() !== '' && profileData.display_name.trim() !== 'Nombre de Perfil') {
+			return `<div data-section="display-name" class="text-center draggable-item p-2"><h1 id="public-display-name" class="text-3xl font-bold">${profileData.display_name}</h1></div>`;
+		}
+		return '';
+	},
+	'username': (profileData) => `<div data-section="username" class="text-center draggable-item p-2"><p id="public-username" class="text-lg opacity-80">${profileData.username || ''}</p></div>`,
+	'description': (profileData) => `<div data-section="description" class="text-center draggable-item p-2"><p id="public-description" class="opacity-90">${profileData.description || ''}</p></div>`,
     'featured-video': (profileData) => {
         if (parseVideoUrl(profileData.featured_video_url)) {
             return `<div data-section="featured-video" class="draggable-item p-2"></div>`;
@@ -450,17 +448,14 @@ const profileSectionTemplates = {
         }
         return '';
     },
-    'social-buttons': (profileData) => {
-        const buttons = profileData.social_buttons || [];
-        if (buttons.length > 0) {
+	'social-buttons': (profileData) => {
+        if (profileData.social_buttons && profileData.social_buttons.length > 0) {
             return `<section id="social-buttons-section" data-section="social-buttons" class="draggable-item p-2"></section>`;
         }
         return '';
     },
-    'socials': (profileData) => {
-        const socials = profileData.socials || {};
-        const validSocials = Object.values(socials).some(value => value && value.trim() !== '');
-        if (validSocials) {
+	'socials': (profileData) => {
+        if (profileData.socials && Object.keys(profileData.socials).length > 0) {
             return `<footer id="socials-footer" data-section="socials" class="pt-4 pb-2 draggable-item p-2"></footer>`;
         }
         return '';
@@ -487,62 +482,16 @@ function renderSingleLink(linkData, profileData) {
 		? `<span class="w-6 h-6">${iconHtml}</span><span class="flex-grow text-center">${linkData.title}</span><span class="w-6 h-6"></span>`
 		: `<span class="flex-grow text-center">${linkData.title}</span>`;
 
-	return `<a href="#" draggable="false" data-url="${linkData.url}" data-link-id="${linkData.id}" rel="noopener noreferrer" class="${linkClasses.join(' ')}">${linkContent}</a>`;
+	const linkHtml = `<a href="#" draggable="false" data-url="${linkData.url}" data-link-id="${linkData.id}" rel="noopener noreferrer" class="${linkClasses.join(' ')}">${linkContent}</a>`;
+
+	return `<div data-section="link_${linkData.id}" class="draggable-item my-2">${linkHtml}</div>`;
 }
 
-function buildProfileLayout(profileData, isOwner) {
-    updateProfileStyles(profileData);
+function renderProfile(profileData, isOwner) {
+	if (!profileData) return;
 
-    const layoutContainer = document.getElementById('profile-layout-container');
-    layoutContainer.innerHTML = ''; 
-
-    const defaultBaseSections = ["profile-image", "display-name", "username", "description", "featured-video", "gallery", "social-buttons", "socials"];
-    const currentLinkIds = appState.links.map(l => `link_${l.id}`);
-    
-    const defaultLayout = ["profile-image", "display-name", "username", "description", "featured-video", "gallery", "social-buttons", ...currentLinkIds, "socials"];
-    
-    let layoutOrder = profileData.layout_order && profileData.layout_order.length > 0 ? profileData.layout_order : defaultLayout;
-    
-    currentLinkIds.forEach(linkId => {
-        if (!layoutOrder.includes(linkId)) {
-             const socialButtonsIndex = layoutOrder.indexOf('social-buttons');
-             if (socialButtonsIndex !== -1) {
-                 layoutOrder.splice(socialButtonsIndex + 1, 0, linkId);
-             } else {
-                 layoutOrder.push(linkId);
-             }
-        }
-    });
-
-    const fragment = document.createDocumentFragment();
-
-    layoutOrder.forEach(sectionId => {
-        if (!appState.links.find(l => `link_${l.id}` === sectionId) && sectionId.startsWith('link_')) {
-             return; 
-        }
-        
-        const tempDiv = document.createElement('div');
-        if (profileSectionTemplates[sectionId]) {
-            const templateHtml = profileSectionTemplates[sectionId](profileData, isOwner);
-            if (templateHtml) {
-                tempDiv.innerHTML = templateHtml;
-                fragment.appendChild(tempDiv.firstChild);
-            }
-        } else if (sectionId.startsWith('link_')) {
-            const linkPlaceholder = document.createElement('div');
-            linkPlaceholder.dataset.section = sectionId;
-            linkPlaceholder.className = 'draggable-item my-2'; 
-            fragment.appendChild(linkPlaceholder);
-        }
-    });
-    
-    layoutContainer.appendChild(fragment);
-
-    updateProfileContent(profileData, isOwner); 
-}
-
-function updateProfileStyles(profileData) {
-    const theme = profileData.theme || 'grafito';
+	// 1. Actualizar estilos globales
+	const theme = profileData.theme || 'grafito';
 	const font = profileData.font_family || 'font-inter';
 	loadFontIfNeeded(font);
 	document.body.className = `bg-gray-900 text-white min-h-screen overflow-x-hidden theme-${theme}`;
@@ -558,36 +507,85 @@ function updateProfileStyles(profileData) {
 		DOMElements.globalBackground.style.backgroundImage = 'none';
 		DOMElements.globalBackground.style.backgroundColor = 'var(--background)';
 	}
-}
 
-function updateProfileContent(profileData, isOwner) {
-    const displayNameContainer = document.querySelector('[data-section="display-name"]');
-    if (displayNameContainer) {
-        displayNameContainer.innerHTML = (profileData.display_name) ? `<h1 id="public-display-name" class="text-3xl font-bold">${profileData.display_name}</h1>` : '';
+	const layoutContainer = document.getElementById('profile-layout-container');
+
+	// 2. Construir el layout deseado
+	const allBaseSections = ["profile-image", "display-name", "username", "description", "featured-video", "gallery", "social-buttons", "socials"];
+	let baseLayout = appState.tempLayoutOrder || profileData.layout_order || [...allBaseSections];
+	
+    let cleanLayout = baseLayout.filter(id => !id.startsWith('link_'));
+	const linkIds = appState.links.map(link => `link_${link.id}`);
+	
+    const linksIndex = cleanLayout.indexOf('links');
+    if (linksIndex !== -1) {
+		cleanLayout.splice(linksIndex, 1, ...linkIds);
+	} else {
+        const socialsIndex = cleanLayout.indexOf('socials');
+        if (socialsIndex !== -1) {
+            cleanLayout.splice(socialsIndex, 0, ...linkIds);
+        } else {
+            cleanLayout.push(...linkIds);
+        }
     }
-
-    const usernameContainer = document.querySelector('[data-section="username"]');
-    if(usernameContainer) {
-        usernameContainer.innerHTML = (profileData.username) ? `<p id="public-username" class="text-lg opacity-80">${profileData.username}</p>` : '';
-    }
-
-    const descriptionContainer = document.querySelector('[data-section="description"]');
-    if(descriptionContainer) {
-        descriptionContainer.innerHTML = (profileData.description) ? `<p id="public-description" class="opacity-90">${profileData.description}</p>` : '';
-    }
-
-    const profileImgEl = document.getElementById('public-profile-img');
-    if (profileImgEl) profileImgEl.src = profileData.profile_image_url || 'https://placehold.co/128x128/7f9cf5/1F2937?text=...';
+    const desiredLayoutOrder = cleanLayout;
     
-    const editBtnContainer = profileImgEl ? profileImgEl.parentElement : null;
-    if(isOwner && editBtnContainer && !editBtnContainer.querySelector('#edit-profile-img-btn')) {
-        editBtnContainer.insertAdjacentHTML('beforeend', `<button id="edit-profile-img-btn" class="absolute bottom-1 right-1 bg-gray-800 bg-opacity-70 p-2 rounded-full text-white hover:bg-opacity-100 transition-colors"><i data-lucide="camera" class="w-5 h-5"></i></button>`);
-        document.getElementById('edit-profile-img-btn').addEventListener('click', (e) => { e.stopPropagation(); DOMElements.imageUploadInput.click(); });
-    }
+    // 3. Reconciliación del DOM
+    const existingElements = new Map(Array.from(layoutContainer.children).map(el => [el.dataset.section, el]));
+    const elementsToKeep = new Set();
+    
+    desiredLayoutOrder.forEach(sectionId => {
+        elementsToKeep.add(sectionId);
+        let element = existingElements.get(sectionId);
+        
+        if (!element) {
+            const tempDiv = document.createElement('div');
+            let elementHtml = '';
+            if (profileSectionTemplates[sectionId]) {
+                elementHtml = profileSectionTemplates[sectionId](profileData, isOwner);
+            } else if (sectionId.startsWith('link_')) {
+                const linkId = sectionId.replace('link_', '');
+                const linkData = appState.links.find(l => String(l.id) === linkId);
+                if (linkData) elementHtml = renderSingleLink(linkData, profileData);
+            }
+            if (elementHtml) {
+                tempDiv.innerHTML = elementHtml;
+                element = tempDiv.firstElementChild;
+            }
+        } else {
+             if (existingElements.has(sectionId)) {
+                switch (sectionId) {
+                    case 'display-name': element.querySelector('#public-display-name').textContent = profileData.display_name; break;
+                    case 'username': element.querySelector('#public-username').textContent = profileData.username || ''; break;
+                    case 'description': element.querySelector('#public-description').textContent = profileData.description || ''; break;
+                    case 'profile-image': element.querySelector('#public-profile-img').src = profileData.profile_image_url || 'https://placehold.co/128x128/7f9cf5/1F2937?text=...'; break;
+                }
+                if (sectionId.startsWith('link_')) {
+                    const linkId = sectionId.replace('link_', '');
+                    const linkData = appState.links.find(l => String(l.id) === linkId);
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = renderSingleLink(linkData, profileData);
+                    element.innerHTML = tempDiv.firstElementChild.innerHTML;
+                    element.className = tempDiv.firstElementChild.className;
+                }
+            }
+        }
+        
+        if (element) {
+            layoutContainer.appendChild(element);
+        }
+    });
+    
+    existingElements.forEach((element, sectionId) => {
+        if (!elementsToKeep.has(sectionId)) {
+            element.remove();
+        }
+    });
 
-    const embedUrl = parseVideoUrl(profileData.featured_video_url);
-    const videoSection = document.querySelector('[data-section="featured-video"]');
+	// 4. Renderizar/Actualizar componentes complejos
+    const videoSection = layoutContainer.querySelector('[data-section="featured-video"]');
     if (videoSection) {
+        const embedUrl = parseVideoUrl(profileData.featured_video_url);
         const iframe = videoSection.querySelector('iframe');
         if (embedUrl) {
             if (!iframe || iframe.src !== embedUrl) {
@@ -597,59 +595,67 @@ function updateProfileContent(profileData, isOwner) {
             videoSection.innerHTML = '';
         }
     }
-
-    const galleryContainer = document.querySelector('[data-section="gallery"]');
-    if (galleryContainer) {
-        renderPublicGallery(galleryContainer, profileData, appState.galleryImages);
-    }
-
-    appState.links.forEach(linkData => {
-        const linkPlaceholder = document.querySelector(`[data-section="link_${linkData.id}"]`);
-        if (linkPlaceholder) {
-            linkPlaceholder.innerHTML = renderSingleLink(linkData, profileData);
+    
+    const gallerySection = layoutContainer.querySelector('[data-section="gallery"]');
+    if (gallerySection) {
+        if (!gallerySection.querySelector('.immersive-gallery')) {
+            renderImmersiveGallery(appState.galleryImages);
         }
-    });
+        updateImmersiveGallery(appState.galleryImages);
+        displayGalleryImage(appState.galleryImages, appState.currentGalleryIndex);
+    }
+    
+	const socialButtonsContainer = layoutContainer.querySelector('#social-buttons-section');
+    if (socialButtonsContainer) renderSocialButtons(profileData.social_buttons);
+    
+    const socialsFooterContainer = layoutContainer.querySelector('#socials-footer');
+    if (socialsFooterContainer) renderSocialIcons(profileData.socials, profileData.socials_order);
 
-    renderSocialButtons(profileData.social_buttons);
-    renderSocialIcons(profileData.socials, profileData.socials_order);
-    renderProfileActions(profileData);
-	updateContainerVisibility(profileData);
-
-    const isDesignMode = DOMElements.profilePage.classList.contains('design-mode');
+	if (isOwner) {
+		const editProfileImgBtn = document.getElementById('edit-profile-img-btn');
+		if(editProfileImgBtn) editProfileImgBtn.addEventListener('click', (e) => { e.stopPropagation(); DOMElements.imageUploadInput.click(); });
+	}
+	renderProfileActions(profileData);
+	updateContainerVisibilityInDesignMode(profileData);
+	const isDesignMode = DOMElements.profilePage.classList.contains('design-mode');
 	document.getElementById('user-actions').classList.toggle('hidden', !isOwner || isDesignMode);
 	document.getElementById('layout-actions').classList.toggle('hidden', !isDesignMode);
 
-    if (!appState.currentUser && !document.querySelector('.join-nexid-button')) {
-        document.getElementById('profile-layout-container').insertAdjacentHTML('beforeend', `
+	if (!appState.currentUser && !layoutContainer.querySelector('.join-nexid-button')) {
+		layoutContainer.insertAdjacentHTML('beforeend', `
 			<div class="mt-8 text-center">
 				 <a href="/app.html" class="join-nexid-button inline-flex items-center justify-center py-3 px-8 font-bold text-lg rounded-full transition-transform duration-200 hover:scale-110">
 					Únete a NexID
 				</a>
 			</div>
 		`);
-    } else if (appState.currentUser) {
-        const joinButton = document.querySelector('.join-nexid-button');
+	} else if (appState.currentUser) {
+        const joinButton = layoutContainer.querySelector('.join-nexid-button');
         if (joinButton) joinButton.parentElement.remove();
     }
 
 	lucide.createIcons();
 }
 
-
-function updateContainerVisibility(profileData) {
-    const isEmpty = (data) => !data || (Array.isArray(data) && data.length === 0) || (typeof data === 'object' && Object.keys(data).length === 0) || (typeof data === 'string' && data.trim() === '');
+function updateContainerVisibilityInDesignMode(profileData) {
+	if (!appState.isDesignModeActive) return;
+	
+    const isEmpty = (data) => !data || (Array.isArray(data) && data.length === 0) || (typeof data === 'object' && Object.keys(data).length === 0);
 
     const descriptionContainer = document.querySelector('[data-section="description"]');
-    if (descriptionContainer) descriptionContainer.classList.toggle('is-empty', isEmpty(profileData.description || ''));
-    
+	if (descriptionContainer) descriptionContainer.classList.toggle('is-empty', !profileData.description || profileData.description.trim() === '');
+	
     const socialButtonsContainer = document.querySelector('[data-section="social-buttons"]');
-    if (socialButtonsContainer) socialButtonsContainer.classList.toggle('is-empty', socialButtonsContainer.children.length === 0);
-    
+	if (socialButtonsContainer) socialButtonsContainer.classList.toggle('is-empty', isEmpty(profileData.social_buttons));
+	
     const socialsFooterContainer = document.querySelector('[data-section="socials"]');
-    if (socialsFooterContainer) socialsFooterContainer.classList.toggle('is-empty', socialsFooterContainer.children.length === 0);
+	if (socialsFooterContainer) socialsFooterContainer.classList.toggle('is-empty', isEmpty(profileData.socials));
     
     const videoContainer = document.querySelector('[data-section="featured-video"]');
     if(videoContainer) videoContainer.classList.toggle('is-empty', !parseVideoUrl(profileData.featured_video_url));
+
+    const galleryContainer = document.querySelector('[data-section="gallery"]');
+    if(galleryContainer) galleryContainer.classList.toggle('is-empty', isEmpty(appState.galleryImages));
 }
 
 function renderLinksEditor(links) {
@@ -2422,4 +2428,3 @@ window.onload = () => {
 	setupPasswordToggle('update-confirm-password-input', 'update-confirm-password-toggle');
 	setupPasswordToggle('delete-confirm-password-input', 'delete-confirm-password-toggle');
 };
-
