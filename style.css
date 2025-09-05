@@ -575,6 +575,25 @@
     overflow-y: auto;
 }
 
+/* === INICIO: NUEVOS ESTILOS DE SCROLLBAR PARA GALERÍA === */
+.gallery-thumbnails-vertical::-webkit-scrollbar {
+    width: 6px;
+}
+.gallery-thumbnails-vertical::-webkit-scrollbar-track {
+    background: transparent;
+    border-radius: 3px;
+}
+.gallery-thumbnails-vertical::-webkit-scrollbar-thumb {
+    background-color: #4b5563; /* Usamos un gris del tema */
+    border-radius: 3px;
+}
+.gallery-thumbnails-vertical {
+    scrollbar-width: thin;
+    scrollbar-color: #4b5563 transparent;
+}
+/* === FIN: NUEVOS ESTILOS DE SCROLLBAR PARA GALERÍA === */
+
+
 /* Estilos comunes para las miniaturas */
 .gallery-thumbnail {
     flex-shrink: 0;
