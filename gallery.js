@@ -191,11 +191,12 @@ export function renderPublicGallery(container, profileData, images = []) {
 
     } else { // Estilo rectangular
         const mainImage = images[0];
-        const thumbnailsHTML = images.map((img, index) => `
+        // <<-- CORRECCIÓN: Genera las miniaturas solo si hay más de una imagen
+        const thumbnailsHTML = images.length > 1 ? images.map((img, index) => `
             <button class="gallery-thumbnail ${index === 0 ? 'active' : ''}" data-index="${index}">
                 <img src="${img.thumbnail_url}" alt="Miniatura ${index + 1}">
             </button>
-        `).join('');
+        `).join('') : '';
 
         galleryHTML = `
             <div class="gallery-container-rectangular">
@@ -203,9 +204,7 @@ export function renderPublicGallery(container, profileData, images = []) {
                     <img id="gallery-main-img" src="${mainImage.image_url}" style="object-position: ${mainImage.focus_point || 'center'};" alt="Imagen principal de la galería">
                     <p id="gallery-main-caption" class="gallery-caption">${mainImage.caption || ''}</p>
                 </div>
-                <div class="gallery-thumbnails-strip">
-                    ${thumbnailsHTML}
-                </div>
+                ${images.length > 1 ? `<div class="gallery-thumbnails-strip">${thumbnailsHTML}</div>` : ''}
             </div>
         `;
     }
