@@ -582,7 +582,7 @@ function renderProfile(profileData, isOwner) {
         }
     });
 
-	// 4. Renderizar/Actualizar componentes complejos
+    // 4. Renderizar/Actualizar componentes complejos
     const videoSection = layoutContainer.querySelector('[data-section="featured-video"]');
     if (videoSection) {
         const embedUrl = parseVideoUrl(profileData.featured_video_url);
@@ -598,11 +598,7 @@ function renderProfile(profileData, isOwner) {
     
     const gallerySection = layoutContainer.querySelector('[data-section="gallery"]');
     if (gallerySection) {
-        if (!gallerySection.querySelector('.immersive-gallery')) {
-            renderImmersiveGallery(appState.galleryImages);
-        }
-        updateImmersiveGallery(appState.galleryImages);
-        displayGalleryImage(appState.galleryImages, appState.currentGalleryIndex);
+        renderPublicGallery(gallerySection, profileData, appState.galleryImages);
     }
     
 	const socialButtonsContainer = layoutContainer.querySelector('#social-buttons-section');
