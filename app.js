@@ -197,7 +197,6 @@ function initializeApp() {
 	supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 	populateIconGrid();
 	populateFontSelector();
-    // <<-- CORRECCIÓN: Se pasan todas las dependencias necesarias a gallery.js
     initializeGallery({
         supabaseClient,
         appState,
@@ -518,7 +517,6 @@ function buildProfileLayout(profileData, isOwner) {
 
     let layoutOrder = profileData.layout_order && profileData.layout_order.length > 0 ? [...profileData.layout_order] : defaultLayout;
 
-    // Lógica de Migración Automática para perfiles antiguos
     if (!layoutOrder.includes('gallery') && appState.galleryImages.length > 0) {
         const videoIndex = layoutOrder.indexOf('featured-video');
         if (videoIndex !== -1) {
@@ -528,7 +526,7 @@ function buildProfileLayout(profileData, isOwner) {
             if (socialButtonsIndex !== -1) {
                 layoutOrder.splice(socialButtonsIndex + 1, 0, 'gallery');
             } else {
-                layoutOrder.splice(4, 0, 'gallery'); // Fallback position
+                layoutOrder.splice(4, 0, 'gallery');
             }
         }
     }
@@ -1209,7 +1207,7 @@ function openSettingsPanel() {
 
 	appState.isSettingsDirty = false;
 	appState.tempBackgroundImagePath = null;
-	appState.previewProfile = JSON.parse(JSON.stringify(appState.myProfile)); // Crear copia para previsualización
+	appState.previewProfile = JSON.parse(JSON.stringify(appState.myProfile));
 
 	const profile = appState.previewProfile;
 
@@ -1263,7 +1261,9 @@ function openSettingsPanel() {
 	});
 
     DOMElements.featuredVideoUrlInput.value = profile.featured_video_url || '';
-	document.getElementById('private-profile-toggle').checked = profile.is_public;
+
+    // <<-- CORRECCIÓN: Lógica invertida para el toggle de privacidad
+	document.getElementById('private-profile-toggle').checked = !profile.is_public;
 
 	DOMElements.settingsPanel.classList.add('open');
 	DOMElements.settingsOverlay.classList.remove('hidden');
@@ -1316,7 +1316,7 @@ function closeSettingsPanel() {
 document.getElementById('save-changes-btn').addEventListener('click', async () => {
 	if (!appState.currentUser || !appState.previewProfile) return;
 
-	const dataToSave = { ...appState.previewProfile }; // Usar los datos de la previsualización
+	const dataToSave = { ...appState.previewProfile };
 	delete dataToSave.id;
 	delete dataToSave.created_at;
 
@@ -1350,6 +1350,7 @@ function updateLivePreview() {
 	const backgroundUrlInput = document.getElementById('background-image-url-input');
 	const opacitySlider = document.getElementById('background-opacity-slider');
 	const opacityControls = document.getElementById('background-controls');
+    const privateProfileToggle = document.getElementById('private-profile-toggle'); // <<-- AÑADIDO
 
 	if (backgroundUrlInput.value) {
 		opacityControls.classList.remove('hidden');
@@ -1405,6 +1406,8 @@ function updateLivePreview() {
 		socials_order: newSocialsOrder,
 		contact_info: {},
         featured_video_url: DOMElements.featuredVideoUrlInput.value.trim(),
+        // <<-- CORRECCIÓN: Se lee el estado del toggle y se invierte la lógica
+        is_public: !privateProfileToggle.checked
 	};
 
 	 document.querySelectorAll('#contact-inputs input').forEach(input => {
