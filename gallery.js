@@ -7,7 +7,7 @@ let dependencies = {
     supabaseClient: null,
     appState: null,
     showAlert: null,
-    showConfirm: null, // <<-- AÑADIDO para confirmación
+    showConfirm: null,
     buildProfileLayout: null,
     DOMElements: null,
     updateLivePreview: null,
@@ -17,6 +17,7 @@ let dependencies = {
 let galleryCropper = null;
 let currentFile = null;
 let editingImageId = null;
+let sortableGallery = null; // Instancia de SortableJS para la galería
 
 // --- 2. REFERENCIAS AL DOM DE LA GALERÍA ---
 const DOMElements = {
@@ -171,6 +172,7 @@ export function renderGalleryEditor(images = []) {
     });
 
     updateAddImageButtonState();
+    initializeSortableGallery(); // <<-- AÑADIDO: Activa el drag-and-drop
     lucide.createIcons();
 }
 
@@ -272,21 +274,15 @@ async function handleDeleteImage(imageId) {
         if (!confirmed) return;
 
         try {
-            // 1. Eliminar archivos del Storage
             const pathsToRemove = [imageToDelete.image_path, imageToDelete.thumbnail_path].filter(Boolean);
             if (pathsToRemove.length > 0) {
-                const { error: storageError } = await supabaseClient.storage.from('gallery-images').remove(pathsToRemove);
-                if (storageError) console.error("Error eliminando archivos de Storage:", storageError); // Log error but continue
+                await supabaseClient.storage.from('gallery-images').remove(pathsToRemove);
             }
 
-            // 2. Eliminar registro de la base de datos
-            const { error: dbError } = await supabaseClient.from('gallery_images').delete().eq('id', imageId);
-            if (dbError) throw dbError;
+            await supabaseClient.from('gallery_images').delete().eq('id', imageId);
 
-            // 3. Actualizar estado local
             appState.galleryImages = appState.galleryImages.filter(img => img.id != imageId);
 
-            // 4. Refrescar la UI
             renderGalleryEditor(appState.galleryImages);
             buildProfileLayout(appState.previewProfile || appState.myProfile, true);
 
@@ -298,6 +294,47 @@ async function handleDeleteImage(imageId) {
         }
     });
 }
+
+// <<-- INICIO: NUEVA LÓGICA DE REORDENAMIENTO -->>
+function initializeSortableGallery() {
+    const listEl = DOMElements.galleryEditorList;
+    if (!listEl) return;
+    if (sortableGallery) sortableGallery.destroy();
+
+    sortableGallery = new Sortable(listEl, {
+        animation: 150,
+        ghostClass: 'sortable-ghost',
+        onEnd: async () => {
+            const { appState, supabaseClient, showAlert, buildProfileLayout } = dependencies;
+            
+            // 1. Obtener nuevo orden desde el DOM
+            const newOrderIds = Array.from(listEl.children).map(item => item.dataset.id);
+
+            // 2. Actualizar el estado local para una respuesta de UI instantánea
+            appState.galleryImages.sort((a, b) => newOrderIds.indexOf(String(a.id)) - newOrderIds.indexOf(String(b.id)));
+
+            // 3. Preparar los datos para Supabase
+            const updates = appState.galleryImages.map((image, index) => ({
+                id: image.id,
+                order_index: index,
+            }));
+
+            // 4. Enviar actualizaciones a la base de datos
+            const { error } = await supabaseClient.from('gallery_images').upsert(updates);
+
+            if (error) {
+                showAlert('Error al guardar el nuevo orden de las imágenes.');
+                console.error("Error reordering gallery:", error);
+                // Opcional: Revertir al estado anterior si falla
+                // Por ahora, solo mostramos un error.
+            } else {
+                // 5. Refrescar el perfil público para mostrar el nuevo orden
+                buildProfileLayout(appState.previewProfile || appState.myProfile, true);
+            }
+        },
+    });
+}
+// <<-- FIN: NUEVA LÓGICA DE REORDENAMIENTO -->>
 
 function setupEventListeners() {
     DOMElements.addGalleryImageBtn.addEventListener('click', () => {
