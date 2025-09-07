@@ -172,7 +172,7 @@ export function renderGalleryEditor(images = []) {
     });
 
     updateAddImageButtonState();
-    initializeSortableGallery(); // Activa el drag-and-drop
+    initializeSortableGallery();
     lucide.createIcons();
 }
 
@@ -306,28 +306,29 @@ function initializeSortableGallery() {
         onEnd: async () => {
             const { appState, supabaseClient, showAlert, buildProfileLayout } = dependencies;
             
+            // <<-- INICIO: LÓGICA DE ACTUALIZACIÓN OPTIMISTA -->>
+            // 1. Obtener el nuevo orden desde el DOM
             const newOrderIds = Array.from(listEl.children).map(item => item.dataset.id);
 
+            // 2. Actualizar el estado local y refrescar la UI inmediatamente
             appState.galleryImages.sort((a, b) => newOrderIds.indexOf(String(a.id)) - newOrderIds.indexOf(String(b.id)));
+            buildProfileLayout(appState.previewProfile || appState.myProfile, true);
 
+            // 3. Preparar los datos para la base de datos
             const updates = appState.galleryImages.map((image, index) => ({
                 id: image.id,
                 order_index: index,
             }));
 
-            // <<-- CORRECCIÓN: Se añade .select() para obtener una respuesta clara de la base de datos
-            const { data, error } = await supabaseClient
-                .from('gallery_images')
-                .upsert(updates)
-                .select();
+            // 4. Enviar la actualización a la base de datos en segundo plano
+            const { error } = await supabaseClient.from('gallery_images').upsert(updates);
 
-            // <<-- CORRECCIÓN: La condición de éxito ahora es más estricta
-            if (error || !data) {
-                showAlert('Error al guardar el nuevo orden de las imágenes.');
+            // 5. Manejar solo si hay un error real en el guardado
+            if (error) {
+                showAlert('Error al guardar el nuevo orden de las imágenes. Por favor, recarga la página.');
                 console.error("Error reordering gallery:", error);
-            } else {
-                buildProfileLayout(appState.previewProfile || appState.myProfile, true);
             }
+            // <<-- FIN: LÓGICA DE ACTUALIZACIÓN OPTIMISTA -->>
         },
     });
 }
