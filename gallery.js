@@ -311,22 +311,19 @@ function initializeSortableGallery() {
             appState.galleryImages.sort((a, b) => newOrderIds.indexOf(String(a.id)) - newOrderIds.indexOf(String(b.id)));
             buildProfileLayout(appState.previewProfile || appState.myProfile, true);
 
+            // <<-- CORRECCIÓN: Se añade el user_id a los datos de actualización -->>
             const updates = appState.galleryImages.map((image, index) => ({
                 id: image.id,
                 order_index: index,
+                user_id: appState.currentUser.id // Asegura que la política RLS se cumpla
             }));
 
             const { error } = await supabaseClient.from('gallery_images').upsert(updates);
 
-            // <<-- INICIO: CÓDIGO DE DEPURACIÓN -->>
             if (error) {
-                // Imprime el objeto de error completo en la consola
                 console.error("Supabase upsert error object:", error);
-                
-                // Muestra una alerta más informativa al usuario
                 showAlert(`Error al guardar. Revisa la consola (Code: ${error.code})`);
             }
-            // <<-- FIN: CÓDIGO DE DEPURACIÓN -->>
         },
     });
 }
