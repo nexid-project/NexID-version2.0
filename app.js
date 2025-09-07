@@ -1262,7 +1262,6 @@ function openSettingsPanel() {
 
     DOMElements.featuredVideoUrlInput.value = profile.featured_video_url || '';
 
-    // <<-- CORRECCIÓN: Lógica invertida para el toggle de privacidad
 	document.getElementById('private-profile-toggle').checked = !profile.is_public;
 
 	DOMElements.settingsPanel.classList.add('open');
@@ -1350,7 +1349,7 @@ function updateLivePreview() {
 	const backgroundUrlInput = document.getElementById('background-image-url-input');
 	const opacitySlider = document.getElementById('background-opacity-slider');
 	const opacityControls = document.getElementById('background-controls');
-    const privateProfileToggle = document.getElementById('private-profile-toggle'); // <<-- AÑADIDO
+    const privateProfileToggle = document.getElementById('private-profile-toggle');
 
 	if (backgroundUrlInput.value) {
 		opacityControls.classList.remove('hidden');
@@ -1406,7 +1405,6 @@ function updateLivePreview() {
 		socials_order: newSocialsOrder,
 		contact_info: {},
         featured_video_url: DOMElements.featuredVideoUrlInput.value.trim(),
-        // <<-- CORRECCIÓN: Se lee el estado del toggle y se invierte la lógica
         is_public: !privateProfileToggle.checked
 	};
 
@@ -1599,29 +1597,43 @@ document.getElementById('links-list-editor').addEventListener('click', (e) => {
 	}
 });
 
+// <<-- CORRECCIÓN: Se centraliza el event listener de la página de perfil -->>
 DOMElements.profilePage.addEventListener('click', (e) => {
-	const linkButton = e.target.closest('.public-link-button, .social-button');
-	if (linkButton) {
-		if (appState.isDesignModeActive) {
-			e.preventDefault();
-			return;
-		}
-		e.preventDefault();
-		let url = linkButton.dataset.url;
-		if (url && !url.startsWith('http://') && !url.startsWith('https://')) url = `https://${url}`;
-		window.open(url, '_blank');
+    // 1. Lógica para Enlaces
+    const linkButton = e.target.closest('.public-link-button, .social-button');
+    if (linkButton) {
+        if (appState.isDesignModeActive) {
+            e.preventDefault();
+            return;
+        }
+        e.preventDefault();
+        let url = linkButton.dataset.url;
+        if (url && !url.startsWith('http://') && !url.startsWith('https://')) url = `https://${url}`;
+        window.open(url, '_blank');
 
-		const linkId = linkButton.dataset.linkId;
-		if (linkId) {
-			supabaseClient.rpc('increment_click_count', { link_id_to_increment: linkId }).then(({ error }) => {
-				if (error) console.error('Failed to track click:', error);
-			});
-		}
-	}
+        const linkId = linkButton.dataset.linkId;
+        if (linkId) {
+            supabaseClient.rpc('increment_click_count', { link_id_to_increment: linkId }).then(({ error }) => {
+                if (error) console.error('Failed to track click:', error);
+            });
+        }
+        return; // Termina la ejecución para no interferir con otras lógicas
+    }
 
+    // 2. Lógica para Imagen de Perfil
     const profileImage = e.target.closest('#public-profile-img');
     if (profileImage && !e.target.closest('#edit-profile-img-btn')) {
         openImageZoomModal([{ image_url: profileImage.src }], 0);
+        return;
+    }
+
+    // 3. Lógica para la Galería
+    const galleryItem = e.target.closest('.gallery-grid-item, .gallery-main-image');
+    if (galleryItem) {
+        const index = parseInt(galleryItem.dataset.index, 10);
+        if (!isNaN(index)) {
+            openImageZoomModal(appState.galleryImages, index);
+        }
     }
 });
 
