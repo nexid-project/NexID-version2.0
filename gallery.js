@@ -184,13 +184,17 @@ export function renderPublicGallery(container, profileData, images = []) {
     let galleryHTML = '';
 
     if (style === 'cuadrada') {
+        // <<-- INICIO: LÓGICA DE GALERÍA ADAPTATIVA -->>
+        const imageCount = images.length;
         const gridItemsHTML = images.slice(0, 6).map((img, index) => `
             <div class="gallery-grid-item" data-index="${index}" title="${img.caption || ''}">
                 <img src="${img.thumbnail_url || img.image_url}" alt="${img.caption || `Imagen ${index + 1}`}">
             </div>
         `).join('');
-
-        galleryHTML = `<div class="gallery-grid-container">${gridItemsHTML}</div>`;
+        
+        // Se añade la clase dinámica gallery-X para el layout
+        galleryHTML = `<div class="gallery-container-adaptive gallery-${imageCount}">${gridItemsHTML}</div>`;
+        // <<-- FIN: LÓGICA DE GALERÍA ADAPTATIVA -->>
 
     } else { // Estilo rectangular
         const mainImage = images[0];
@@ -311,11 +315,10 @@ function initializeSortableGallery() {
             appState.galleryImages.sort((a, b) => newOrderIds.indexOf(String(a.id)) - newOrderIds.indexOf(String(b.id)));
             buildProfileLayout(appState.previewProfile || appState.myProfile, true);
 
-            // <<-- CORRECCIÓN: Se añade el user_id a los datos de actualización -->>
             const updates = appState.galleryImages.map((image, index) => ({
                 id: image.id,
                 order_index: index,
-                user_id: appState.currentUser.id // Asegura que la política RLS se cumpla
+                user_id: appState.currentUser.id
             }));
 
             const { error } = await supabaseClient.from('gallery_images').upsert(updates);
