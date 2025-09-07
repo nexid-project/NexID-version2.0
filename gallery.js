@@ -184,7 +184,6 @@ export function renderPublicGallery(container, profileData, images = []) {
     let galleryHTML = '';
 
     if (style === 'cuadrada') {
-        // <<-- INICIO: LÓGICA DE GALERÍA ADAPTATIVA -->>
         const imageCount = images.length;
         const gridItemsHTML = images.slice(0, 6).map((img, index) => `
             <div class="gallery-grid-item" data-index="${index}" title="${img.caption || ''}">
@@ -192,9 +191,7 @@ export function renderPublicGallery(container, profileData, images = []) {
             </div>
         `).join('');
         
-        // Se añade la clase dinámica gallery-X para el layout
         galleryHTML = `<div class="gallery-container-adaptive gallery-${imageCount}">${gridItemsHTML}</div>`;
-        // <<-- FIN: LÓGICA DE GALERÍA ADAPTATIVA -->>
 
     } else { // Estilo rectangular
         const mainImage = images[0];
@@ -217,46 +214,7 @@ export function renderPublicGallery(container, profileData, images = []) {
 
     container.innerHTML = galleryHTML;
 
-    // Lógica de Event Listeners
-    if (style === 'cuadrada') {
-        container.addEventListener('click', (e) => {
-            const gridItem = e.target.closest('.gallery-grid-item');
-            if (gridItem) {
-                const index = parseInt(gridItem.dataset.index, 10);
-                dependencies.openImageZoomModal(images, index);
-            }
-        });
-    } else {
-        const mainImgContainer = container.querySelector('.gallery-main-image');
-        const mainImg = container.querySelector('#gallery-main-img');
-        const mainCaption = container.querySelector('#gallery-main-caption');
-        const thumbnailsContainer = container.querySelector('.gallery-thumbnails-strip');
-
-        if (mainImgContainer) {
-            mainImgContainer.addEventListener('click', () => {
-                 const index = parseInt(mainImgContainer.dataset.index, 10);
-                 dependencies.openImageZoomModal(images, index);
-            });
-        }
-        
-        if (thumbnailsContainer) {
-            thumbnailsContainer.addEventListener('click', (e) => {
-                const thumbnail = e.target.closest('.gallery-thumbnail');
-                if (!thumbnail) return;
-
-                thumbnailsContainer.querySelector('.active')?.classList.remove('active');
-                thumbnail.classList.add('active');
-
-                const index = parseInt(thumbnail.dataset.index, 10);
-                const selectedImage = images[index];
-
-                mainImgContainer.dataset.index = index;
-                mainImg.src = selectedImage.image_url;
-                mainImg.style.objectPosition = selectedImage.focus_point || 'center';
-                mainCaption.textContent = selectedImage.caption || '';
-            });
-        }
-    }
+    // <<-- CORRECCIÓN: Se elimina toda la lógica de event listeners de aquí -->>
 }
 
 
