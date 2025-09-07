@@ -306,29 +306,27 @@ function initializeSortableGallery() {
         onEnd: async () => {
             const { appState, supabaseClient, showAlert, buildProfileLayout } = dependencies;
             
-            // <<-- INICIO: LÓGICA DE ACTUALIZACIÓN OPTIMISTA -->>
-            // 1. Obtener el nuevo orden desde el DOM
             const newOrderIds = Array.from(listEl.children).map(item => item.dataset.id);
 
-            // 2. Actualizar el estado local y refrescar la UI inmediatamente
             appState.galleryImages.sort((a, b) => newOrderIds.indexOf(String(a.id)) - newOrderIds.indexOf(String(b.id)));
             buildProfileLayout(appState.previewProfile || appState.myProfile, true);
 
-            // 3. Preparar los datos para la base de datos
             const updates = appState.galleryImages.map((image, index) => ({
                 id: image.id,
                 order_index: index,
             }));
 
-            // 4. Enviar la actualización a la base de datos en segundo plano
             const { error } = await supabaseClient.from('gallery_images').upsert(updates);
 
-            // 5. Manejar solo si hay un error real en el guardado
+            // <<-- INICIO: CÓDIGO DE DEPURACIÓN -->>
             if (error) {
-                showAlert('Error al guardar el nuevo orden de las imágenes. Por favor, recarga la página.');
-                console.error("Error reordering gallery:", error);
+                // Imprime el objeto de error completo en la consola
+                console.error("Supabase upsert error object:", error);
+                
+                // Muestra una alerta más informativa al usuario
+                showAlert(`Error al guardar. Revisa la consola (Code: ${error.code})`);
             }
-            // <<-- FIN: LÓGICA DE ACTUALIZACIÓN OPTIMISTA -->>
+            // <<-- FIN: CÓDIGO DE DEPURACIÓN -->>
         },
     });
 }
