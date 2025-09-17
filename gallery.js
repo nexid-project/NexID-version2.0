@@ -15,9 +15,9 @@ let dependencies = {
     openImageZoomModal: null,
 };
 let galleryCropper = null;
-let currentFile = null;
-let editingImageId = null;
-let sortableGallery = null; // Instancia de SortableJS para la galería
+let currentFile = null; // Almacenará el archivo original al AÑADIR una nueva imagen
+let editingImageId = null; // Almacenará el ID de la imagen que se está EDITANDO
+let sortableGallery = null;
 
 // --- 2. REFERENCIAS AL DOM DE LA GALERÍA ---
 const DOMElements = {
@@ -37,42 +37,61 @@ const DOMElements = {
 
 // --- 3. FUNCIONES PRINCIPALES ---
 
-/**
- * Inicializa el módulo de la galería, recibe las dependencias desde app.js.
- * @param {object} appDependencies - Las dependencias que necesita el módulo.
- */
 export function initializeGallery(appDependencies) {
     dependencies = appDependencies;
     setupEventListeners();
 }
 
+// Abre el modal para AÑADIR una nueva imagen
 function handleFileSelect(e) {
     const file = e.target.files[0];
     if (!file) return;
 
-    editingImageId = null;
+    currentFile = file;
+    editingImageId = null; 
 
     const reader = new FileReader();
     reader.onload = (event) => {
-        DOMElements.cropperImage.src = event.target.result;
-        openEditModal(file);
+        openEditModal(event.target.result);
+    };
+    reader.readAsDataURL(file);
+}
 
+// <<-- INICIO: NUEVA FUNCIÓN PARA EDITAR IMAGEN EXISTENTE -->>
+// Abre el modal para EDITAR una imagen existente
+async function openModalForEditing(imageId) {
+    const { appState, showAlert } = dependencies;
+    const imageToEdit = appState.galleryImages.find(img => img.id == imageId);
+    if (!imageToEdit) return showAlert("No se pudo encontrar la imagen para editar.");
+
+    editingImageId = imageId;
+    currentFile = null; // No estamos subiendo un archivo nuevo
+
+    openEditModal(imageToEdit.image_url, imageToEdit.caption);
+}
+// <<-- FIN: NUEVA FUNCIÓN PARA EDITAR IMAGEN EXISTENTE -->>
+
+
+function openEditModal(imageSrc, caption = '') {
+    DOMElements.captionInput.value = caption;
+    // Muestra el botón de eliminar solo si estamos editando una imagen existente
+    DOMElements.deleteBtn.classList.toggle('hidden', !editingImageId);
+    DOMElements.editModal.classList.remove('hidden');
+
+    const img = DOMElements.cropperImage;
+    // Necesario para que el navegador permita cargar y recortar una imagen de otro dominio (Supabase)
+    img.crossOrigin = "Anonymous"; 
+    
+    img.onload = () => {
         if (galleryCropper) galleryCropper.destroy();
-
-        galleryCropper = new Cropper(DOMElements.cropperImage, {
+        galleryCropper = new Cropper(img, {
             aspectRatio: 1,
             viewMode: 1,
             background: false,
         });
     };
-    reader.readAsDataURL(file);
-}
-
-function openEditModal(file) {
-    currentFile = file;
-    DOMElements.captionInput.value = '';
-    DOMElements.deleteBtn.classList.add('hidden');
-    DOMElements.editModal.classList.remove('hidden');
+    
+    img.src = imageSrc;
 }
 
 function closeEditModal() {
@@ -84,74 +103,119 @@ function closeEditModal() {
     DOMElements.galleryImageUploadInput.value = '';
 }
 
+
+// <<-- INICIO: LÓGICA DE GUARDADO MEJORADA (AÑADIR vs EDITAR) -->>
 async function handleSaveImage() {
-    if (!galleryCropper || !currentFile) return;
+    if (!galleryCropper) return;
 
     DOMElements.saveBtn.disabled = true;
     DOMElements.saveBtn.innerHTML = `<div class="w-5 h-5 border-2 border-t-transparent border-white rounded-full animate-spin"></div>`;
 
     try {
-        const { supabaseClient, appState, showAlert, buildProfileLayout } = dependencies;
-        const userId = appState.currentUser.id;
-
-        const cropData = galleryCropper.getData();
-        const originalImage = new Image();
-        originalImage.src = DOMElements.cropperImage.src;
-        await new Promise(resolve => { originalImage.onload = resolve });
-
-        const focusPointY = (cropData.y + cropData.height / 2) / originalImage.naturalHeight;
-        const focusPoint = `50% ${Math.round(focusPointY * 100)}%`;
-
-        const thumbnailCanvas = galleryCropper.getCroppedCanvas({ width: 512, height: 512 });
-        const thumbnailBlob = await new Promise(resolve => thumbnailCanvas.toBlob(resolve, 'image/webp', 0.9));
-        const compressedThumbnail = await imageCompression(thumbnailBlob, { maxSizeMB: 0.1, useWebWorker: true });
-
-        const compressedOriginal = await imageCompression(currentFile, { maxSizeMB: 1, maxWidthOrHeight: 1920, useWebWorker: true });
-
-        const originalPath = `${userId}/gallery/${Date.now()}_original.webp`;
-        const thumbnailPath = `${userId}/gallery/${Date.now()}_thumb.webp`;
-
-        await supabaseClient.storage.from('gallery-images').upload(originalPath, compressedOriginal, { contentType: 'image/webp' });
-        await supabaseClient.storage.from('gallery-images').upload(thumbnailPath, compressedThumbnail, { contentType: 'image/webp' });
-
-        const { data: { publicUrl: imageUrl } } = supabaseClient.storage.from('gallery-images').getPublicUrl(originalPath);
-        const { data: { publicUrl: thumbnailUrl } } = supabaseClient.storage.from('gallery-images').getPublicUrl(thumbnailPath);
-
-        const newImage = {
-            user_id: userId,
-            image_url: imageUrl,
-            image_path: originalPath,
-            thumbnail_url: thumbnailUrl,
-            thumbnail_path: thumbnailPath,
-            caption: DOMElements.captionInput.value,
-            focus_point: focusPoint,
-            order_index: (appState.galleryImages || []).length,
-        };
-
-        const { data: savedImage, error: insertError } = await supabaseClient
-            .from('gallery_images')
-            .insert(newImage)
-            .select()
-            .single();
-
-        if (insertError) throw insertError;
-
-        appState.galleryImages.push(savedImage);
-
-        renderGalleryEditor(appState.galleryImages);
-        buildProfileLayout(appState.previewProfile || appState.myProfile, true);
-
-        showAlert('Imagen añadida a la galería.');
-        closeEditModal();
-
+        if (editingImageId) {
+            await updateExistingImage();
+        } else {
+            await addNewImage();
+        }
     } catch (error) {
         console.error("Error al guardar la imagen:", error);
-        showAlert(`Error al guardar la imagen: ${error.message}`);
+        dependencies.showAlert(`Error al guardar la imagen: ${error.message}`);
     } finally {
         DOMElements.saveBtn.disabled = false;
         DOMElements.saveBtn.textContent = 'Guardar';
+        closeEditModal();
     }
 }
+
+async function addNewImage() {
+    const { supabaseClient, appState, showAlert, buildProfileLayout } = dependencies;
+    const userId = appState.currentUser.id;
+
+    // Generar y comprimir imágenes
+    const cropData = galleryCropper.getData();
+    const originalImage = DOMElements.cropperImage;
+    const focusPointY = (cropData.y + cropData.height / 2) / originalImage.naturalHeight;
+    const focusPoint = `50% ${Math.round(focusPointY * 100)}%`;
+
+    const thumbnailCanvas = galleryCropper.getCroppedCanvas({ width: 512, height: 512 });
+    const thumbnailBlob = await new Promise(resolve => thumbnailCanvas.toBlob(resolve, 'image/webp', 0.9));
+    const compressedThumbnail = await imageCompression(thumbnailBlob, { maxSizeMB: 0.1, useWebWorker: true });
+    const compressedOriginal = await imageCompression(currentFile, { maxSizeMB: 1, maxWidthOrHeight: 1920, useWebWorker: true });
+
+    // Subir a Supabase
+    const originalPath = `${userId}/gallery/${Date.now()}_original.webp`;
+    const thumbnailPath = `${userId}/gallery/${Date.now()}_thumb.webp`;
+    await supabaseClient.storage.from('gallery-images').upload(originalPath, compressedOriginal);
+    await supabaseClient.storage.from('gallery-images').upload(thumbnailPath, compressedThumbnail);
+
+    // Obtener URLs públicas
+    const { data: { publicUrl: imageUrl } } = supabaseClient.storage.from('gallery-images').getPublicUrl(originalPath);
+    const { data: { publicUrl: thumbnailUrl } } = supabaseClient.storage.from('gallery-images').getPublicUrl(thumbnailPath);
+
+    // Insertar en la base de datos
+    const newImage = {
+        user_id: userId,
+        image_url: imageUrl, image_path: originalPath,
+        thumbnail_url: thumbnailUrl, thumbnail_path: thumbnailPath,
+        caption: DOMElements.captionInput.value,
+        focus_point: focusPoint,
+        order_index: appState.galleryImages.length,
+    };
+    const { data: savedImage, error } = await supabaseClient.from('gallery_images').insert(newImage).select().single();
+    if (error) throw error;
+
+    // Actualizar UI
+    appState.galleryImages.push(savedImage);
+    renderGalleryEditor(appState.galleryImages);
+    buildProfileLayout(appState.previewProfile || appState.myProfile, true);
+    showAlert('Imagen añadida a la galería.');
+}
+
+async function updateExistingImage() {
+    const { supabaseClient, appState, showAlert, buildProfileLayout } = dependencies;
+    const imageToUpdate = appState.galleryImages.find(img => img.id == editingImageId);
+    if (!imageToUpdate) throw new Error("La imagen a actualizar no fue encontrada.");
+    
+    // Generar y comprimir la NUEVA miniatura
+    const cropData = galleryCropper.getData();
+    const originalImage = DOMElements.cropperImage;
+    const focusPointY = (cropData.y + cropData.height / 2) / originalImage.naturalHeight;
+    const focusPoint = `50% ${Math.round(focusPointY * 100)}%`;
+
+    const thumbnailCanvas = galleryCropper.getCroppedCanvas({ width: 512, height: 512 });
+    const thumbnailBlob = await new Promise(resolve => thumbnailCanvas.toBlob(resolve, 'image/webp', 0.9));
+    const compressedThumbnail = await imageCompression(thumbnailBlob, { maxSizeMB: 0.1, useWebWorker: true });
+
+    // Subir la nueva miniatura
+    const newThumbnailPath = `${appState.currentUser.id}/gallery/${Date.now()}_thumb.webp`;
+    await supabaseClient.storage.from('gallery-images').upload(newThumbnailPath, compressedThumbnail);
+    const { data: { publicUrl: newThumbnailUrl } } = supabaseClient.storage.from('gallery-images').getPublicUrl(newThumbnailPath);
+    
+    // Eliminar la miniatura antigua del Storage
+    if (imageToUpdate.thumbnail_path) {
+        await supabaseClient.storage.from('gallery-images').remove([imageToUpdate.thumbnail_path]);
+    }
+
+    // Actualizar el registro en la base de datos
+    const updates = {
+        thumbnail_url: newThumbnailUrl,
+        thumbnail_path: newThumbnailPath,
+        caption: DOMElements.captionInput.value,
+        focus_point: focusPoint,
+    };
+    const { data: updatedImage, error } = await supabaseClient.from('gallery_images').update(updates).eq('id', editingImageId).select().single();
+    if (error) throw error;
+
+    // Actualizar el estado local y la UI
+    const index = appState.galleryImages.findIndex(img => img.id == editingImageId);
+    if (index !== -1) appState.galleryImages[index] = updatedImage;
+    
+    renderGalleryEditor(appState.galleryImages);
+    buildProfileLayout(appState.previewProfile || appState.myProfile, true);
+    showAlert('Imagen actualizada correctamente.');
+}
+// <<-- FIN: LÓGICA DE GUARDADO MEJORADA -->>
+
 
 export function renderGalleryEditor(images = []) {
     const listEl = DOMElements.galleryEditorList;
@@ -176,7 +240,6 @@ export function renderGalleryEditor(images = []) {
     lucide.createIcons();
 }
 
-// <<-- CORRECCIÓN: La función ahora acepta un activeIndex para saber qué imagen mostrar -->>
 export function renderPublicGallery(container, profileData, images = [], activeIndex = 0) {
     container.innerHTML = '';
     if (!images || images.length === 0) return;
@@ -320,6 +383,25 @@ function setupEventListeners() {
             if (deleteButton) {
                 const imageId = deleteButton.dataset.id;
                 handleDeleteImage(imageId);
+                return;
+            }
+
+            // <<-- INICIO: NUEVA LÓGICA PARA EDITAR -->>
+            const thumbnail = e.target.closest('.gallery-editor-thumbnail');
+            if (thumbnail) {
+                const imageId = thumbnail.dataset.id;
+                openModalForEditing(imageId);
+            }
+            // <<-- FIN: NUEVA LÓGICA PARA EDITAR -->>
+        });
+    }
+
+    // <<-- AÑADIDO: Evento para el botón de eliminar DENTRO del modal -->>
+    if (DOMElements.deleteBtn) {
+        DOMElements.deleteBtn.addEventListener('click', () => {
+            if (editingImageId) {
+                handleDeleteImage(editingImageId);
+                closeEditModal();
             }
         });
     }
