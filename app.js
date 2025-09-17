@@ -53,7 +53,7 @@ let appState = {
     previewProfile: null,
 	links: [],
     galleryImages: [],
-    currentGalleryIndex: 0, // <<-- AÑADIDO: Para recordar la imagen seleccionada
+    currentGalleryIndex: 0,
 	tempBackgroundImagePath: null,
 	tempLayoutOrder: null,
 	subscriptions: { auth: null, links: null },
@@ -295,7 +295,10 @@ async function handleAuthStateChange(session) {
             document.getElementById('back-to-my-profile-btn').href = `${window.location.pathname}?user=${myProfile.username.substring(1)}`;
             await loadPublicProfile(publicUsername);
         } else {
-            appState.currentGalleryIndex = 0; // <<-- AÑADIDO: Resetea el índice al cargar tu propio perfil
+            // <<-- CORRECCIÓN: Resetea el índice solo si el perfil cambia
+            if (appState.currentlyViewingProfileId !== myProfile.id) {
+                appState.currentGalleryIndex = 0;
+            }
             document.getElementById('back-to-my-profile-btn').classList.add('hidden');
             const { data: links } = await supabaseClient.from('links').select('*').eq('user_id', appState.currentUser.id).order('order_index', { ascending: true });
             appState.links = links || [];
@@ -363,7 +366,10 @@ async function loadPublicProfile(username) {
 
 		appState.links = links || [];
         appState.galleryImages = galleryImages || [];
-        appState.currentGalleryIndex = 0; // <<-- AÑADIDO: Resetea el índice al cargar un perfil público
+        // <<-- CORRECCIÓN: Resetea el índice solo si el perfil cambia
+        if (appState.currentlyViewingProfileId !== profile.id) {
+            appState.currentGalleryIndex = 0;
+        }
 
 		const isOwner = appState.currentUser && appState.currentUser.id === profile.id;
 
@@ -520,20 +526,16 @@ function buildProfileLayout(profileData, isOwner) {
 
     let layoutOrder = profileData.layout_order && profileData.layout_order.length > 0 ? [...profileData.layout_order] : defaultLayout;
 
-    // <<-- INICIO: LÓGICA DE MIGRACIÓN MEJORADA -->>
-    // Asegura que la galería se añada si faltan imágenes
     if (!layoutOrder.includes('gallery') && appState.galleryImages.length > 0) {
         const targetIndex = layoutOrder.indexOf('featured-video') !== -1 
             ? layoutOrder.indexOf('featured-video') + 1 
             : (layoutOrder.indexOf('social-buttons') !== -1 ? layoutOrder.indexOf('social-buttons') + 1 : 4);
         layoutOrder.splice(targetIndex, 0, 'gallery');
     }
-    // Asegura que el video se añada si falta y hay una URL
     if (!layoutOrder.includes('featured-video') && parseVideoUrl(profileData.featured_video_url)) {
         const targetIndex = layoutOrder.indexOf('social-buttons') !== -1 ? layoutOrder.indexOf('social-buttons') + 1 : 4;
         layoutOrder.splice(targetIndex, 0, 'featured-video');
     }
-    // <<-- FIN: LÓGICA DE MIGRACIÓN MEJORADA -->>
 
     currentLinkIds.forEach(linkId => {
         if (!layoutOrder.includes(linkId)) {
@@ -632,7 +634,6 @@ function updateProfileContent(profileData, isOwner) {
 
     const galleryContainer = document.querySelector('[data-section="gallery"]');
     if (galleryContainer) {
-        // <<-- CORRECCIÓN: Pasa el índice actual a la función de renderizado
         renderPublicGallery(galleryContainer, profileData, appState.galleryImages, appState.currentGalleryIndex);
     }
 
@@ -1659,7 +1660,7 @@ DOMElements.profilePage.addEventListener('click', (e) => {
             mainImg.src = selectedImage.image_url;
             mainImg.style.objectPosition = selectedImage.focus_point || 'center';
             mainCaption.textContent = selectedImage.caption || '';
-            appState.currentGalleryIndex = index; // <<-- AÑADIDO: Guarda el índice de la imagen seleccionada
+            appState.currentGalleryIndex = index;
         } else {
             if (!isNaN(index)) {
                 openImageZoomModal(appState.galleryImages, index);
