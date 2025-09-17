@@ -49,10 +49,11 @@ function loadFontIfNeeded(fontClass) {
 // --- 2. ESTADO GLOBAL DE LA APLICACIÓN ---
 let appState = {
 	currentUser: null,
-	myProfile: null, // El estado real guardado en la DB
-    previewProfile: null, // El estado temporal para la previsualización en vivo
+	myProfile: null,
+    previewProfile: null,
 	links: [],
     galleryImages: [],
+    currentGalleryIndex: 0, // <<-- AÑADIDO: Para recordar la imagen seleccionada
 	tempBackgroundImagePath: null,
 	tempLayoutOrder: null,
 	subscriptions: { auth: null, links: null },
@@ -294,6 +295,7 @@ async function handleAuthStateChange(session) {
             document.getElementById('back-to-my-profile-btn').href = `${window.location.pathname}?user=${myProfile.username.substring(1)}`;
             await loadPublicProfile(publicUsername);
         } else {
+            appState.currentGalleryIndex = 0; // <<-- AÑADIDO: Resetea el índice al cargar tu propio perfil
             document.getElementById('back-to-my-profile-btn').classList.add('hidden');
             const { data: links } = await supabaseClient.from('links').select('*').eq('user_id', appState.currentUser.id).order('order_index', { ascending: true });
             appState.links = links || [];
@@ -361,6 +363,7 @@ async function loadPublicProfile(username) {
 
 		appState.links = links || [];
         appState.galleryImages = galleryImages || [];
+        appState.currentGalleryIndex = 0; // <<-- AÑADIDO: Resetea el índice al cargar un perfil público
 
 		const isOwner = appState.currentUser && appState.currentUser.id === profile.id;
 
@@ -517,19 +520,20 @@ function buildProfileLayout(profileData, isOwner) {
 
     let layoutOrder = profileData.layout_order && profileData.layout_order.length > 0 ? [...profileData.layout_order] : defaultLayout;
 
+    // <<-- INICIO: LÓGICA DE MIGRACIÓN MEJORADA -->>
+    // Asegura que la galería se añada si faltan imágenes
     if (!layoutOrder.includes('gallery') && appState.galleryImages.length > 0) {
-        const videoIndex = layoutOrder.indexOf('featured-video');
-        if (videoIndex !== -1) {
-            layoutOrder.splice(videoIndex + 1, 0, 'gallery');
-        } else {
-            const socialButtonsIndex = layoutOrder.indexOf('social-buttons');
-            if (socialButtonsIndex !== -1) {
-                layoutOrder.splice(socialButtonsIndex + 1, 0, 'gallery');
-            } else {
-                layoutOrder.splice(4, 0, 'gallery');
-            }
-        }
+        const targetIndex = layoutOrder.indexOf('featured-video') !== -1 
+            ? layoutOrder.indexOf('featured-video') + 1 
+            : (layoutOrder.indexOf('social-buttons') !== -1 ? layoutOrder.indexOf('social-buttons') + 1 : 4);
+        layoutOrder.splice(targetIndex, 0, 'gallery');
     }
+    // Asegura que el video se añada si falta y hay una URL
+    if (!layoutOrder.includes('featured-video') && parseVideoUrl(profileData.featured_video_url)) {
+        const targetIndex = layoutOrder.indexOf('social-buttons') !== -1 ? layoutOrder.indexOf('social-buttons') + 1 : 4;
+        layoutOrder.splice(targetIndex, 0, 'featured-video');
+    }
+    // <<-- FIN: LÓGICA DE MIGRACIÓN MEJORADA -->>
 
     currentLinkIds.forEach(linkId => {
         if (!layoutOrder.includes(linkId)) {
@@ -628,7 +632,8 @@ function updateProfileContent(profileData, isOwner) {
 
     const galleryContainer = document.querySelector('[data-section="gallery"]');
     if (galleryContainer) {
-        renderPublicGallery(galleryContainer, profileData, appState.galleryImages);
+        // <<-- CORRECCIÓN: Pasa el índice actual a la función de renderizado
+        renderPublicGallery(galleryContainer, profileData, appState.galleryImages, appState.currentGalleryIndex);
     }
 
     appState.links.forEach(linkData => {
@@ -1062,7 +1067,7 @@ completeSetupBtn.addEventListener('click', async () => {
 });
 
 document.getElementById('logout-btn').addEventListener('click', async () => {
-    appState.isProfileBuilt = false; // Reiniciar la bandera al cerrar sesión
+    appState.isProfileBuilt = false;
 	appState.isRecoveringPassword = false;
 	document.getElementById('email-input').value = '';
 	document.getElementById('password-input').value = '';
@@ -1284,7 +1289,7 @@ async function forceCloseSettingsPanel() {
 		await supabaseClient.storage.from('background-images').remove([appState.tempBackgroundImagePath]);
 		appState.tempBackgroundImagePath = null;
 	}
-	appState.previewProfile = null; // Descartar la copia de previsualización
+	appState.previewProfile = null;
 	DOMElements.settingsPanel.classList.remove('open');
 	DOMElements.settingsOverlay.classList.add('hidden');
 
@@ -1301,7 +1306,7 @@ async function forceCloseSettingsPanel() {
 		});
 	}, 300);
 
-	buildProfileLayout(appState.myProfile, true); // Revertir al estado original guardado
+	buildProfileLayout(appState.myProfile, true);
 }
 
 function closeSettingsPanel() {
@@ -1385,7 +1390,6 @@ function updateLivePreview() {
 	const selectedFont = DOMElements.fontFamilyValue.value;
 	loadFontIfNeeded(selectedFont);
 
-    // <<-- INICIO: CORRECCIÓN BUG VIDEO -->>
     const oldButtonsCount = (appState.previewProfile.social_buttons || []).length;
     const oldSocialsCount = Object.values(appState.previewProfile.socials || {}).filter(v => v && v.trim() !== '').length;
     const oldVideoUrl = appState.previewProfile.featured_video_url;
@@ -1393,7 +1397,6 @@ function updateLivePreview() {
     const newButtonsCount = newSocialButtons.length;
     const newSocialsCount = Object.values(newSocials).filter(v => v && v.trim() !== '').length;
     const newVideoUrl = DOMElements.featuredVideoUrlInput.value.trim();
-    // <<-- FIN: CORRECCIÓN BUG VIDEO -->>
 
 	appState.previewProfile = {
 		...appState.previewProfile,
@@ -1417,7 +1420,6 @@ function updateLivePreview() {
 		if (input.value.trim() !== '') appState.previewProfile.contact_info[input.dataset.contact] = input.value.trim();
 	});
 
-    // <<-- INICIO: CORRECCIÓN BUG VIDEO -->>
     const buttonsAdded = oldButtonsCount === 0 && newButtonsCount > 0;
     const socialsAdded = oldSocialsCount === 0 && newSocialsCount > 0;
     const videoAdded = !parseVideoUrl(oldVideoUrl) && parseVideoUrl(newVideoUrl);
@@ -1429,7 +1431,6 @@ function updateLivePreview() {
         updateProfileStyles(appState.previewProfile);
         updateProfileContent(appState.previewProfile, true);
     }
-    // <<-- FIN: CORRECCIÓN BUG VIDEO -->>
 }
 
 DOMElements.settingsPanel.addEventListener('input', updateLivePreview);
@@ -1658,6 +1659,7 @@ DOMElements.profilePage.addEventListener('click', (e) => {
             mainImg.src = selectedImage.image_url;
             mainImg.style.objectPosition = selectedImage.focus_point || 'center';
             mainCaption.textContent = selectedImage.caption || '';
+            appState.currentGalleryIndex = index; // <<-- AÑADIDO: Guarda el índice de la imagen seleccionada
         } else {
             if (!isNaN(index)) {
                 openImageZoomModal(appState.galleryImages, index);
