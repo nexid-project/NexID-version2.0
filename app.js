@@ -1385,10 +1385,15 @@ function updateLivePreview() {
 	const selectedFont = DOMElements.fontFamilyValue.value;
 	loadFontIfNeeded(selectedFont);
 
+    // <<-- INICIO: CORRECCIÓN BUG VIDEO -->>
     const oldButtonsCount = (appState.previewProfile.social_buttons || []).length;
-    const newButtonsCount = newSocialButtons.length;
     const oldSocialsCount = Object.values(appState.previewProfile.socials || {}).filter(v => v && v.trim() !== '').length;
+    const oldVideoUrl = appState.previewProfile.featured_video_url;
+
+    const newButtonsCount = newSocialButtons.length;
     const newSocialsCount = Object.values(newSocials).filter(v => v && v.trim() !== '').length;
+    const newVideoUrl = DOMElements.featuredVideoUrlInput.value.trim();
+    // <<-- FIN: CORRECCIÓN BUG VIDEO -->>
 
 	appState.previewProfile = {
 		...appState.previewProfile,
@@ -1404,7 +1409,7 @@ function updateLivePreview() {
 		social_buttons: newSocialButtons,
 		socials_order: newSocialsOrder,
 		contact_info: {},
-        featured_video_url: DOMElements.featuredVideoUrlInput.value.trim(),
+        featured_video_url: newVideoUrl,
         is_public: !privateProfileToggle.checked
 	};
 
@@ -1412,7 +1417,11 @@ function updateLivePreview() {
 		if (input.value.trim() !== '') appState.previewProfile.contact_info[input.dataset.contact] = input.value.trim();
 	});
 
-    const needsRebuild = (oldButtonsCount === 0 && newButtonsCount > 0) || (oldSocialsCount === 0 && newSocialsCount > 0);
+    // <<-- INICIO: CORRECCIÓN BUG VIDEO -->>
+    const buttonsAdded = oldButtonsCount === 0 && newButtonsCount > 0;
+    const socialsAdded = oldSocialsCount === 0 && newSocialsCount > 0;
+    const videoAdded = !parseVideoUrl(oldVideoUrl) && parseVideoUrl(newVideoUrl);
+    const needsRebuild = buttonsAdded || socialsAdded || videoAdded;
 
     if (needsRebuild) {
         buildProfileLayout(appState.previewProfile, true);
@@ -1420,6 +1429,7 @@ function updateLivePreview() {
         updateProfileStyles(appState.previewProfile);
         updateProfileContent(appState.previewProfile, true);
     }
+    // <<-- FIN: CORRECCIÓN BUG VIDEO -->>
 }
 
 DOMElements.settingsPanel.addEventListener('input', updateLivePreview);
@@ -1626,15 +1636,13 @@ DOMElements.profilePage.addEventListener('click', (e) => {
         return;
     }
 
-    // <<-- INICIO: NUEVA LÓGICA DE CLIC PARA LA GALERÍA -->>
-    // Lógica para Galería
+    // Lógica para la Galería
     const galleryItem = e.target.closest('.gallery-grid-item, .gallery-main-image, .gallery-thumbnail');
     if (galleryItem) {
         e.preventDefault();
         const index = parseInt(galleryItem.dataset.index, 10);
         
         if (galleryItem.classList.contains('gallery-thumbnail')) {
-            // Si es una miniatura, solo cambia la imagen principal.
             const mainImgContainer = document.querySelector('.gallery-main-image');
             const mainImg = document.querySelector('#gallery-main-img');
             const mainCaption = document.querySelector('#gallery-main-caption');
@@ -1651,13 +1659,11 @@ DOMElements.profilePage.addEventListener('click', (e) => {
             mainImg.style.objectPosition = selectedImage.focus_point || 'center';
             mainCaption.textContent = selectedImage.caption || '';
         } else {
-            // Si es una imagen principal o de la cuadrícula, abre el modal de zoom.
             if (!isNaN(index)) {
                 openImageZoomModal(appState.galleryImages, index);
             }
         }
     }
-    // <<-- FIN: NUEVA LÓGICA DE CLIC PARA LA GALERÍA -->>
 });
 
 
