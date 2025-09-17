@@ -1597,9 +1597,8 @@ document.getElementById('links-list-editor').addEventListener('click', (e) => {
 	}
 });
 
-// <<-- CORRECCIÓN: Se centraliza el event listener de la página de perfil -->>
 DOMElements.profilePage.addEventListener('click', (e) => {
-    // 1. Lógica para Enlaces
+    // Lógica para Enlaces
     const linkButton = e.target.closest('.public-link-button, .social-button');
     if (linkButton) {
         if (appState.isDesignModeActive) {
@@ -1617,24 +1616,48 @@ DOMElements.profilePage.addEventListener('click', (e) => {
                 if (error) console.error('Failed to track click:', error);
             });
         }
-        return; // Termina la ejecución para no interferir con otras lógicas
+        return;
     }
 
-    // 2. Lógica para Imagen de Perfil
+    // Lógica para Imagen de Perfil
     const profileImage = e.target.closest('#public-profile-img');
     if (profileImage && !e.target.closest('#edit-profile-img-btn')) {
         openImageZoomModal([{ image_url: profileImage.src }], 0);
         return;
     }
 
-    // 3. Lógica para la Galería
-    const galleryItem = e.target.closest('.gallery-grid-item, .gallery-main-image');
+    // <<-- INICIO: NUEVA LÓGICA DE CLIC PARA LA GALERÍA -->>
+    // Lógica para Galería
+    const galleryItem = e.target.closest('.gallery-grid-item, .gallery-main-image, .gallery-thumbnail');
     if (galleryItem) {
+        e.preventDefault();
         const index = parseInt(galleryItem.dataset.index, 10);
-        if (!isNaN(index)) {
-            openImageZoomModal(appState.galleryImages, index);
+        
+        if (galleryItem.classList.contains('gallery-thumbnail')) {
+            // Si es una miniatura, solo cambia la imagen principal.
+            const mainImgContainer = document.querySelector('.gallery-main-image');
+            const mainImg = document.querySelector('#gallery-main-img');
+            const mainCaption = document.querySelector('#gallery-main-caption');
+            const thumbnailsContainer = document.querySelector('.gallery-thumbnails-strip');
+
+            if (!mainImg || !mainCaption || !thumbnailsContainer) return;
+
+            thumbnailsContainer.querySelector('.active')?.classList.remove('active');
+            galleryItem.classList.add('active');
+
+            const selectedImage = appState.galleryImages[index];
+            mainImgContainer.dataset.index = index;
+            mainImg.src = selectedImage.image_url;
+            mainImg.style.objectPosition = selectedImage.focus_point || 'center';
+            mainCaption.textContent = selectedImage.caption || '';
+        } else {
+            // Si es una imagen principal o de la cuadrícula, abre el modal de zoom.
+            if (!isNaN(index)) {
+                openImageZoomModal(appState.galleryImages, index);
+            }
         }
     }
+    // <<-- FIN: NUEVA LÓGICA DE CLIC PARA LA GALERÍA -->>
 });
 
 
