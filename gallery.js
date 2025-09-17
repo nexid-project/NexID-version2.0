@@ -176,7 +176,8 @@ export function renderGalleryEditor(images = []) {
     lucide.createIcons();
 }
 
-export function renderPublicGallery(container, profileData, images = []) {
+// <<-- CORRECCIÓN: La función ahora acepta un activeIndex para saber qué imagen mostrar -->>
+export function renderPublicGallery(container, profileData, images = [], activeIndex = 0) {
     container.innerHTML = '';
     if (!images || images.length === 0) return;
 
@@ -194,16 +195,16 @@ export function renderPublicGallery(container, profileData, images = []) {
         galleryHTML = `<div class="gallery-container-adaptive gallery-${imageCount}">${gridItemsHTML}</div>`;
 
     } else { // Estilo rectangular
-        const mainImage = images[0];
+        const mainImage = images[activeIndex];
         const thumbnailsHTML = images.length > 1 ? images.map((img, index) => `
-            <button class="gallery-thumbnail ${index === 0 ? 'active' : ''}" data-index="${index}">
+            <button class="gallery-thumbnail ${index === activeIndex ? 'active' : ''}" data-index="${index}">
                 <img src="${img.thumbnail_url}" alt="Miniatura ${index + 1}">
             </button>
         `).join('') : '';
 
         galleryHTML = `
             <div class="gallery-container-rectangular">
-                <div class="gallery-main-image" data-index="0">
+                <div class="gallery-main-image" data-index="${activeIndex}">
                     <img id="gallery-main-img" src="${mainImage.image_url}" style="object-position: ${mainImage.focus_point || 'center'};" alt="Imagen principal de la galería">
                     <p id="gallery-main-caption" class="gallery-caption">${mainImage.caption || ''}</p>
                 </div>
@@ -213,8 +214,6 @@ export function renderPublicGallery(container, profileData, images = []) {
     }
 
     container.innerHTML = galleryHTML;
-
-    // <<-- CORRECCIÓN: Se elimina toda la lógica de event listeners de aquí -->>
 }
 
 
